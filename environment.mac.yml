@@ -1,0 +1,23 @@
+# Local Mac development environment (Apple Silicon / MPS-friendly).
+# Create from the repo root:
+#   mamba env create -f environment.mac.yml
+#   conda activate llm_isa_local
+#
+# Uses the local transformers checkout (editable) and PyPI lm-eval.
+# Not for DGX/CUDA — see eval_env_environment.yml for the lab blueprint.
+
+name: llm_isa_local
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - torch
+      - accelerate
+      - datasets
+      - safetensors
+      - sentencepiece
+      - protobuf
+      - lm-eval==0.4.11
+      - -e ./transformers
