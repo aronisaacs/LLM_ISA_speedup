@@ -1,11 +1,25 @@
 # Pinned dependency checkouts (Mac and DGX should match these).
-# Clone commands (run from repo root):
 #
-#   git clone --branch v5.6.2 --depth 1 \
-#     https://github.com/huggingface/transformers.git transformers
+# Forks (your editable remotes):
+#   https://github.com/aronisaacs/transformers
+#   https://github.com/aronisaacs/lm-evaluation-harness
 #
-#   git clone --branch v0.4.11 --depth 1 \
-#     https://github.com/EleutherAI/lm-evaluation-harness.git lm-evaluation-harness
+# Branch for light local edits: aron-edits
+# Diff vs upstream tags:
+#   git -C transformers diff v5.6.2
+#   git -C lm-evaluation-harness diff v0.4.11
 #
-transformers  v5.6.2   aa935fb53dc38b56f10cc86b3a74354c2e99412f
-lm-evaluation-harness  v0.4.11  27988a293647d5853e48edea291640b4af54740c
+# Clone onto a new machine (DGX):
+#
+#   git clone --branch aron-edits \
+#     https://github.com/aronisaacs/transformers.git transformers
+#   git -C transformers remote add upstream \
+#     https://github.com/huggingface/transformers.git
+#
+#   git clone --branch aron-edits \
+#     https://github.com/aronisaacs/lm-evaluation-harness.git lm-evaluation-harness
+#   git -C lm-evaluation-harness remote add upstream \
+#     https://github.com/EleutherAI/lm-evaluation-harness.git
+#
+transformers  fork aronisaacs/transformers  branch aron-edits  commit 118d07b4974ccfd5b3e8283dce49fb987a91115a  (based on v5.6.2 / aa935fb)
+lm-evaluation-harness  fork aronisaacs/lm-evaluation-harness  branch aron-edits  commit 27988a293647d5853e48edea291640b4af54740c  (v0.4.11, no local edits yet)
