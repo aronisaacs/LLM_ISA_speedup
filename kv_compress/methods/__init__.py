@@ -16,3 +16,6 @@ def get_method(name: str) -> Method:
     except KeyError as error:
         known = ", ".join(sorted(METHODS)) or "(none registered)"
         raise ValueError(f"Unknown KV compress method {name!r}. Known methods: {known}") from error
+
+
+from kv_compress.methods import sparsify_nm as _sparsify_nm  # noqa: E402,F401

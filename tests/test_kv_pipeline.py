@@ -21,7 +21,7 @@ class ParseKvSpecTests(unittest.TestCase):
 
     def test_unknown_method_is_rejected(self):
         with self.assertRaises(ValueError):
-            parse_kv_spec({"pipeline": [{"method": "sparsify_nm", "k_layers": "all"}]})
+            parse_kv_spec({"pipeline": [{"method": "not_a_method", "k_layers": "all"}]})
 
     def test_layer_lists_and_all(self):
         from kv_compress import methods as methods_module
@@ -100,6 +100,100 @@ class PipelineAndInstallTests(unittest.TestCase):
             out_key, out_value = cache.update(key, value, 0)
             self.assertTrue(torch.equal(out_key, key))
             self.assertTrue(torch.equal(out_value, value))
+        finally:
+            uninstall()
+        self.assertIs(Cache.update, original)
+
+
+class SparsifyNmTests(unittest.TestCase):
+    def test_keeps_m_largest_per_tile(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "sparsify_nm",
+                        "n": 8,
+                        "m": 4,
+                        "k_layers": "all",
+                        "v_layers": "all",
+                    }
+                ]
+            }
+        )
+        key = torch.tensor(
+            [1.0, -9.0, 2.0, 3.0, -4.0, 8.0, 0.5, -0.1, 10.0, 1.0, -7.0, 0.0, 2.0, -3.0, 6.0, 0.2]
+        ).reshape(1, 1, 1, 16)
+        value = torch.arange(16, dtype=torch.float32).reshape(1, 1, 1, 16)
+        out_key, out_value = compress_kv(key, value, layer_idx=0, spec=spec)
+
+        self.assertEqual(tuple(out_key.shape), tuple(key.shape))
+        zeros_per_tile = (out_key.reshape(2, 8) == 0).sum(dim=-1)
+        nonzero_per_tile = (out_key.reshape(2, 8) != 0).sum(dim=-1)
+        self.assertTrue(torch.equal(zeros_per_tile, torch.tensor([4, 4])))
+        self.assertTrue(torch.equal(nonzero_per_tile, torch.tensor([4, 4])))
+        # Tile 0 magnitudes: 1,9,2,3,4,8,0.5,0.1 → keep 9,8,4,3 → values -9,8,-4,3
+        self.assertTrue(
+            torch.equal(out_key.reshape(2, 8)[0], torch.tensor([0.0, -9.0, 0.0, 3.0, -4.0, 8.0, 0.0, 0.0]))
+        )
+
+        value_tiles = out_value.reshape(2, 8)
+        for tile, original in zip(value_tiles, value.reshape(2, 8)):
+            self.assertEqual(int((tile != 0).sum()), 4)
+            kept = original.abs().topk(4).indices
+            self.assertTrue(torch.equal(tile[kept], original[kept]))
+            dropped = torch.ones(8, dtype=torch.bool)
+            dropped[kept] = False
+            self.assertTrue(torch.all(tile[dropped] == 0))
+
+    def test_skips_layers_not_selected(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "sparsify_nm",
+                        "n": 8,
+                        "m": 4,
+                        "k_layers": [1],
+                        "v_layers": [],
+                    }
+                ]
+            }
+        )
+        key = torch.arange(8, dtype=torch.float32).reshape(1, 1, 1, 8)
+        value = key + 1
+        out_key, out_value = compress_kv(key, value, layer_idx=0, spec=spec)
+        self.assertTrue(torch.equal(out_key, key))
+        self.assertTrue(torch.equal(out_value, value))
+        out_key, out_value = compress_kv(key, value, layer_idx=1, spec=spec)
+        self.assertEqual(int((out_key == 0).sum()), 4)
+        self.assertTrue(torch.equal(out_value, value))
+
+    def test_install_patches_and_sparsifies_cache_update(self):
+        from transformers.cache_utils import Cache, DynamicCache
+
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "sparsify_nm",
+                        "n": 8,
+                        "m": 4,
+                        "k_layers": "all",
+                        "v_layers": "all",
+                    }
+                ]
+            }
+        )
+        original = Cache.update
+        uninstall = install(None, spec)
+        try:
+            self.assertIsNot(Cache.update, original)
+            cache = DynamicCache()
+            key = torch.arange(8, dtype=torch.float32).reshape(1, 1, 1, 8)
+            value = key.clone()
+            out_key, out_value = cache.update(key, value, 0)
+            self.assertEqual(int((out_key == 0).sum()), 4)
+            self.assertEqual(int((out_value == 0).sum()), 4)
         finally:
             uninstall()
         self.assertIs(Cache.update, original)

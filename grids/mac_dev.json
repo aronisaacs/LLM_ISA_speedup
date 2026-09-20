@@ -1,26 +1,61 @@
 {
-  "_comment": "Mac iterate loop: Llama 3.2 1B Instruct on MPS. First run downloads weights (gated: HF_TOKEN). Target: under ~20 minutes once cached. Same model_args so the 1B load is reused across the two runs.",
+  "_comment": "Mac iterate loop: Llama 3.2 1B Instruct on MPS. Same model_args so the 1B load is reused. Dense first, then 4:8 sparsify on all K/V layers.",
   "model": "hf",
   "batch_size": 1,
   "device": "mps",
   "apply_chat_template": true,
   "num_fewshot": 0,
-  "kv": { "pipeline": [] },
+  "model_args": "pretrained=meta-llama/Llama-3.2-1B-Instruct,dtype=float16,device=mps",
   "runs": [
     {
       "name": "llama32_1b_arc_easy_dense",
-      "model_args": "pretrained=meta-llama/Llama-3.2-1B-Instruct,dtype=float16,device=mps",
       "tasks": ["arc_easy"],
-      "limit": 32,
+      "limit": 256,
+      "kv": { "pipeline": [] },
       "output_path": "mac_dev/llama32_1b_arc_easy_dense.json"
     },
     {
       "name": "llama32_1b_gsm8k_dense",
-      "model_args": "pretrained=meta-llama/Llama-3.2-1B-Instruct,dtype=float16,device=mps",
       "tasks": ["gsm8k"],
-      "limit": 4,
+      "limit": 32,
       "gen_kwargs": {"max_gen_toks": 128},
+      "kv": { "pipeline": [] },
       "output_path": "mac_dev/llama32_1b_gsm8k_dense.json"
+    },
+    {
+      "name": "llama32_1b_arc_easy_sparsify48",
+      "tasks": ["arc_easy"],
+      "limit": 256,
+      "kv": {
+        "pipeline": [
+          {
+            "method": "sparsify_nm",
+            "n": 8,
+            "m": 4,
+            "k_layers": "all",
+            "v_layers": "all"
+          }
+        ]
+      },
+      "output_path": "mac_dev/llama32_1b_arc_easy_sparsify48.json"
+    },
+    {
+      "name": "llama32_1b_gsm8k_sparsify48",
+      "tasks": ["gsm8k"],
+      "limit": 32,
+      "gen_kwargs": {"max_gen_toks": 128},
+      "kv": {
+        "pipeline": [
+          {
+            "method": "sparsify_nm",
+            "n": 8,
+            "m": 4,
+            "k_layers": "all",
+            "v_layers": "all"
+          }
+        ]
+      },
+      "output_path": "mac_dev/llama32_1b_gsm8k_sparsify48.json"
     }
   ]
 }
