@@ -1,4 +1,4 @@
-# Reference copy of Mustafa's Llama patch (not runnable from repo root).
+# Reference copy of Mustafa's Llama 4:8 sparsity patch (not runnable from repo root).
 # Excluded from type checking via pyrightconfig.json.
 # Copyright 2022 EleutherAI and the HuggingFace Inc. team. All rights reserved.
 #
