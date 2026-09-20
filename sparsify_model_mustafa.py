@@ -1,4 +1,16 @@
-# Reference copy of Mustafa's Llama 4:8 sparsity patch (not runnable from repo root).
+# Reference copy of Hugging Face Transformers:
+#   src/transformers/models/llama/modeling_llama.py
+# Pin (see deps_pins.txt): transformers v5.6.2 / aa935fb (fork aron-edits).
+#
+# What this copy adds on top of that file:
+#   - _apply_4_to_8_sparsity: keep the 4 largest-magnitude values in each
+#     8-wide tile along the last dimension (zeros elsewhere).
+#   - LlamaAttention._sparsify_kv + a call after RoPE and before KV-cache
+#     update, gated by config:
+#       sparsity_4_to_8_enabled
+#       sparsity_4_to_8_k_layers
+#       sparsity_4_to_8_v_layers
+# This is not runnable from repo root (relative transformers imports).
 # Excluded from type checking via pyrightconfig.json.
 # Copyright 2022 EleutherAI and the HuggingFace Inc. team. All rights reserved.
 #

@@ -1,0 +1,17 @@
+{
+  "model": "hf",
+  "batch_size": 1,
+  "device": "mps",
+  "kv": { "pipeline": [] },
+  "runs": [
+    {
+      "name": "smollm2_135m_arc_easy_dense_smoke",
+      "model_args": "pretrained=HuggingFaceTB/SmolLM2-135M-Instruct,dtype=float16,device=mps",
+      "tasks": ["arc_easy"],
+      "num_fewshot": 0,
+      "limit": 8,
+      "apply_chat_template": true,
+      "output_path": "smoke_test/smollm2_135m_arc_easy_dense.json"
+    }
+  ]
+}
