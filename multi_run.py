@@ -163,7 +163,11 @@ def main():
     if isinstance(config, list):
         config = {"runs": config}
 
-    base = {key: value for key, value in config.items() if key != "runs"}
+    base = {
+        key: value
+        for key, value in config.items()
+        if key != "runs" and not str(key).startswith("_")
+    }
     runs = config.get("runs") or []
 
     default_tasks = normalize_tasks(base.get("tasks"))
