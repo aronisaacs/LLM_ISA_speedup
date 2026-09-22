@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from eval_runner.device import apply_device, available_device
-from eval_runner.run_list import merge
+from eval_runner.load_run import merge
 
 _EVAL_DEFAULTS = {
     "num_fewshot": None,
@@ -31,13 +31,13 @@ _EVAL_DEFAULTS = {
 }
 
 
-def load_model_if_needed(lm, loaded_model_key, base, run):
-    """Reuse the HF model when model_args match the previous run."""
+def load_model_if_needed(lm, loaded_model_key, base, configuration):
+    """Reuse the HF model when model_args match the previous configuration."""
     from lm_eval.api.registry import get_model
 
-    model_name = merge(base, run, "model", "hf")
-    device = merge(base, run, "device", None) or available_device()
-    model_args = apply_device(merge(base, run, "model_args", ""), device)
+    model_name = merge(base, configuration, "model", "hf")
+    device = merge(base, configuration, "device", None) or available_device()
+    model_args = apply_device(merge(base, configuration, "model_args", ""), device)
     serialized = (
         json.dumps(model_args, sort_keys=True) if isinstance(model_args, dict) else model_args
     )
@@ -53,24 +53,26 @@ def load_model_if_needed(lm, loaded_model_key, base, run):
     return lm, loaded_model_key, device, model_args
 
 
-def evaluate(lm, base, run, kv_spec, device, model_args):
+def evaluate(lm, base, configuration, kv_spec, device, model_args):
     """One lm-eval simple_evaluate call with KV metadata attached."""
     from lm_eval.evaluator import simple_evaluate
     from lm_eval.utils import simple_parse_args_string
 
-    tasks = normalize_tasks(merge(base, run, "tasks", None))
-    samples = normalize_samples(merge(base, run, "samples", None))
-    env = normalize_env(merge(base, run, "env", None))
-    batch_size = normalize_batch_size(merge(base, run, "batch_size", None))
-    max_batch_size = merge(base, run, "max_batch_size", None)
+    tasks = normalize_tasks(merge(base, configuration, "tasks", None))
+    samples = normalize_samples(merge(base, configuration, "samples", None))
+    env = normalize_env(merge(base, configuration, "env", None))
+    batch_size = normalize_batch_size(merge(base, configuration, "batch_size", None))
+    max_batch_size = merge(base, configuration, "max_batch_size", None)
     apply_batch_size(lm, batch_size, max_batch_size)
 
     parsed_args = dict(model_args) if isinstance(model_args, dict) else simple_parse_args_string(model_args)
     parsed_args["kv"] = kv_spec.to_dict()
-    metadata = dict(merge(base, run, "metadata", None) or {})
+    metadata = dict(merge(base, configuration, "metadata", None) or {})
     metadata["kv"] = kv_spec.to_dict()
 
-    eval_kwargs = {key: merge(base, run, key, default) for key, default in _EVAL_DEFAULTS.items()}
+    eval_kwargs = {
+        key: merge(base, configuration, key, default) for key, default in _EVAL_DEFAULTS.items()
+    }
     with temporary_environ(env):
         return simple_evaluate(
             model=lm,
@@ -84,11 +86,11 @@ def evaluate(lm, base, run, kv_spec, device, model_args):
         )
 
 
-def write_result_json(lm, base, run, results) -> None:
+def write_result_json(lm, base, configuration, results) -> None:
     if getattr(lm, "rank", 0) != 0:
         return
-    run_name = run.get("name", "run")
-    output_path = Path(merge(base, run, "output_path", f"{run_name}.json"))
+    name = configuration.get("name", "configuration")
+    output_path = Path(merge(base, configuration, "output_path", f"{name}.json"))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(results, indent=2, default=_json_default))
     print(f"Wrote {output_path}")

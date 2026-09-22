@@ -1,7 +1,7 @@
-"""Lab-scale eval run list: Llama 3.1 8B, Qwen 3.5 9B, CodeLlama 7B.
+"""Run: for each model, for each compression (dense, all-layer 4:8), for each task.
 
-Dense then 4:8 sparsify per model so the checkpoint load is reused.
-Fits a DGX; too large for a Mac. Device is CUDA/MPS/CPU from multi_run.py.
+Currently Llama 3.1 8B, Qwen 3.5 9B, CodeLlama 7B. Compression inner so the
+checkpoint load is reused. Device is CUDA / MPS / CPU.
 """
 
 from __future__ import annotations
@@ -80,30 +80,30 @@ def sparsify(k_layers, v_layers, n=8, m=4):
     }
 
 
-def make_run(model, task, tag, kv):
+def make_configuration(model, task, tag, kv):
     extra = {key: value for key, value in task.items() if key not in {"name_task", "file"}}
-    run = {
+    configuration = {
         "name": f"{model['id']}_{task['name_task']}_{tag}",
         "model_args": model["model_args"],
         "kv": deepcopy(kv),
         "output_path": f"{model['out']}/{task['file']}_{tag}.json",
     }
-    run.update(deepcopy(extra))
-    return run
+    configuration.update(deepcopy(extra))
+    return configuration
 
 
-def config():
+def run():
     compressions = (
         ("dense", DENSE),
         ("sparsify48", sparsify("all", "all")),
     )
-    runs = []
+    configurations = []
     for model in MODELS:
         for tag, kv in compressions:
             for task in model["tasks"]:
-                runs.append(make_run(model, task, tag, kv))
+                configurations.append(make_configuration(model, task, tag, kv))
     return {
         "model": "hf",
         "batch_size": "auto:4",
-        "runs": runs,
+        "configurations": configurations,
     }

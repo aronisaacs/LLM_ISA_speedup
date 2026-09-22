@@ -1,4 +1,4 @@
-"""Unit tests for Python/JSON run lists. Does not load a full LLM."""
+"""Unit tests for loading runs and expanding configurations. Does not load a full LLM."""
 
 from __future__ import annotations
 
@@ -8,15 +8,15 @@ import unittest
 from pathlib import Path
 
 from eval_runner.device import apply_device, available_device
-from eval_runner.run_list import load_run_list
+from eval_runner.load_run import load_run
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class LoadRunListTests(unittest.TestCase):
-    def test_mac_eval_runs_expands_dense_then_sparsify(self):
-        config = load_run_list(ROOT / "run_lists" / "mac_eval_runs.py")
-        names = [run["name"] for run in config["runs"]]
+class LoadRunTests(unittest.TestCase):
+    def test_compression_x_task_expands_dense_then_sparsify(self):
+        loaded = load_run(ROOT / "runs" / "compression_x_task.py")
+        names = [configuration["name"] for configuration in loaded["configurations"]]
         self.assertEqual(
             names,
             [
@@ -26,47 +26,50 @@ class LoadRunListTests(unittest.TestCase):
                 "llama32_1b_gsm8k_sparsify48",
             ],
         )
-        self.assertEqual(config["runs"][0]["kv"], {"pipeline": []})
-        self.assertEqual(config["runs"][2]["kv"]["pipeline"][0]["method"], "sparsify_nm")
+        self.assertEqual(loaded["configurations"][0]["kv"], {"pipeline": []})
+        self.assertEqual(loaded["configurations"][2]["kv"]["pipeline"][0]["method"], "sparsify_nm")
         self.assertEqual(
-            config["runs"][0]["output_path"],
-            "mac_eval_results/llama32_1b_arc_easy_dense.json",
+            loaded["configurations"][0]["output_path"],
+            "compression_x_task_results/llama32_1b_arc_easy_dense.json",
         )
 
-    def test_dgx_eval_runs_groups_by_model_then_compression(self):
-        config = load_run_list(ROOT / "run_lists" / "dgx_eval_runs.py")
-        names = [run["name"] for run in config["runs"]]
+    def test_model_x_compression_x_task_groups_by_model_then_compression(self):
+        loaded = load_run(ROOT / "runs" / "model_x_compression_x_task.py")
+        names = [configuration["name"] for configuration in loaded["configurations"]]
         self.assertEqual(names[0], "llama31_ceval_dense")
         self.assertEqual(names[3], "llama31_ceval_sparsify48")
         self.assertEqual(names[-1], "codellama7b_humaneval_sparsify48")
         self.assertEqual(len(names), 14)
 
-    def test_json_run_list_still_loads(self):
-        payload = {"device": "cpu", "runs": [{"name": "one", "kv": {"pipeline": []}}]}
+    def test_json_run_still_loads(self):
+        payload = {
+            "device": "cpu",
+            "configurations": [{"name": "one", "kv": {"pipeline": []}}],
+        }
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
             handle.write(json.dumps(payload))
             path = Path(handle.name)
         try:
-            loaded = load_run_list(path)
+            loaded = load_run(path)
             self.assertEqual(loaded["device"], "cpu")
-            self.assertEqual(loaded["runs"][0]["name"], "one")
+            self.assertEqual(loaded["configurations"][0]["name"], "one")
         finally:
             path.unlink()
 
-    def test_python_run_list_requires_config(self):
+    def test_python_run_requires_run_function(self):
         with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as handle:
-            handle.write("RUNS = []\n")
+            handle.write("CONFIGURATIONS = []\n")
             path = Path(handle.name)
         try:
-            with self.assertRaisesRegex(ValueError, "must define config"):
-                load_run_list(path)
+            with self.assertRaisesRegex(ValueError, "must define run"):
+                load_run(path)
         finally:
             path.unlink()
 
-    def test_mac_eval_does_not_hardcode_mps(self):
-        config = load_run_list(ROOT / "run_lists" / "mac_eval_runs.py")
-        self.assertNotIn("device", config)
-        self.assertNotIn("mps", config["model_args"])
+    def test_compression_x_task_does_not_hardcode_mps(self):
+        loaded = load_run(ROOT / "runs" / "compression_x_task.py")
+        self.assertNotIn("device", loaded)
+        self.assertNotIn("mps", loaded["model_args"])
 
     def test_available_device_is_a_known_backend(self):
         self.assertIn(available_device(), {"cuda", "mps", "cpu"})

@@ -16,7 +16,7 @@ def available_device() -> str:
 
 
 def apply_device(model_args, device: str):
-    """Add device to HF model_args unless the run already set one."""
+    """Add device to HF model_args unless the configuration already set one."""
     if isinstance(model_args, dict):
         if "device" in model_args:
             return model_args

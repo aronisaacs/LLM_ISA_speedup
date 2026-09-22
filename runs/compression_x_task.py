@@ -1,8 +1,7 @@
-"""Small eval run list: Llama 3.2 1B Instruct, sized to fit on a Mac.
+"""Run: for each compression (dense, all-layer 4:8), for each task.
 
-Uses CUDA if present, otherwise MPS, otherwise CPU (multi_run.py picks the device).
-Edit the loops in config() to add/drop tasks or compression variants.
-Results go to mac_eval_results/.
+Currently Llama 3.2 1B Instruct, ARC-Easy and GSM8K with short limits.
+Results go to compression_x_task_results/. Device is CUDA / MPS / CPU.
 """
 
 from __future__ import annotations
@@ -33,34 +32,34 @@ def sparsify(k_layers, v_layers, n=8, m=4):
     }
 
 
-def make_run(task, tag, kv, **extra):
+def make_configuration(task, tag, kv, **extra):
     name = f"llama32_1b_{task}_{tag}"
-    run = {
+    configuration = {
         "name": name,
         "tasks": [task],
         "kv": deepcopy(kv),
-        "output_path": f"mac_eval_results/{name}.json",
+        "output_path": f"compression_x_task_results/{name}.json",
     }
-    run.update(deepcopy(extra))
-    return run
+    configuration.update(deepcopy(extra))
+    return configuration
 
 
-def config():
+def run():
     # Nested loops: add another `for` for per-layer or K-only / V-only sweeps.
     # Example: compressions.append((f"k_layer{i}", sparsify([i], [])))
     compressions = (
         ("dense", DENSE),
         ("sparsify48", sparsify("all", "all")),
     )
-    runs = []
+    configurations = []
     for tag, kv in compressions:
         for task, extra in TASKS:
-            runs.append(make_run(task, tag, kv, **extra))
+            configurations.append(make_configuration(task, tag, kv, **extra))
     return {
         "model": "hf",
         "batch_size": 1,
         "apply_chat_template": True,
         "num_fewshot": 0,
         "model_args": MODEL_ARGS,
-        "runs": runs,
+        "configurations": configurations,
     }

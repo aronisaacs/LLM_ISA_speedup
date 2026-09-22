@@ -1,8 +1,8 @@
-"""Attach or skip KV compression for one eval run.
+"""Attach or skip KV compression for one configuration.
 
 install(lm, spec) is a no-op for an empty pipeline (dense baseline). Otherwise
 it checks layer indices against the decoder and patches Cache.update. Always
-call the returned uninstall() so the next run can use a different spec.
+call the returned uninstall() so the next configuration can use a different spec.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from kv_compress.spec import KvSpec, LayerSelection
 
 
 def install(lm: Any, spec: KvSpec) -> Callable[[], None]:
-    """Attach the KV pipeline for one eval run. Identity specs do not patch.
+    """Attach the KV pipeline for one configuration. Identity specs do not patch.
 
     ``lm`` is the lm-eval model wrapper (``HFLM``). Unused for identity; later
     methods can validate layer indices against the loaded decoder.
