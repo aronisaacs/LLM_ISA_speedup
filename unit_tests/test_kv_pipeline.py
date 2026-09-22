@@ -1,3 +1,9 @@
+"""Unit tests for kv_compress: spec parsing, identity install, and sparsify_nm.
+
+Does not load a full LLM. Covers JSON validation, Cache.update wrapping, and
+that 4:8 zeros the weakest half of each tile and respects layer selection.
+"""
+
 import unittest
 
 import torch

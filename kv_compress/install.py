@@ -1,3 +1,10 @@
+"""Attach or skip KV compression for one eval run.
+
+install(lm, spec) is a no-op for an empty pipeline (dense baseline). Otherwise
+it checks layer indices against the decoder and patches Cache.update. Always
+call the returned uninstall() so the next run can use a different spec.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable

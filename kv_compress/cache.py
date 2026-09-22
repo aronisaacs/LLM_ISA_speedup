@@ -1,3 +1,9 @@
+"""Monkeypatch Transformers Cache.update so new K/V go through compress_kv.
+
+Llama/Qwen call update after RoPE and use the returned tensors for attention,
+so this is the shared injection point. patch_cache_update returns uninstall().
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable

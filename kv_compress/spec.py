@@ -1,3 +1,9 @@
+"""Parse and validate the JSON ``kv`` object from a grid file.
+
+Turns {pipeline: [{method, k_layers, v_layers, ...}]} into KvSpec / PipelineStep.
+Unknown methods or keys fail here so a typo cannot silently run dense.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

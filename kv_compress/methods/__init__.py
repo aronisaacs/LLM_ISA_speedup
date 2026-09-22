@@ -1,4 +1,8 @@
-"""Named KV rewrite functions. Step 1 has none; later methods register here."""
+"""Registry of KV rewrite callables used by the pipeline.
+
+Each method is apply(tensor, *, layer_idx, target, **kwargs) -> tensor and
+registers itself on METHODS. get_method looks up a JSON "method" name.
+"""
 
 from collections.abc import Callable
 from typing import Any

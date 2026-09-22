@@ -1,3 +1,9 @@
+"""Apply a KvSpec to one layer's new K and V tensors.
+
+Walks pipeline steps, and for each step calls the named method on K and/or V
+only if that layer is in k_layers / v_layers (or "all"). Empty pipeline is identity.
+"""
+
 from __future__ import annotations
 
 import torch

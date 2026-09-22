@@ -1,4 +1,9 @@
-"""Keep the m largest-magnitude values in each n-wide tile along the last dim."""
+"""n:m activation sparsity on a K or V chunk (default 4:8).
+
+Along the last dimension (head_dim), keep the m largest-magnitude values in
+each tile of n and zero the rest. Same math as Mustafa's _apply_4_to_8_sparsity,
+called from Cache.update rather than from modeling_llama.py.
+"""
 
 from __future__ import annotations
 

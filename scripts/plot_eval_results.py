@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Plot lm-eval JSON dumps from multi_run.py (dense vs compression)."""
+"""Turn multi_run.py result JSONs into a dense-vs-compression accuracy chart.
+
+Reads lm-eval dumps (default mac_eval_results/*.json), labels each run from its kv.pipeline
+(dense vs sparsify n:m, etc.), and writes an SVG bar chart plus a text table.
+"""
 
 from __future__ import annotations
 
@@ -183,10 +187,10 @@ def main() -> None:
     parser.add_argument(
         "inputs",
         nargs="*",
-        default=["mac_dev/*.json"],
-        help="Result JSON files or globs (default: mac_dev/*.json)",
+        default=["mac_eval_results/*.json"],
+        help="Result JSON files or globs (default: mac_eval_results/*.json)",
     )
-    parser.add_argument("-o", "--output", default="mac_dev/accuracy_vs_compression.svg")
+    parser.add_argument("-o", "--output", default="mac_eval_results/accuracy_vs_compression.svg")
     args = parser.parse_args()
 
     paths: list[Path] = []
