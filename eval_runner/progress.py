@@ -45,6 +45,14 @@ def kv_brief(spec) -> str:
         method = step.get("method", "?")
         if method == "sparsify_nm":
             parts.append(f"sparsify {step.get('n', '?')}:{step.get('m', '?')}")
+        elif method == "checksparse_l1":
+            parts.append(f"checksparse L1 tile={step.get('tile', '?')} prune={step.get('prune_pct', '?')}%")
+        elif method == "vector_compress":
+            parts.append(f"vector |x|<{step.get('threshold', '?')}")
+        elif method == "dynamic_precision":
+            bits = step.get("bits", "?")
+            pcts = step.get("pcts", "?")
+            parts.append(f"dynprec tile={step.get('tile', '?')} bits={bits} pcts={pcts}")
         else:
             parts.append(str(method))
     return " + ".join(parts)

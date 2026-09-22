@@ -8,76 +8,31 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-DENSE = {"pipeline": []}
+from catalog.compressions import DENSE, SPARSIFY_48
+from catalog.models import CODELLAMA_7B, LLAMA31_8B, QWEN35_9B
+from catalog.tasks import CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_CODELLAMA, HUMANEVAL_INSTRUCT
 
-CEVAL = {
-    "name_task": "ceval",
-    "file": "ceval",
-    "tasks": ["ceval-valid"],
-    "num_fewshot": 5,
-    "apply_chat_template": True,
-}
-GSM8K = {
-    "name_task": "gsm8k",
-    "file": "gsm8k_20pct",
-    "tasks": ["gsm8k"],
-    "samples": "@gsm8k_samples_profile20pct.json",
-    "num_fewshot": 0,
-    "gen_kwargs": {"max_gen_toks": 512},
-    "apply_chat_template": True,
-}
-HUMANEVAL_INSTRUCT = {
-    "name_task": "humaneval_instruct",
-    "file": "humaneval_instruct",
-    "tasks": ["humaneval_instruct"],
-    "num_fewshot": 0,
-    "env": {"HF_ALLOW_CODE_EVAL": "1"},
-    "confirm_run_unsafe_code": True,
-    "apply_chat_template": True,
-}
-HUMANEVAL_CODELLAMA = {
-    "name_task": "humaneval",
-    "file": "humaneval",
-    "tasks": ["humaneval_codellama"],
-    "num_fewshot": 0,
-    "env": {"HF_ALLOW_CODE_EVAL": "1"},
-    "confirm_run_unsafe_code": True,
-}
 
 MODELS = (
     {
         "id": "llama31",
         "out": "results/model_x_compression_x_task/llama3",
-        "model_args": "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16",
-        "tasks": (CEVAL, GSM8K, HUMANEVAL_INSTRUCT),
+        "model_args": LLAMA31_8B,
+        "tasks": (CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT),
     },
     {
         "id": "qwen35",
         "out": "results/model_x_compression_x_task/qwen",
-        "model_args": "pretrained=Qwen/Qwen3.5-9B,dtype=bfloat16,enable_thinking=False",
-        "tasks": (HUMANEVAL_INSTRUCT, GSM8K, CEVAL),
+        "model_args": QWEN35_9B,
+        "tasks": (HUMANEVAL_INSTRUCT, GSM8K_20PCT, CEVAL_VALID_5SHOT),
     },
     {
         "id": "codellama7b",
         "out": "results/model_x_compression_x_task/codellama",
-        "model_args": "pretrained=meta-llama/CodeLlama-7b-hf,dtype=bfloat16",
+        "model_args": CODELLAMA_7B,
         "tasks": (HUMANEVAL_CODELLAMA,),
     },
 )
-
-
-def sparsify(k_layers, v_layers, n=8, m=4):
-    return {
-        "pipeline": [
-            {
-                "method": "sparsify_nm",
-                "n": n,
-                "m": m,
-                "k_layers": k_layers,
-                "v_layers": v_layers,
-            }
-        ]
-    }
 
 
 def make_configuration(model, task, tag, kv):
@@ -95,7 +50,7 @@ def make_configuration(model, task, tag, kv):
 def run():
     compressions = (
         ("dense", DENSE),
-        ("sparsify48", sparsify("all", "all")),
+        ("sparsify48", SPARSIFY_48),
     )
     configurations = []
     for model in MODELS:

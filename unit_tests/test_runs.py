@@ -7,8 +7,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from catalog.compressions import CHECKSPARSE_L1_50, DENSE, DYNAMIC_PRECISION_1684, SPARSIFY_48, vector_compress
 from eval_runner.device import apply_device, available_device
 from eval_runner.load_run import load_run
+from kv_compress.spec import parse_kv_spec
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -90,3 +92,18 @@ class LoadRunTests(unittest.TestCase):
         self.assertEqual(apply_device("pretrained=x,dtype=float16", "cuda"), "pretrained=x,dtype=float16,device=cuda")
         self.assertEqual(apply_device("pretrained=x,device=cpu", "cuda"), "pretrained=x,device=cpu")
         self.assertEqual(apply_device({"pretrained": "x"}, "mps"), {"pretrained": "x", "device": "mps"})
+
+    def test_catalog_compressions_parse(self):
+        self.assertTrue(parse_kv_spec(DENSE).is_identity())
+        sparse = parse_kv_spec(SPARSIFY_48)
+        self.assertEqual(sparse.pipeline[0].method, "sparsify_nm")
+        check = parse_kv_spec(CHECKSPARSE_L1_50)
+        self.assertEqual(check.pipeline[0].method, "checksparse_l1")
+        self.assertEqual(check.pipeline[0].kwargs["prune_pct"], 50)
+        vector = parse_kv_spec(vector_compress(threshold=0.1))
+        self.assertEqual(vector.pipeline[0].method, "vector_compress")
+        self.assertEqual(vector.pipeline[0].kwargs["threshold"], 0.1)
+        dyn = parse_kv_spec(DYNAMIC_PRECISION_1684)
+        self.assertEqual(dyn.pipeline[0].method, "dynamic_precision")
+        self.assertEqual(dyn.pipeline[0].kwargs["bits"], [16, 8, 4])
+        self.assertEqual(dyn.pipeline[0].kwargs["pcts"], [25, 50, 25])

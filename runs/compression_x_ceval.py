@@ -8,23 +8,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-DENSE = {"pipeline": []}
-
-MODEL_ARGS = "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16"
-
-
-def sparsify(k_layers, v_layers, n=8, m=4):
-    return {
-        "pipeline": [
-            {
-                "method": "sparsify_nm",
-                "n": n,
-                "m": m,
-                "k_layers": k_layers,
-                "v_layers": v_layers,
-            }
-        ]
-    }
+from catalog.compressions import DENSE, SPARSIFY_48
+from catalog.models import LLAMA31_8B
 
 
 def make_configuration(tag, kv):
@@ -40,7 +25,7 @@ def make_configuration(tag, kv):
 def run():
     compressions = (
         ("dense", DENSE),
-        ("sparsify48", sparsify("all", "all")),
+        ("sparsify48", SPARSIFY_48),
     )
     configurations = [make_configuration(tag, kv) for tag, kv in compressions]
     return {
@@ -48,6 +33,6 @@ def run():
         "batch_size": "auto:4",
         "apply_chat_template": True,
         "num_fewshot": 5,
-        "model_args": MODEL_ARGS,
+        "model_args": LLAMA31_8B,
         "configurations": configurations,
     }

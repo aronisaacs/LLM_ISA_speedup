@@ -21,8 +21,37 @@ class ProgressTests(unittest.TestCase):
                 "pipeline": [{"method": "sparsify_nm", "n": 8, "m": 4, "k_layers": "all", "v_layers": "all"}]
             }
         )
+        checksparse = SimpleNamespace(
+            to_dict=lambda: {
+                "pipeline": [
+                    {"method": "checksparse_l1", "tile": 8, "prune_pct": 50, "k_layers": "all", "v_layers": "all"}
+                ]
+            }
+        )
+        vector = SimpleNamespace(
+            to_dict=lambda: {
+                "pipeline": [{"method": "vector_compress", "threshold": 0.25, "k_layers": "all", "v_layers": "all"}]
+            }
+        )
         self.assertEqual(kv_brief(dense), "dense")
         self.assertEqual(kv_brief(sparse), "sparsify 8:4")
+        dynprec = SimpleNamespace(
+            to_dict=lambda: {
+                "pipeline": [
+                    {
+                        "method": "dynamic_precision",
+                        "tile": 8,
+                        "bits": [16, 8, 4],
+                        "pcts": [25, 50, 25],
+                        "k_layers": "all",
+                        "v_layers": "all",
+                    }
+                ]
+            }
+        )
+        self.assertEqual(kv_brief(checksparse), "checksparse L1 tile=8 prune=50%")
+        self.assertEqual(kv_brief(vector), "vector |x|<0.25")
+        self.assertEqual(kv_brief(dynprec), "dynprec tile=8 bits=[16, 8, 4] pcts=[25, 50, 25]")
 
     def test_summarize_scores_picks_primary_metric(self):
         results = {

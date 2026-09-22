@@ -1,7 +1,7 @@
-"""Unit tests for kv_compress: spec parsing, identity install, and sparsify_nm.
+"""Unit tests for kv_compress: spec parsing, identity install, and KV methods.
 
-Does not load a full LLM. Covers JSON validation, Cache.update wrapping, and
-that 4:8 zeros the weakest half of each tile and respects layer selection.
+Does not load a full LLM. Covers JSON validation, Cache.update wrapping,
+sparsify 4:8, checksparse L1 tiles, and per-scalar vector_compress.
 """
 
 import unittest
@@ -203,6 +203,147 @@ class SparsifyNmTests(unittest.TestCase):
         finally:
             uninstall()
         self.assertIs(Cache.update, original)
+
+
+class ChecksparseL1Tests(unittest.TestCase):
+    def test_zeros_weakest_tiles_by_l1(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "checksparse_l1",
+                        "tile": 8,
+                        "prune_pct": 50,
+                        "k_layers": "all",
+                        "v_layers": [],
+                    }
+                ]
+            }
+        )
+        # Tile 0 L1=8, tile 1 L1=0.8 → drop tile 1.
+        key = torch.tensor(
+            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+        ).reshape(1, 1, 1, 16)
+        value = key + 1
+        out_key, out_value = compress_kv(key, value, layer_idx=0, spec=spec)
+        self.assertTrue(torch.equal(out_key.reshape(16)[:8], key.reshape(16)[:8]))
+        self.assertTrue(torch.equal(out_key.reshape(16)[8:], torch.zeros(8)))
+        self.assertTrue(torch.equal(out_value, value))
+
+    def test_prune_zero_is_identity(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "checksparse_l1",
+                        "tile": 8,
+                        "prune_pct": 0,
+                        "k_layers": "all",
+                        "v_layers": "all",
+                    }
+                ]
+            }
+        )
+        key = torch.arange(8, dtype=torch.float32).reshape(1, 1, 1, 8)
+        out_key, _ = compress_kv(key, key, layer_idx=0, spec=spec)
+        self.assertTrue(torch.equal(out_key, key))
+
+
+class VectorCompressTests(unittest.TestCase):
+    def test_zeros_scalars_below_threshold(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "vector_compress",
+                        "threshold": 0.5,
+                        "k_layers": "all",
+                        "v_layers": "all",
+                    }
+                ]
+            }
+        )
+        key = torch.tensor([0.1, -0.9, 0.4, 2.0]).reshape(1, 1, 1, 4)
+        out_key, _ = compress_kv(key, key.clone(), layer_idx=0, spec=spec)
+        self.assertTrue(torch.equal(out_key.reshape(4), torch.tensor([0.0, -0.9, 0.0, 2.0])))
+
+    def test_threshold_zero_is_identity(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "vector_compress",
+                        "threshold": 0,
+                        "k_layers": "all",
+                        "v_layers": "all",
+                    }
+                ]
+            }
+        )
+        key = torch.tensor([0.0, 0.1, -2.0]).reshape(1, 1, 1, 3)
+        out_key, _ = compress_kv(key, key, layer_idx=0, spec=spec)
+        self.assertTrue(torch.equal(out_key, key))
+
+    def test_prune_pct_zeros_weakest_scalars(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "vector_compress",
+                        "prune_pct": 50,
+                        "k_layers": "all",
+                        "v_layers": "all",
+                    }
+                ]
+            }
+        )
+        key = torch.tensor([0.1, -0.9, 0.4, 2.0]).reshape(1, 1, 1, 4)
+        out_key, _ = compress_kv(key, key.clone(), layer_idx=0, spec=spec)
+        self.assertTrue(torch.equal(out_key.reshape(4), torch.tensor([0.0, -0.9, 0.0, 2.0])))
+
+
+class DynamicPrecisionTests(unittest.TestCase):
+    def test_loud_tile_stays_full_quiet_tile_is_coarse(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "dynamic_precision",
+                        "tile": 8,
+                        "bits": [16, 4],
+                        "pcts": [50, 50],
+                        "k_layers": "all",
+                        "v_layers": [],
+                    }
+                ]
+            }
+        )
+        loud = torch.tensor([10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0])
+        quiet = torch.tensor([0.01, 0.03, -0.02, 0.09, 0.04, -0.07, 0.05, 0.20])
+        key = torch.cat([loud, quiet]).reshape(1, 1, 1, 16)
+        out_key, out_value = compress_kv(key, key.clone(), layer_idx=0, spec=spec)
+        self.assertTrue(torch.equal(out_key.reshape(16)[:8], loud))
+        self.assertFalse(torch.equal(out_key.reshape(16)[8:], quiet))
+        self.assertTrue(torch.equal(out_value, key))
+
+    def test_all_16bit_is_identity(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "dynamic_precision",
+                        "tile": 8,
+                        "bits": [16],
+                        "pcts": [100],
+                        "k_layers": "all",
+                        "v_layers": "all",
+                    }
+                ]
+            }
+        )
+        key = torch.arange(8, dtype=torch.float32).reshape(1, 1, 1, 8)
+        out_key, _ = compress_kv(key, key, layer_idx=0, spec=spec)
+        self.assertTrue(torch.equal(out_key, key))
 
 
 if __name__ == "__main__":

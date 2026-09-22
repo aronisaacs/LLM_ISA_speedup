@@ -8,35 +8,16 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-DENSE = {"pipeline": []}
-
-MODEL_ARGS = "pretrained=meta-llama/Llama-3.2-1B-Instruct,dtype=float16"
-
-TASKS = (
-    ("arc_easy", {"limit": 256}),
-    ("gsm8k", {"limit": 32, "gen_kwargs": {"max_gen_toks": 128}}),
-)
+from catalog.compressions import DENSE, SPARSIFY_48
+from catalog.models import LLAMA32_1B
+from catalog.tasks import ARC_EASY_256, GSM8K_32
 
 
-def sparsify(k_layers, v_layers, n=8, m=4):
-    return {
-        "pipeline": [
-            {
-                "method": "sparsify_nm",
-                "n": n,
-                "m": m,
-                "k_layers": k_layers,
-                "v_layers": v_layers,
-            }
-        ]
-    }
-
-
-def make_configuration(task, tag, kv, **extra):
-    name = f"llama32_1b_{task}_{tag}"
+def make_configuration(task_name, tag, kv, **extra):
+    name = f"llama32_1b_{task_name}_{tag}"
     configuration = {
         "name": name,
-        "tasks": [task],
+        "tasks": [task_name],
         "kv": deepcopy(kv),
         "output_path": f"results/compression_x_task/{name}.json",
     }
@@ -46,20 +27,23 @@ def make_configuration(task, tag, kv, **extra):
 
 def run():
     # Nested loops: add another `for` for per-layer or K-only / V-only sweeps.
-    # Example: compressions.append((f"k_layer{i}", sparsify([i], [])))
     compressions = (
         ("dense", DENSE),
-        ("sparsify48", sparsify("all", "all")),
+        ("sparsify48", SPARSIFY_48),
+    )
+    tasks = (
+        ("arc_easy", {key: value for key, value in ARC_EASY_256.items() if key != "tasks"}),
+        ("gsm8k", {key: value for key, value in GSM8K_32.items() if key != "tasks"}),
     )
     configurations = []
     for tag, kv in compressions:
-        for task, extra in TASKS:
-            configurations.append(make_configuration(task, tag, kv, **extra))
+        for task_name, extra in tasks:
+            configurations.append(make_configuration(task_name, tag, kv, **extra))
     return {
         "model": "hf",
         "batch_size": 1,
         "apply_chat_template": True,
         "num_fewshot": 0,
-        "model_args": MODEL_ARGS,
+        "model_args": LLAMA32_1B,
         "configurations": configurations,
     }
