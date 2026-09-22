@@ -33,6 +33,18 @@ class LoadRunTests(unittest.TestCase):
             "results/compression_x_task/llama32_1b_arc_easy_dense.json",
         )
 
+    def test_compression_x_ceval_is_llama31_dense_then_sparsify(self):
+        loaded = load_run(ROOT / "runs" / "compression_x_ceval.py")
+        names = [configuration["name"] for configuration in loaded["configurations"]]
+        self.assertEqual(names, ["llama31_ceval_dense", "llama31_ceval_sparsify48"])
+        self.assertEqual(loaded["num_fewshot"], 5)
+        self.assertEqual(loaded["configurations"][0]["tasks"], ["ceval-valid"])
+        self.assertEqual(loaded["configurations"][0]["kv"], {"pipeline": []})
+        self.assertEqual(
+            loaded["configurations"][1]["output_path"],
+            "results/compression_x_ceval/llama31_ceval_sparsify48.json",
+        )
+
     def test_model_x_compression_x_task_groups_by_model_then_compression(self):
         loaded = load_run(ROOT / "runs" / "model_x_compression_x_task.py")
         names = [configuration["name"] for configuration in loaded["configurations"]]
