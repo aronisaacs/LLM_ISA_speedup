@@ -30,7 +30,7 @@ class LoadRunTests(unittest.TestCase):
         self.assertEqual(loaded["configurations"][2]["kv"]["pipeline"][0]["method"], "sparsify_nm")
         self.assertEqual(
             loaded["configurations"][0]["output_path"],
-            "compression_x_task_results/llama32_1b_arc_easy_dense.json",
+            "results/compression_x_task/llama32_1b_arc_easy_dense.json",
         )
 
     def test_model_x_compression_x_task_groups_by_model_then_compression(self):

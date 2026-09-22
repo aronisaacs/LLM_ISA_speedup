@@ -47,19 +47,19 @@ HUMANEVAL_CODELLAMA = {
 MODELS = (
     {
         "id": "llama31",
-        "out": "llama3_test",
+        "out": "results/model_x_compression_x_task/llama3",
         "model_args": "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16",
         "tasks": (CEVAL, GSM8K, HUMANEVAL_INSTRUCT),
     },
     {
         "id": "qwen35",
-        "out": "qwen_test",
+        "out": "results/model_x_compression_x_task/qwen",
         "model_args": "pretrained=Qwen/Qwen3.5-9B,dtype=bfloat16,enable_thinking=False",
         "tasks": (HUMANEVAL_INSTRUCT, GSM8K, CEVAL),
     },
     {
         "id": "codellama7b",
-        "out": "codellama_test",
+        "out": "results/model_x_compression_x_task/codellama",
         "model_args": "pretrained=meta-llama/CodeLlama-7b-hf,dtype=bfloat16",
         "tasks": (HUMANEVAL_CODELLAMA,),
     },

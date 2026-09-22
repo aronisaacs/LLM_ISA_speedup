@@ -1,7 +1,7 @@
 """Run: for each compression (dense, all-layer 4:8), for each task.
 
 Currently Llama 3.2 1B Instruct, ARC-Easy and GSM8K with short limits.
-Results go to compression_x_task_results/. Device is CUDA / MPS / CPU.
+Results go to results/compression_x_task/. Device is CUDA / MPS / CPU.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ def make_configuration(task, tag, kv, **extra):
         "name": name,
         "tasks": [task],
         "kv": deepcopy(kv),
-        "output_path": f"compression_x_task_results/{name}.json",
+        "output_path": f"results/compression_x_task/{name}.json",
     }
     configuration.update(deepcopy(extra))
     return configuration

@@ -1,6 +1,6 @@
 # Reference copy of Hugging Face Transformers:
 #   src/transformers/models/llama/modeling_llama.py
-# Pin (see deps_pins.txt): transformers v5.6.2 / aa935fb (fork aron-edits).
+# Pin (see env/deps_pins.txt): transformers v5.6.2 / aa935fb (fork aron-edits).
 #
 # What this copy adds on top of that file:
 #   - _apply_4_to_8_sparsity: keep the 4 largest-magnitude values in each

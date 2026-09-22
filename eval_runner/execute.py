@@ -82,18 +82,19 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
             device=device,
             samples=samples,
             metadata=metadata,
+            verbosity="INFO",
             **eval_kwargs,
         )
 
 
-def write_result_json(lm, base, configuration, results) -> None:
+def write_result_json(lm, base, configuration, results):
     if getattr(lm, "rank", 0) != 0:
-        return
+        return None
     name = configuration.get("name", "configuration")
     output_path = Path(merge(base, configuration, "output_path", f"{name}.json"))
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(results, indent=2, default=_json_default))
-    print(f"Wrote {output_path}")
+    return output_path
 
 
 def normalize_tasks(tasks):
