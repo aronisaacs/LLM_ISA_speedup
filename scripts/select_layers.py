@@ -1,14 +1,14 @@
 """Turn WikiText sweep scores into a mixed-level layer assignment.
 
 Rank-fill (no GPU), one rung at a time:
-  python scripts/select_layers.py --scores results/layer_sweep_wikitext \\
+  python scripts/select_layers.py --scores results/sweep \\
       --space keys_only --algo rank_fill --budget 0.5 \\
-      --out results/layer_sweep_wikitext/selected.json
+      --out results/sweep/selected.json
 
 Sequential (live WikiText, cannot skip rungs):
-  python scripts/select_layers.py --eval-run runs/layer_sweep_wikitext.py \\
+  python scripts/select_layers.py --eval-run runs/some_sweep.py \\
       --space keys_only --algo sequential --budget 0.5 \\
-      --out results/layer_sweep_wikitext/selected.json
+      --out results/sweep/selected.json
 """
 
 from __future__ import annotations
