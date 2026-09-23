@@ -278,6 +278,9 @@ def _task_point(path: Path, index: dict) -> dict | None:
 
 
 def _primary_score(payload: dict) -> tuple[str | None, float | None]:
+    grouped = _pick_from_table(payload.get("groups") or {})
+    if grouped[0] is not None:
+        return grouped
     try:
         perplexity = word_perplexity(payload)
     except ValueError:
@@ -285,15 +288,19 @@ def _primary_score(payload: dict) -> tuple[str | None, float | None]:
     if perplexity is not None:
         task = next(iter((payload.get("results") or {})))
         return task, perplexity
-    results = payload.get("results") or {}
+    return _pick_from_table(payload.get("results") or {})
+
+
+def _pick_from_table(table: dict) -> tuple[str | None, float | None]:
     preferred = (
         "acc,none",
         "acc_norm,none",
         "exact_match,flexible-extract",
         "exact_match,strict-match",
+        "pass@1,create_test",
         "pass@1,none",
     )
-    for task, metrics in results.items():
+    for task, metrics in table.items():
         if not isinstance(metrics, dict):
             continue
         for name in preferred:

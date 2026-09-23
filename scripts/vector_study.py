@@ -8,6 +8,7 @@ Stages, in order:
   plots   three resiliency curves and one degradation table per task
 
 The sweep stage also writes the three curves, so you can stop there.
+A rerun skips configurations whose result JSON already has scores.
 
   python scripts/vector_study.py --through sweep
   python scripts/vector_study.py
@@ -71,11 +72,17 @@ def _run_stage(stage: str) -> None:
 
 
 def _multi_run(run_path: Path) -> None:
-    subprocess.run(
-        [sys.executable, str(ROOT / "multi_run.py"), "--run", str(run_path)],
-        cwd=ROOT,
-        check=True,
-    )
+    subprocess.run(_multi_run_command(run_path), cwd=ROOT, check=True)
+
+
+def _multi_run_command(run_path: Path) -> list[str]:
+    return [
+        sys.executable,
+        str(ROOT / "multi_run.py"),
+        "--run",
+        str(run_path),
+        "--skip-existing",
+    ]
 
 
 if __name__ == "__main__":

@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 
 from catalog.compressions import vector_compress
+from catalog.tasks import GSM8K_20PCT
+from eval_runner.execute import is_finished_result, normalize_samples
 from eval_runner.load_run import load_run
 from layer_select.apply import kv_for_slot, parse_singleton
 from layer_select.budgets import (
@@ -22,6 +24,7 @@ from layer_select.levels import LEVELS
 from layer_select.scores import ScoreRow
 from layer_select.slots import Slot, all_slots
 from scripts.plot_vector_study import write_sweep_plots, write_task_tables
+from scripts.vector_study import _multi_run_command
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -86,7 +89,7 @@ class BudgetTests(unittest.TestCase):
         humaneval = run["configurations"][2]
         self.assertTrue(humaneval["confirm_run_unsafe_code"])
         self.assertEqual(humaneval["output_path"], "results/vector_budgets/humaneval_instruct_dense.json")
-        self.assertEqual(run["configurations"][1]["samples"], "@gsm8k_samples_profile20pct.json")
+        self.assertEqual(run["configurations"][1]["samples"], GSM8K_20PCT["samples"])
 
     def test_write_selections_round_trip(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -144,6 +147,52 @@ class PlotTests(unittest.TestCase):
             self.assertIn("0.95%", table)
             self.assertIn("10%", table)
             self.assertIn("Overall KV Compression", table)
+
+    def test_ceval_table_uses_the_group_score(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            study = folder / "study"
+            tasks = folder / "tasks"
+            study.mkdir()
+            tasks.mkdir()
+            (study / "budgets.json").write_text(
+                json.dumps([{"tag": "dense", "budget": 0.0, "compression": 0.0}])
+            )
+            (tasks / "ceval_dense.json").write_text(
+                json.dumps(
+                    {
+                        "groups": {"ceval-valid": {"acc,none": 0.549}},
+                        "results": {"ceval-valid_logic": {"acc,none": 0.10}},
+                    }
+                )
+            )
+            table = write_task_tables(tasks, study, study)[0].read_text()
+            self.assertIn("54.90", table)
+            self.assertNotIn("10.00", table)
+
+
+class SampleFileTests(unittest.TestCase):
+    def test_gsm8k_profile_is_every_fifth_test_item(self):
+        payload = normalize_samples(GSM8K_20PCT["samples"])
+        indices = payload["gsm8k"]
+        self.assertEqual(indices, list(range(0, 1319, 5)))
+        self.assertEqual(len(indices), 264)
+        self.assertTrue(all(index < 1319 for index in indices))
+
+
+class ResumeTests(unittest.TestCase):
+    def test_finished_json_is_skippable_and_the_study_asks_for_that(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            done = folder / "done.json"
+            broken = folder / "broken.json"
+            done.write_text(json.dumps({"results": {"gsm8k": {"exact_match,flexible-extract": 0.2}}}))
+            broken.write_text("{")
+            self.assertTrue(is_finished_result(done))
+            self.assertFalse(is_finished_result(broken))
+            self.assertFalse(is_finished_result(folder / "missing.json"))
+        command = _multi_run_command(Path("runs/vector_sweep.py"))
+        self.assertIn("--skip-existing", command)
 
 
 def _dump_sweep(folder: Path) -> None:

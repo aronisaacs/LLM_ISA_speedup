@@ -87,11 +87,27 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
         )
 
 
+def result_output_path(base, configuration) -> Path:
+    name = configuration.get("name", "configuration")
+    return Path(merge(base, configuration, "output_path", f"{name}.json"))
+
+
+def is_finished_result(path: Path) -> bool:
+    """True when ``path`` is an lm-eval JSON that already has task scores."""
+    if not path.is_file():
+        return False
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return False
+    results = payload.get("results")
+    return isinstance(results, dict) and bool(results)
+
+
 def write_result_json(lm, base, configuration, results):
     if getattr(lm, "rank", 0) != 0:
         return None
-    name = configuration.get("name", "configuration")
-    output_path = Path(merge(base, configuration, "output_path", f"{name}.json"))
+    output_path = result_output_path(base, configuration)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(results, indent=2, default=_json_default))
     return output_path
@@ -119,7 +135,10 @@ def normalize_samples(samples):
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            return json.loads(Path(text).read_text())
+            path = Path(text)
+            if not path.is_file():
+                path = Path(__file__).resolve().parents[1] / text
+            return json.loads(path.read_text())
     return samples
 
 
