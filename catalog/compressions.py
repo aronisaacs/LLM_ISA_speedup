@@ -28,8 +28,10 @@ def checksparse_l1(k_layers="all", v_layers="all", tile=8, prune_pct=50):
     return _step("checksparse_l1", k_layers, v_layers, tile=tile, prune_pct=prune_pct)
 
 
-def vector_compress(k_layers="all", v_layers="all", threshold=0.0):
-    """Zero each scalar whose magnitude is below threshold."""
+def vector_compress(k_layers="all", v_layers="all", threshold=0.0, prune_pct=None):
+    """Zero weak scalars. ``prune_pct`` drops that percent; otherwise ``|x| < threshold``."""
+    if prune_pct is not None:
+        return _step("vector_compress", k_layers, v_layers, prune_pct=int(prune_pct))
     return _step("vector_compress", k_layers, v_layers, threshold=threshold)
 
 

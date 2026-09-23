@@ -24,39 +24,14 @@ class Slot:
         return cls(int(payload["layer"]), payload["target"])
 
 
-def keys_only(n_layers: int) -> tuple[Slot, ...]:
-    _check_n_layers(n_layers)
-    return tuple(Slot(index, "k") for index in range(n_layers))
-
-
-def mix(n_layers: int) -> tuple[Slot, ...]:
+def all_slots(n_layers: int) -> tuple[Slot, ...]:
+    """Every key and every value, one slot per tensor."""
     _check_n_layers(n_layers)
     slots = []
     for index in range(n_layers):
         slots.append(Slot(index, "k"))
         slots.append(Slot(index, "v"))
     return tuple(slots)
-
-
-def space_slots(space: str, n_layers: int) -> tuple[Slot, ...]:
-    if space == "keys_only":
-        return keys_only(n_layers)
-    if space == "mix":
-        return mix(n_layers)
-    raise ValueError("space must be 'keys_only' or 'mix'")
-
-
-def n_pick(n_slots: int, budget: float) -> int:
-    """How many slots a budget in [0, 1] turns on (floor, except budget 1 → all)."""
-    if not isinstance(budget, (int, float)) or isinstance(budget, bool):
-        raise TypeError("budget must be a real number in [0, 1]")
-    if budget < 0 or budget > 1:
-        raise ValueError("budget must be in [0, 1]")
-    if n_slots < 0:
-        raise ValueError("n_slots must be non-negative")
-    if budget == 1:
-        return n_slots
-    return int(n_slots * budget)
 
 
 def pretrained_from_model_args(model_args) -> str:

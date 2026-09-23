@@ -26,7 +26,7 @@ def make_configuration(task_name, tag, kv, **extra):
 
 
 def run():
-    # Nested loops: add another `for` for per-layer or K-only / V-only sweeps.
+    # One configuration per compression and task.
     compressions = (
         ("dense", DENSE),
         ("sparsify48", SPARSIFY_48),

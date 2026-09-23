@@ -47,7 +47,7 @@ def load_sweep_scores(results_dir: str | Path) -> tuple[float, list[ScoreRow]]:
     dense_ppl = None
     rows: list[tuple[Slot, int, float, str]] = []
     for path in paths:
-        if path.name == "selected.json":
+        if path.name.startswith("selected"):
             continue
         payload = json.loads(path.read_text())
         ppl = word_perplexity(payload)

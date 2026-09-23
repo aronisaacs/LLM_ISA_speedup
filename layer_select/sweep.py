@@ -1,4 +1,4 @@
-"""Build multi_run configurations: dense plus each slot at each compression level."""
+"""Build multi_run configurations: dense plus each key and value at 25/50/75%."""
 
 from __future__ import annotations
 
@@ -7,20 +7,18 @@ from typing import Any
 
 from catalog.compressions import DENSE
 from layer_select.apply import kv_for_slot
-from layer_select.levels import DEFAULT_LEVELS
-from layer_select.slots import Slot, space_slots
+from layer_select.levels import LEVELS
+from layer_select.slots import Slot, all_slots
 
 
 def expand_singleton_configs(
     *,
     n_layers: int,
-    space: str,
     method_kv: dict,
     method_tag: str,
     results_dir: str,
     name_prefix: str,
     extra: dict[str, Any] | None = None,
-    levels: tuple[int, ...] = DEFAULT_LEVELS,
 ) -> list[dict]:
     """Dense first, then one configuration per (slot, level)."""
     extra = extra or {}
@@ -32,8 +30,8 @@ def expand_singleton_configs(
             extra=extra,
         )
     ]
-    for slot in space_slots(space, n_layers):
-        for pct in levels:
+    for slot in all_slots(n_layers):
+        for pct in LEVELS:
             configurations.append(
                 _make_configuration(
                     name=f"{name_prefix}_{method_tag}_{slot.tag()}_p{pct}",

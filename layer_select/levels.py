@@ -1,13 +1,13 @@
-"""Ordered compression rungs a slot must climb (cannot skip)."""
+"""Compression rungs a slot must climb in order (cannot skip)."""
 
 from __future__ import annotations
 
 from layer_select.slots import Slot
 
-DEFAULT_LEVELS = (15, 30, 40, 50, 60)
+LEVELS = (25, 50, 75)
 
 
-def next_level(current: int, levels: tuple[int, ...] = DEFAULT_LEVELS) -> int | None:
+def next_level(current: int, levels: tuple[int, ...] = LEVELS) -> int | None:
     """Next rung strictly above ``current`` (0 = uncompressed)."""
     _check_levels(levels)
     if current < 0:
