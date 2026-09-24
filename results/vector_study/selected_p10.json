@@ -1,0 +1,159 @@
+{
+  "tag": "p10",
+  "budget": 0.1,
+  "compression": 0.1015625,
+  "n_layers": 32,
+  "levels": [
+    25,
+    50,
+    75
+  ],
+  "dense_ppl": 8.825426186779948,
+  "assignment": [
+    {
+      "layer": 1,
+      "target": "k",
+      "level": 25
+    },
+    {
+      "layer": 5,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 6,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 7,
+      "target": "k",
+      "level": 25
+    },
+    {
+      "layer": 9,
+      "target": "k",
+      "level": 25
+    },
+    {
+      "layer": 9,
+      "target": "v",
+      "level": 25
+    },
+    {
+      "layer": 13,
+      "target": "v",
+      "level": 25
+    },
+    {
+      "layer": 14,
+      "target": "v",
+      "level": 25
+    },
+    {
+      "layer": 16,
+      "target": "k",
+      "level": 25
+    },
+    {
+      "layer": 18,
+      "target": "k",
+      "level": 25
+    },
+    {
+      "layer": 19,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 20,
+      "target": "k",
+      "level": 25
+    },
+    {
+      "layer": 21,
+      "target": "k",
+      "level": 25
+    },
+    {
+      "layer": 21,
+      "target": "v",
+      "level": 25
+    },
+    {
+      "layer": 22,
+      "target": "k",
+      "level": 25
+    },
+    {
+      "layer": 23,
+      "target": "v",
+      "level": 25
+    },
+    {
+      "layer": 26,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 27,
+      "target": "v",
+      "level": 25
+    },
+    {
+      "layer": 28,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 29,
+      "target": "v",
+      "level": 25
+    },
+    {
+      "layer": 30,
+      "target": "v",
+      "level": 25
+    }
+  ],
+  "kv": {
+    "pipeline": [
+      {
+        "method": "vector_compress",
+        "k_layers": [
+          1,
+          7,
+          9,
+          16,
+          18,
+          20,
+          21,
+          22
+        ],
+        "v_layers": [
+          9,
+          13,
+          14,
+          21,
+          23,
+          27,
+          29,
+          30
+        ],
+        "prune_pct": 25
+      },
+      {
+        "method": "vector_compress",
+        "k_layers": [],
+        "v_layers": [
+          5,
+          6,
+          19,
+          26,
+          28
+        ],
+        "prune_pct": 50
+      }
+    ]
+  }
+}
