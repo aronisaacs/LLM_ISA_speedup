@@ -7,12 +7,16 @@ from pathlib import Path
 
 import torch
 
+import json
+import tempfile
+
 from catalog.compressions import spatial_pool, spatial_top1
 from eval_runner.load_run import load_run
 from kv_compress.cache import patch_cache_update
 from kv_compress.methods.spatial import apply_feature, apply_pool, apply_tile, apply_top1
 from kv_compress.rope import RopeTables, apply_rope
 from kv_compress.spec import parse_kv_spec
+from scripts.plot_spatial_chunk import write_wikitext_table
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -129,6 +133,31 @@ class SpatialRunTests(unittest.TestCase):
         self.assertEqual(loaded["configurations"][0]["output_path"], "results/spatial_chunk/llama31_spatial_pool_k.json")
         keys_only = spatial_top1(k_layers="all", v_layers=[])
         self.assertEqual(keys_only["pipeline"][0]["v_layers"], [])
+
+
+class SpatialTableTests(unittest.TestCase):
+    def test_table_uses_dense_baseline_and_stored_fractions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            dense = folder / "dense.json"
+            dense.write_text(json.dumps({"results": {"wikitext": {"word_perplexity,none": 10.0}}}))
+            for method in ("spatial_pool", "spatial_top1", "spatial_tile", "spatial_feature"):
+                for target in ("k", "v", "both"):
+                    _dump(folder / f"llama31_{method}_{target}.json", 11.0)
+            _dump(folder / "llama31_spatial_pool_k_postrope.json", 12.0)
+            _dump(folder / "llama31_spatial_top1_k_postrope.json", 10.5)
+            table = write_wikitext_table(folder, dense, folder / "figures").read_text()
+        self.assertIn("Baseline", table)
+        self.assertIn("10.00", table)
+        self.assertIn("1/8", table)
+        self.assertIn("2/8", table)
+        self.assertIn("post-RoPE", table)
+        self.assertIn("20.00%", table)
+        self.assertIn("5.00%", table)
+
+
+def _dump(path: Path, perplexity: float) -> None:
+    path.write_text(json.dumps({"results": {"wikitext": {"word_perplexity,none": perplexity}}}))
 
 
 if __name__ == "__main__":
