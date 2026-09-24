@@ -49,6 +49,9 @@ def kv_brief(spec) -> str:
             parts.append(f"checksparse L1 tile={step.get('tile', '?')} prune={step.get('prune_pct', '?')}%")
         elif method == "vector_compress":
             parts.append(f"vector |x|<{step.get('threshold', '?')}")
+        elif method in {"spatial_pool", "spatial_top1", "spatial_tile", "spatial_feature"}:
+            rope = "pre-rope" if step.get("pre_rope") else "post-rope"
+            parts.append(f"{method} chunk={step.get('chunk', '?')} {rope}")
         elif method == "dynamic_precision":
             bits = step.get("bits", "?")
             pcts = step.get("pcts", "?")

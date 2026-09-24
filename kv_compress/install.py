@@ -11,6 +11,7 @@ from collections.abc import Callable
 from typing import Any
 
 from kv_compress.cache import patch_cache_update
+from kv_compress.rope import rope_from_config
 from kv_compress.spec import KvSpec, LayerSelection
 
 
@@ -23,7 +24,7 @@ def install(lm: Any, spec: KvSpec) -> Callable[[], None]:
     if spec.is_identity():
         return _noop
     _validate_layer_indices(lm, spec)
-    return patch_cache_update(spec)
+    return patch_cache_update(spec, _rope_tables(lm))
 
 
 def _noop() -> None:
@@ -52,6 +53,34 @@ def _check_selection(selection: LayerSelection, num_hidden_layers: int, label: s
                 f"{label} index {layer_idx} is out of range; decoder has "
                 f"{num_hidden_layers} layers (valid indices are 0..{num_hidden_layers - 1})"
             )
+
+
+def _rope_tables(lm: Any):
+    tables = rope_from_config(_decoder_config(lm))
+    if tables is None:
+        return None
+    decoder = _decoder_module(lm)
+    rotary = getattr(decoder, "rotary_emb", None)
+    inv_freq = getattr(rotary, "inv_freq", None)
+    if inv_freq is None:
+        return tables
+    return type(tables)(
+        rope_theta=tables.rope_theta,
+        head_dim=tables.head_dim,
+        inv_freq=tuple(float(value) for value in inv_freq.detach().float().cpu().tolist()),
+    )
+
+
+def _decoder_module(lm: Any):
+    model = getattr(lm, "model", None)
+    return getattr(model, "model", model)
+
+
+def _decoder_config(lm: Any):
+    model = getattr(lm, "model", None)
+    model_config = getattr(model, "config", None)
+    text_config = getattr(model_config, "text_config", None)
+    return text_config or model_config or getattr(lm, "_config", None)
 
 
 def _decoder_num_hidden_layers(lm: Any) -> int | None:

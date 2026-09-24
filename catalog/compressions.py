@@ -47,6 +47,33 @@ def dynamic_precision(k_layers="all", v_layers="all", tile=8, bits=(16, 8, 4), p
     )
 
 
+def spatial_pool(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
+    """Replace each closed chunk with its mean. Keys undo RoPE unless ``pre_rope`` is false."""
+    return _spatial("spatial_pool", k_layers, v_layers, chunk, pre_rope)
+
+
+def spatial_top1(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
+    """Keep the token farthest from the chunk mean; the rest become the mean."""
+    return _spatial("spatial_top1", k_layers, v_layers, chunk, pre_rope)
+
+
+def spatial_tile(k_layers="all", v_layers="all", chunk=8, tile=8, pre_rope=True):
+    """Per tile, keep the token whose tile is farthest from the mean tile."""
+    return _spatial("spatial_tile", k_layers, v_layers, chunk, pre_rope, tile=tile)
+
+
+def spatial_feature(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
+    """Per feature, keep the token with the largest absolute deviation from the mean."""
+    return _spatial("spatial_feature", k_layers, v_layers, chunk, pre_rope)
+
+
+def _spatial(method, k_layers, v_layers, chunk, pre_rope, **kwargs):
+    payload = _step(method, k_layers, v_layers, chunk=chunk, **kwargs)
+    if pre_rope:
+        payload["pipeline"][0]["pre_rope"] = True
+    return payload
+
+
 SPARSIFY_48 = sparsify_nm("all", "all", n=8, m=4)
 CHECKSPARSE_L1_50 = checksparse_l1("all", "all", tile=8, prune_pct=50)
 DYNAMIC_PRECISION_1684 = dynamic_precision("all", "all")
