@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from layer_select.budgets import BUDGET_RESULTS, STUDY_DIR, SWEEP_RESULTS  # noqa: E402
+from layer_select.budgets import BUDGET_RESULTS, FIGURES_DIR, JSON_DIR, SWEEP_RESULTS  # noqa: E402
 from layer_select.levels import LEVELS  # noqa: E402
 from layer_select.scores import load_sweep_scores, word_perplexity  # noqa: E402
 
@@ -30,7 +30,7 @@ TASK_TITLES = {
 _TAG = re.compile(r"^(.*)_p(\d+)$")
 
 
-def write_sweep_plots(scores_dir=SWEEP_RESULTS, out_dir=STUDY_DIR) -> list[Path]:
+def write_sweep_plots(scores_dir=SWEEP_RESULTS, out_dir=FIGURES_DIR) -> list[Path]:
     dense_ppl, rows = load_sweep_scores(scores_dir)
     n_layers = max(row.slot.layer for row in rows) + 1
     destination = Path(out_dir)
@@ -48,7 +48,7 @@ def write_sweep_svg(dense_ppl, rows, level, n_layers, output: Path) -> None:
     output.write_text(_sweep_svg(dense_ppl, keys, values, level))
 
 
-def write_task_tables(results_dir=BUDGET_RESULTS, study_dir=STUDY_DIR, out_dir=STUDY_DIR) -> list[Path]:
+def write_task_tables(results_dir=BUDGET_RESULTS, study_dir=JSON_DIR, out_dir=FIGURES_DIR) -> list[Path]:
     index = _load_budget_index(study_dir)
     grouped: dict[str, list[dict]] = defaultdict(list)
     for path in sorted(Path(results_dir).glob("*.json")):
@@ -364,11 +364,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Redraw vector-study figures from result JSON.")
     parser.add_argument("--scores", default=SWEEP_RESULTS)
     parser.add_argument("--tasks", default=BUDGET_RESULTS)
-    parser.add_argument("--study", default=STUDY_DIR)
+    parser.add_argument("--json", default=JSON_DIR)
+    parser.add_argument("--figures", default=FIGURES_DIR)
     args = parser.parse_args()
-    for path in write_sweep_plots(args.scores, args.study):
+    for path in write_sweep_plots(args.scores, args.figures):
         print(path)
-    for path in write_task_tables(args.tasks, args.study, args.study):
+    for path in write_task_tables(args.tasks, args.json, args.figures):
         print(path)
 
 

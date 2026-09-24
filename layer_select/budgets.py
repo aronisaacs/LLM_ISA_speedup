@@ -18,9 +18,11 @@ LLAMA31_LAYERS = 32
 BUDGETS = (0.10, 0.20, 0.30, 0.40, 0.50, 0.60)
 TASKS = (CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT)
 
-SWEEP_RESULTS = "results/vector_sweep"
 STUDY_DIR = "results/vector_study"
-BUDGET_RESULTS = "results/vector_budgets"
+JSON_DIR = f"{STUDY_DIR}/json"
+FIGURES_DIR = f"{STUDY_DIR}/figures"
+SWEEP_RESULTS = f"{JSON_DIR}/sweep"
+BUDGET_RESULTS = f"{JSON_DIR}/budgets"
 
 
 def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS):

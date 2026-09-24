@@ -1,7 +1,7 @@
 """WikiText singleton sweep of vector compression on Llama 3.1 8B Instruct.
 
 Dense, then each key and each value at 25%, 50%, and 75%.
-Results go to results/vector_sweep/. The study driver runs this first.
+JSON scores go to results/vector_study/json/sweep/. The study driver runs this first.
 """
 
 from __future__ import annotations

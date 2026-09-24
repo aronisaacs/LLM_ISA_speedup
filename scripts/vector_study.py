@@ -28,7 +28,8 @@ if str(ROOT) not in sys.path:
 
 from layer_select.budgets import (  # noqa: E402
     BUDGET_RESULTS,
-    STUDY_DIR,
+    FIGURES_DIR,
+    JSON_DIR,
     SWEEP_RESULTS,
     write_budget_run,
     write_selections,
@@ -54,20 +55,20 @@ def main() -> None:
 def _run_stage(stage: str) -> None:
     if stage == "sweep":
         _multi_run(ROOT / "runs" / "vector_sweep.py")
-        for path in write_sweep_plots(SWEEP_RESULTS, STUDY_DIR):
+        for path in write_sweep_plots(SWEEP_RESULTS, FIGURES_DIR):
             print(f"wrote  {path}")
         return
     if stage == "greedy":
-        selections = write_selections(SWEEP_RESULTS, STUDY_DIR)
-        run_path = write_budget_run(selections, Path(STUDY_DIR) / "budgets_run.json")
+        selections = write_selections(SWEEP_RESULTS, JSON_DIR)
+        run_path = write_budget_run(selections, Path(JSON_DIR) / "budgets_run.json")
         print(f"wrote  {run_path}  ({len(selections)} budgets)")
         return
     if stage == "tasks":
-        _multi_run(Path(STUDY_DIR) / "budgets_run.json")
+        _multi_run(Path(JSON_DIR) / "budgets_run.json")
         return
-    for path in write_sweep_plots(SWEEP_RESULTS, STUDY_DIR):
+    for path in write_sweep_plots(SWEEP_RESULTS, FIGURES_DIR):
         print(f"wrote  {path}")
-    for path in write_task_tables(BUDGET_RESULTS, STUDY_DIR, STUDY_DIR):
+    for path in write_task_tables(BUDGET_RESULTS, JSON_DIR, FIGURES_DIR):
         print(f"wrote  {path}")
 
 

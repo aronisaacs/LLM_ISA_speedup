@@ -88,7 +88,10 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(run["configurations"][0]["num_fewshot"], 5)
         humaneval = run["configurations"][2]
         self.assertTrue(humaneval["confirm_run_unsafe_code"])
-        self.assertEqual(humaneval["output_path"], "results/vector_budgets/humaneval_instruct_dense.json")
+        self.assertEqual(
+            humaneval["output_path"],
+            "results/vector_study/json/budgets/humaneval_instruct_dense.json",
+        )
         self.assertEqual(run["configurations"][1]["samples"], GSM8K_20PCT["samples"])
 
     def test_write_selections_round_trip(self):
