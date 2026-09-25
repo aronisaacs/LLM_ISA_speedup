@@ -3,16 +3,13 @@
 #
 #   git clone https://github.com/aronisaacs/LLM_ISA_speedup.git
 #   cd LLM_ISA_speedup
-#   git clone --branch aron-edits https://github.com/aronisaacs/transformers.git transformers
-#   git clone --branch aron-edits \
-#     https://github.com/aronisaacs/lm-evaluation-harness.git lm-evaluation-harness
 #   mamba env create -f env/environment.dgx.yml
 #   conda activate llm_isa_dgx
 #   pip install torch --index-url https://download.pytorch.org/whl/cu126
 #   python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 #   hf auth login
 #
-# Create this env from the repo root (transformers/ and lm-evaluation-harness/ already cloned).
+# Create this env from the repo root. transformers and lm-eval come from PyPI.
 # CUDA wheel: if nvidia-smi shows CUDA 12.4, use cu124 instead of cu126.
 # Pins: env/deps_pins.txt. Mustafa's frozen pip dump is env/environment.dgx_mustafa.yml.
 
@@ -29,5 +26,5 @@ dependencies:
       - sentencepiece
       - protobuf
       - huggingface_hub[cli]
-      - -e ./transformers
-      - -e ./lm-evaluation-harness
+      - transformers==5.6.2
+      - lm-eval==0.4.11
