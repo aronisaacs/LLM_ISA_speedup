@@ -29,7 +29,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from catalog.compressions import vector_compress  # noqa: E402
-from catalog.models import LLAMA31_8B  # noqa: E402
+from catalog.models import BATCH_SIZE, LLAMA31_8B  # noqa: E402
 from catalog.tasks import WIKITEXT_FULL  # noqa: E402
 from engine.layer_select.budgets import FIGURES, LLAMA31_LAYERS, write_budget_run, write_selections  # noqa: E402
 from engine.layer_select.scores import load_sweep_scores  # noqa: E402
@@ -52,7 +52,7 @@ def sweep_run() -> dict:
     )
     return {
         "model": "hf",
-        "batch_size": "auto:4",
+        "batch_size": BATCH_SIZE,
         "model_args": LLAMA31_8B,
         "configurations": configurations,
     }

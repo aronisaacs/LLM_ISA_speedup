@@ -21,7 +21,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from catalog.compressions import spatial_feature, spatial_pool, spatial_tile, spatial_top1  # noqa: E402
-from catalog.models import LLAMA31_8B  # noqa: E402
+from catalog.models import BATCH_SIZE, LLAMA31_8B  # noqa: E402
 from catalog.tasks import WIKITEXT_FULL  # noqa: E402
 from engine.eval_runner.load_run import grid  # noqa: E402
 
@@ -50,7 +50,7 @@ def chunk_run() -> dict:
     )
     return {
         "model": "hf",
-        "batch_size": "auto:4",
+        "batch_size": BATCH_SIZE,
         "model_args": LLAMA31_8B,
         "configurations": grid(results="figures", methods=methods, tasks=[WIKITEXT_FULL]),
     }

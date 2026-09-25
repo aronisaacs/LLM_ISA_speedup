@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from catalog.compressions import DENSE
-from catalog.models import LLAMA31_8B
+from catalog.models import BATCH_SIZE, LLAMA31_8B
 from catalog.tasks import CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT
 from engine.layer_select.apply import kv_for_assignment, method_template
 from engine.layer_select.greedy.rank_fill import rank_fill
@@ -89,7 +89,7 @@ def budget_run(selections, tasks=TASKS, results_dir=FIGURES) -> dict:
             )
     return {
         "model": "hf",
-        "batch_size": "auto:4",
+        "batch_size": BATCH_SIZE,
         "model_args": LLAMA31_8B,
         "configurations": configurations,
     }
