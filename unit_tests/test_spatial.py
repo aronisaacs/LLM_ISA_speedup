@@ -39,7 +39,7 @@ class SpatialRewriteTests(unittest.TestCase):
 
     def test_top1_keeps_farthest_token(self):
         source = _chunk()
-        out = apply_top1(source, layer_idx=0, target="v", chunk=8)
+        out = apply_top1(source, layer_idx=0, target="k", chunk=8)
         mean = source[0, 0, :8].mean(dim=0)
         self.assertTrue(torch.equal(out[0, 0, 3], source[0, 0, 3]))
         for index in (0, 1, 2, 4, 5, 6, 7):
@@ -66,6 +66,16 @@ class SpatialRewriteTests(unittest.TestCase):
         source = torch.arange(12, dtype=torch.float32).reshape(1, 1, 3, 4)
         out = apply_pool(source, layer_idx=0, target="k", chunk=8)
         self.assertTrue(torch.equal(out, source))
+
+    def test_values_pool_along_the_feature_axis(self):
+        source = torch.zeros(1, 1, 4, 10)
+        source[0, 0, :, :8] = 1
+        source[0, 0, :, 3] = torch.tensor([4.0, 5, 6, 7])
+        source[0, 0, :, 8:] = 9
+        out = apply_pool(source, layer_idx=0, target="v", chunk=8)
+        mean = source[0, 0, :, :8].mean(dim=-1)
+        self.assertTrue(torch.allclose(out[0, 0, :, :8], mean[:, None].expand(4, 8)))
+        self.assertTrue(torch.equal(out[0, 0, :, 8:], source[0, 0, :, 8:]))
 
 
 class PreRopeHookTests(unittest.TestCase):

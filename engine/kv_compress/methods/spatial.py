@@ -1,7 +1,8 @@
-"""Static chunk rewrites along the sequence axis.
+"""Static chunk rewrites. Same-shape output, so stock attention still runs.
 
-Same-shape output: stock attention still runs. A tail shorter than ``chunk``
-stays exact. The mean is the average of every token in the closed chunk.
+Keys are chunked along the sequence. Values are chunked along the feature
+axis: the same rewrite, with those two axes swapped. A tail shorter than
+``chunk`` stays exact. The mean is the average of the closed chunk.
 """
 
 from __future__ import annotations
@@ -19,8 +20,8 @@ def apply_pool(
     chunk: int = 8,
     **_unused,
 ) -> torch.Tensor:
-    del layer_idx, target, _unused
-    return _rewrite(tensor, chunk=chunk, kind="pool")
+    del layer_idx, _unused
+    return _apply(tensor, target=target, chunk=chunk, kind="pool")
 
 
 def apply_top1(
@@ -31,8 +32,8 @@ def apply_top1(
     chunk: int = 8,
     **_unused,
 ) -> torch.Tensor:
-    del layer_idx, target, _unused
-    return _rewrite(tensor, chunk=chunk, kind="top1")
+    del layer_idx, _unused
+    return _apply(tensor, target=target, chunk=chunk, kind="top1")
 
 
 def apply_tile(
@@ -44,8 +45,8 @@ def apply_tile(
     tile: int = 8,
     **_unused,
 ) -> torch.Tensor:
-    del layer_idx, target, _unused
-    return _rewrite(tensor, chunk=chunk, kind="tile", tile=tile)
+    del layer_idx, _unused
+    return _apply(tensor, target=target, chunk=chunk, kind="tile", tile=tile)
 
 
 def apply_feature(
@@ -56,8 +57,14 @@ def apply_feature(
     chunk: int = 8,
     **_unused,
 ) -> torch.Tensor:
-    del layer_idx, target, _unused
-    return _rewrite(tensor, chunk=chunk, kind="feature")
+    del layer_idx, _unused
+    return _apply(tensor, target=target, chunk=chunk, kind="feature")
+
+
+def _apply(tensor: torch.Tensor, *, target: str, chunk: int, kind: str, tile: int = 8) -> torch.Tensor:
+    if target == "v":
+        return _rewrite(tensor.transpose(-1, -2), chunk=chunk, kind=kind, tile=tile).transpose(-1, -2)
+    return _rewrite(tensor, chunk=chunk, kind=kind, tile=tile)
 
 
 def _rewrite(tensor: torch.Tensor, *, chunk: int, kind: str, tile: int = 8) -> torch.Tensor:
@@ -106,10 +113,17 @@ def _keep_tiles(chunks: torch.Tensor, mean: torch.Tensor, tile: int) -> torch.Te
     if not isinstance(tile, int) or isinstance(tile, bool) or tile <= 0:
         raise ValueError("spatial tile must be a positive integer")
     features = chunks.shape[-1]
-    if features % tile != 0:
-        raise ValueError(
-            f"spatial tile requires the last dimension to be divisible by tile={tile}, got {features}"
-        )
+    closed = (features // tile) * tile
+    if closed == 0:
+        return chunks
+    if closed != features:
+        out = chunks.clone()
+        out[..., :closed] = _tile_closed(chunks[..., :closed], mean[..., :closed], tile, closed)
+        return out
+    return _tile_closed(chunks, mean, tile, features)
+
+
+def _tile_closed(chunks: torch.Tensor, mean: torch.Tensor, tile: int, features: int) -> torch.Tensor:
     n_tiles = features // tile
     tiled = chunks.reshape(*chunks.shape[:-1], n_tiles, tile)
     mean_tiled = mean.reshape(*mean.shape[:-1], n_tiles, tile)
