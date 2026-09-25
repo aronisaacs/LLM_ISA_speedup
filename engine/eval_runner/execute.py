@@ -59,7 +59,6 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
     from lm_eval.utils import simple_parse_args_string
 
     tasks = normalize_tasks(merge(base, configuration, "tasks", None))
-    samples = normalize_samples(merge(base, configuration, "samples", None))
     env = normalize_env(merge(base, configuration, "env", None))
     batch_size = normalize_batch_size(merge(base, configuration, "batch_size", None))
     max_batch_size = merge(base, configuration, "max_batch_size", None)
@@ -80,7 +79,6 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
             tasks=tasks,
             batch_size=batch_size,
             device=device,
-            samples=samples,
             metadata=metadata,
             verbosity="INFO",
             **eval_kwargs,
@@ -100,13 +98,18 @@ def is_finished_result(path: Path) -> bool:
         payload = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
         return False
+    if not isinstance(payload, dict):
+        return False
     results = payload.get("results")
     return isinstance(results, dict) and bool(results)
 
 
-def write_result_json(lm, base, configuration, results):
+def write_result_json(lm, base, configuration, results, simulation=None):
     if getattr(lm, "rank", 0) != 0:
         return None
+    if simulation is not None:
+        results = dict(results)
+        results["simulation"] = simulation
     output_path = result_output_path(base, configuration)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(results, indent=2, default=_json_default))
@@ -119,27 +122,6 @@ def normalize_tasks(tasks):
     if isinstance(tasks, str):
         return [task.strip() for task in tasks.split(",") if task.strip()]
     return [copy.deepcopy(task) if isinstance(task, dict) else str(task) for task in tasks]
-
-
-def normalize_samples(samples):
-    if samples is None:
-        return None
-    if isinstance(samples, dict):
-        return samples
-    if isinstance(samples, str):
-        text = samples.strip()
-        if not text:
-            return None
-        if text.startswith("@"):
-            text = text[1:]
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            path = Path(text)
-            if not path.is_file():
-                path = Path(__file__).resolve().parents[2] / text
-            return json.loads(path.read_text())
-    return samples
 
 
 def normalize_env(env):

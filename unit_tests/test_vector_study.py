@@ -8,8 +8,7 @@ import unittest
 from pathlib import Path
 
 from catalog.compressions import vector_compress
-from catalog.tasks import GSM8K_20PCT
-from engine.eval_runner.execute import is_finished_result, normalize_samples
+from engine.eval_runner.execute import is_finished_result
 from engine.eval_runner.load_run import load_run
 from engine.layer_select.apply import kv_for_slot, parse_singleton
 from engine.layer_select.budgets import (
@@ -86,13 +85,13 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(run["configurations"][0]["kv"], {"pipeline": []})
         self.assertEqual(run["configurations"][0]["tasks"], ["ceval-valid"])
         self.assertEqual(run["configurations"][0]["num_fewshot"], 5)
+        self.assertNotIn("samples", run["configurations"][1])
         humaneval = run["configurations"][2]
         self.assertTrue(humaneval["confirm_run_unsafe_code"])
         self.assertEqual(
             humaneval["output_path"],
             "results/vector_study/json/budgets/humaneval_instruct_dense.json",
         )
-        self.assertEqual(run["configurations"][1]["samples"], GSM8K_20PCT["samples"])
 
     def test_write_selections_round_trip(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -172,15 +171,6 @@ class PlotTests(unittest.TestCase):
             table = write_task_tables(tasks, study, study)[0].read_text()
             self.assertIn("54.90", table)
             self.assertNotIn("10.00", table)
-
-
-class SampleFileTests(unittest.TestCase):
-    def test_gsm8k_profile_is_every_fifth_test_item(self):
-        payload = normalize_samples(GSM8K_20PCT["samples"])
-        indices = payload["gsm8k"]
-        self.assertEqual(indices, list(range(0, 1319, 5)))
-        self.assertEqual(len(indices), 264)
-        self.assertTrue(all(index < 1319 for index in indices))
 
 
 class ResumeTests(unittest.TestCase):

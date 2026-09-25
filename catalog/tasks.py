@@ -27,8 +27,6 @@ GSM8K_20PCT = {
     "name_task": "gsm8k",
     "file": "gsm8k_20pct",
     "tasks": ["gsm8k"],
-    # Every 5th GSM8K test index: 264 of 1319. See catalog/gsm8k_samples_profile20pct.json.
-    "samples": "@catalog/gsm8k_samples_profile20pct.json",
     "num_fewshot": 0,
     "gen_kwargs": {"max_gen_toks": 512},
     "apply_chat_template": True,

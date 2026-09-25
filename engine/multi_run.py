@@ -20,7 +20,6 @@ from pathlib import Path
 
 from engine.eval_runner import (
     evaluate,
-    is_finished_result,
     load_model_if_needed,
     load_run,
     merge,
@@ -29,6 +28,7 @@ from engine.eval_runner import (
     split_base_and_configurations,
     write_result_json,
 )
+from engine.eval_runner.cache import reuse_cached_result, simulation_identity
 from engine.eval_runner.progress import format_hms, kv_brief, say, summarize_scores
 from engine.kv_compress import install, parse_kv_spec
 
@@ -139,8 +139,12 @@ def _run_configurations(args) -> None:
         reject_deprecated_kv_keys(base, configuration)
         name = configuration.get("name", "configuration")
         output_path = result_output_path(base, configuration)
-        if args.skip_existing and is_finished_result(output_path):
-            _say(label, f"[{index}/{total}]  skip  {name}  {output_path}")
+        kv_spec = parse_kv_spec(merge(base, configuration, "kv", None))
+        cached = reuse_cached_result(
+            base, configuration, kv_spec, output_path, skip_unkeyed=args.skip_existing
+        )
+        if cached is not None:
+            _say(label, f"[{index}/{total}]  {cached}  {name}  {output_path}")
             continue
         previous_key = loaded_model_key
         lm, loaded_model_key, device, model_args = load_model_if_needed(
@@ -149,7 +153,6 @@ def _run_configurations(args) -> None:
         if loaded_model_key != previous_key:
             _say(label, f"loaded  {device}  {model_args}")
 
-        kv_spec = parse_kv_spec(merge(base, configuration, "kv", None))
         _say(label, f"[{index}/{total}]  {name}  {kv_brief(kv_spec)}  {device}")
 
         uninstall = install(lm, kv_spec)
@@ -157,7 +160,9 @@ def _run_configurations(args) -> None:
             results = evaluate(lm, base, configuration, kv_spec, device, model_args)
         finally:
             uninstall()
-        output_path = write_result_json(lm, base, configuration, results)
+        output_path = write_result_json(
+            lm, base, configuration, results, simulation_identity(base, configuration, kv_spec)
+        )
 
         finished += 1
         elapsed = time.monotonic() - started
