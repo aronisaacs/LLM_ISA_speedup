@@ -325,20 +325,41 @@ def _task_points_from_index() -> list[dict]:
     from engine.eval_runner.index import simulations
 
     points = []
+    baselines = []
     for record in simulations():
-        if "budget" not in record:
-            continue
         task, accuracy = _primary_score({"results": record.get("scores") or {}})
         if task is None or accuracy is None:
             continue
-        points.append(
-            {
-                "task": task,
-                "budget": float(record["budget"]),
-                "compression": float(record.get("compression") or 0.0),
-                "accuracy": accuracy,
-            }
-        )
+        identity = record.get("identity") or {}
+        pipeline = (identity.get("kv") or {}).get("pipeline") or []
+        if "budget" in record:
+            points.append(
+                {
+                    "task": task,
+                    "budget": float(record["budget"]),
+                    "compression": float(record.get("compression") or 0.0),
+                    "accuracy": accuracy,
+                    "pretrained": identity.get("pretrained"),
+                }
+            )
+        elif not pipeline:
+            baselines.append(
+                {
+                    "task": task,
+                    "budget": 0.0,
+                    "compression": 0.0,
+                    "accuracy": accuracy,
+                    "pretrained": identity.get("pretrained"),
+                }
+            )
+    have_zero = {(point["task"], point["pretrained"]) for point in points if point["budget"] == 0}
+    for baseline in baselines:
+        key = (baseline["task"], baseline["pretrained"])
+        if key in have_zero or key not in {(point["task"], point["pretrained"]) for point in points}:
+            continue
+        points.append(baseline)
+    for point in points:
+        point.pop("pretrained", None)
     return points
 
 
