@@ -24,6 +24,7 @@ from catalog.compressions import spatial_feature, spatial_pool, spatial_tile, sp
 from catalog.models import BATCH_SIZE, LLAMA31_8B  # noqa: E402
 from catalog.tasks import WIKITEXT_FULL  # noqa: E402
 from engine.eval_runner.load_run import grid  # noqa: E402
+from engine.eval_runner.progress import mirror_terminal  # noqa: E402
 
 _TARGETS = (
     ("k", {"k_layers": "all", "v_layers": []}),
@@ -57,6 +58,7 @@ def chunk_run() -> dict:
 
 
 def main() -> None:
+    mirror_terminal(ROOT)
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
         json.dump(chunk_run(), handle)
         path = Path(handle.name)

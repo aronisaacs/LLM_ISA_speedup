@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import sys
+import time
+from pathlib import Path
 
 _PRIMARY_METRICS = (
     "acc,none",
@@ -12,6 +15,42 @@ _PRIMARY_METRICS = (
     "pass_at_1,none",
     "word_perplexity,none",
 )
+
+
+def mirror_terminal(root: Path) -> Path:
+    """Copy stdout and stderr into ``logs/multi_run.log`` as well as the terminal.
+
+    The first process truncates the file. Workers append, so a tmux session
+    that disappears still leaves the traceback on disk.
+    """
+    path = Path(root) / "logs" / "multi_run.log"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fresh = os.environ.get("LLM_ISA_LOG") != "1"
+    os.environ["LLM_ISA_LOG"] = "1"
+    handle = open(path, "w" if fresh else "a", encoding="utf-8", buffering=1)
+    if fresh:
+        handle.write(f"# {time.strftime('%Y-%m-%d %H:%M:%S')} {sys.argv}\n")
+    sys.stdout = _Tee(sys.stdout, handle)
+    sys.stderr = _Tee(sys.stderr, handle)
+    return path
+
+
+class _Tee:
+    def __init__(self, stream, handle):
+        self._stream = stream
+        self._handle = handle
+
+    def write(self, data):
+        self._stream.write(data)
+        self._handle.write(data)
+        self._handle.flush()
+
+    def flush(self):
+        self._stream.flush()
+        self._handle.flush()
+
+    def isatty(self):
+        return self._stream.isatty()
 
 
 def say(message: str) -> None:

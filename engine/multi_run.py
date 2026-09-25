@@ -33,11 +33,12 @@ from engine.eval_runner import (  # noqa: E402
 )
 from engine.eval_runner.cache import reuse_cached_result, simulation_identity
 from engine.eval_runner.index import record_simulation
-from engine.eval_runner.progress import format_hms, kv_brief, say, summarize_scores
+from engine.eval_runner.progress import format_hms, kv_brief, mirror_terminal, say, summarize_scores
 from engine.kv_compress import install, parse_kv_spec
 
 
 def main() -> None:
+    mirror_terminal(_ROOT)
     args = _parse_args()
     if args.worker is None:
         devices = visible_cuda_devices()
