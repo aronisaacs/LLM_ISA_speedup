@@ -1,7 +1,7 @@
-"""One row per finished simulation, independent of which run asked for it.
+"""One row per finished simulation.
 
-``results/index.json`` maps a model, task, and kv pipeline to the JSON that
-holds the scores. A chart looks here instead of opening a run folder.
+``results/index.json`` is the record: identity, scores, sample count, and,
+for a budget eval, the target budget and the realized compression.
 """
 
 from __future__ import annotations
@@ -10,7 +10,6 @@ import json
 from pathlib import Path
 
 from engine.eval_runner.cache import _canonical, _identity_from_file, _legacy
-from engine.eval_runner.execute import is_finished_result
 
 _NAME = "index.json"
 
@@ -39,31 +38,46 @@ def find_result(identity: dict, root: Path | None = None) -> dict | None:
     return None
 
 
-def cached_path(identity: dict, root: Path | None = None) -> Path | None:
-    """Path of a finished JSON for this simulation, when the index already exists."""
-    if not index_path(root).is_file():
-        return None
-    row = find_result(identity, root)
-    if row is None:
-        return None
-    path = _resolve(row["path"], root)
-    if path.is_file() and is_finished_result(path):
-        return path
-    return None
-
-
-def record_result(path: Path, root: Path | None = None) -> dict | None:
-    """Add this JSON to the index if its simulation is not already listed."""
+def record_simulation(
+    identity: dict,
+    scores: dict,
+    samples: dict | None = None,
+    budget: float | None = None,
+    compression: float | None = None,
+    root: Path | None = None,
+) -> dict:
+    """Append this simulation when the index does not already list it."""
     root = root or results_root()
-    row = _row_from_file(path, root)
-    if row is None:
-        return None
+    existing = find_result(identity, root)
+    if existing is not None:
+        return existing
+    row = {"identity": identity, "scores": scores}
+    if samples:
+        row["samples"] = samples
+    if budget is not None:
+        row["budget"] = budget
+    if compression is not None:
+        row["compression"] = compression
     rows = _rows(root)
-    if find_result(row["identity"], root) is not None:
-        return row
     rows.append(row)
     _write(root, rows)
     return row
+
+
+def record_result(path: Path, root: Path | None = None) -> dict | None:
+    """Add a result JSON to the index if its simulation is not already listed."""
+    root = root or results_root()
+    row = _row_from_file(path)
+    if row is None:
+        return None
+    return record_simulation(
+        row["identity"],
+        row["scores"],
+        samples=row.get("samples"),
+        budget=row.get("budget"),
+        compression=row.get("compression"),
+        root=root,
+    )
 
 
 def rebuild(root: Path | None = None) -> list[dict]:
@@ -77,7 +91,7 @@ def rebuild(root: Path | None = None) -> list[dict]:
     for path in sorted(root.rglob("*.json")):
         if path.name == _NAME or path.name == "budgets.json" or path.name.startswith("selected"):
             continue
-        row = _row_from_file(path, root)
+        row = _row_from_file(path)
         if row is None:
             continue
         key = _canonical(row["identity"])
@@ -107,7 +121,7 @@ def _write(root: Path, rows: list[dict]) -> None:
     path.write_text(json.dumps({"simulations": rows}, indent=2) + "\n")
 
 
-def _row_from_file(path: Path, root: Path) -> dict | None:
+def _row_from_file(path: Path) -> dict | None:
     identity = _identity_from_file(path)
     if identity is None:
         return None
@@ -115,11 +129,15 @@ def _row_from_file(path: Path, root: Path) -> dict | None:
         payload = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
         return None
-    try:
-        stored = path.resolve().relative_to(root.resolve()).as_posix()
-    except ValueError:
-        stored = str(path.resolve())
-    return {"identity": identity, "path": stored, "scores": _scores(payload, identity.get("tasks") or [])}
+    row = {"identity": identity, "scores": _scores(payload, identity.get("tasks") or [])}
+    samples = _samples(payload)
+    if samples:
+        row["samples"] = samples
+    budget = _budget(payload)
+    if budget is not None:
+        row["budget"] = budget[0]
+        row["compression"] = budget[1]
+    return row
 
 
 def _scores(payload: dict, tasks: list) -> dict:
@@ -141,8 +159,19 @@ def _scores(payload: dict, tasks: list) -> dict:
     return scores
 
 
-def _resolve(stored: str, root: Path | None) -> Path:
-    path = Path(stored)
-    if path.is_absolute():
-        return path
-    return (root or results_root()) / stored
+def _samples(payload: dict) -> dict | None:
+    raw = payload.get("n-samples") or {}
+    for info in raw.values():
+        if isinstance(info, dict) and ("effective" in info or "original" in info):
+            return {key: info[key] for key in ("original", "effective") if key in info}
+    return None
+
+
+def _budget(payload: dict) -> tuple[float, float] | None:
+    for task_config in (payload.get("configs") or {}).values():
+        metadata = (task_config or {}).get("metadata") or {}
+        if "kv_budget" in metadata and "kv_compression" in metadata:
+            return float(metadata["kv_budget"]), float(metadata["kv_compression"])
+    return None
+
+

@@ -6,6 +6,7 @@ from engine.eval_runner.execute import (
     is_finished_result,
     load_model_if_needed,
     result_output_path,
+    shorten_result,
     write_result_json,
 )
 from engine.eval_runner.load_run import grid, load_run, merge, reject_deprecated_kv_keys, split_base_and_configurations
@@ -21,6 +22,7 @@ __all__ = [
     "load_run",
     "merge",
     "reject_deprecated_kv_keys",
+    "shorten_result",
     "split_base_and_configurations",
     "write_result_json",
 ]

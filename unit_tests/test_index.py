@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from engine.eval_runner.index import find_result, rebuild, record_result
+from engine.eval_runner.index import find_result, rebuild, record_result, record_simulation
 
 _PAYLOAD = {
     "results": {"wikitext": {"word_perplexity,none": 8.5, "word_perplexity_stderr,none": 0.1, "alias": "wikitext"}},
@@ -34,11 +34,11 @@ class ResultIndexTests(unittest.TestCase):
             second.write_text(json.dumps(_PAYLOAD))
             rows = rebuild(root)
             self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0]["path"], "study_a/dense.json")
             self.assertEqual(rows[0]["scores"]["wikitext"]["word_perplexity,none"], 8.5)
             self.assertNotIn("alias", rows[0]["scores"]["wikitext"])
+            self.assertNotIn("path", rows[0])
             found = find_result(rows[0]["identity"], root)
-            self.assertEqual(found["path"], "study_a/dense.json")
+            self.assertEqual(found["scores"]["wikitext"]["word_perplexity,none"], 8.5)
 
     def test_record_does_not_replace_the_first_path(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -50,7 +50,24 @@ class ResultIndexTests(unittest.TestCase):
             row = record_result(first, root)
             record_result(second, root)
             self.assertEqual(len(json.loads((root / "index.json").read_text())["simulations"]), 1)
-            self.assertEqual(find_result(row["identity"], root)["path"], "a.json")
+            self.assertEqual(find_result(row["identity"], root)["scores"]["wikitext"]["word_perplexity,none"], 8.5)
+
+    def test_record_simulation_keeps_samples_and_budget(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            identity = {"pretrained": "m", "dtype": "bfloat16", "tasks": ["gsm8k"], "kv": {"pipeline": []}}
+            row = record_simulation(
+                identity,
+                {"gsm8k": {"exact_match,flexible-extract": 0.5}},
+                samples={"original": 32, "effective": 32},
+                budget=0.1,
+                compression=0.12,
+                root=root,
+            )
+            again = record_simulation(identity, {"gsm8k": {"exact_match,flexible-extract": 0.9}}, root=root)
+            self.assertEqual(again["samples"]["effective"], 32)
+            self.assertEqual(row["budget"], 0.1)
+            self.assertEqual(len(json.loads((root / "index.json").read_text())["simulations"]), 1)
 
 
 if __name__ == "__main__":

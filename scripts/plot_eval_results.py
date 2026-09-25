@@ -195,14 +195,37 @@ def main() -> None:
 
     paths: list[Path] = []
     if not args.inputs:
-        from engine.eval_runner.index import results_root, simulations
+        from engine.eval_runner.index import simulations
 
-        root = results_root()
+        rows = []
         for record in simulations():
-            stored = record.get("path") or ""
-            path = Path(stored) if Path(stored).is_absolute() else root / stored
-            if path.is_file():
-                paths.append(path)
+            identity = record.get("identity") or {}
+            kv = identity.get("kv") or {}
+            samples = record.get("samples") or {}
+            for task, metrics in (record.get("scores") or {}).items():
+                metric_name, value, stderr = _pick_metric(metrics)
+                if metric_name is None:
+                    continue
+                rows.append(
+                    {
+                        "file": "index",
+                        "task": task,
+                        "condition": _condition_label(kv),
+                        "metric": metric_name,
+                        "value": float(value),
+                        "stderr": None if stderr is None else float(stderr),
+                        "n": samples.get("effective") or samples.get("original"),
+                        "model": identity.get("pretrained") or "unknown",
+                        "kv": kv,
+                    }
+                )
+        if not rows:
+            raise SystemExit("The results index has no plottable scores")
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        write_svg(rows, output)
+        print(f"Wrote {output} from the results index ({len(rows)} scores)")
+        return
     for item in args.inputs or []:
         match = list(Path().glob(item)) if any(ch in item for ch in "*?[]") else [Path(item)]
         paths.extend(path for path in match if path.is_file() and path.suffix == ".json")

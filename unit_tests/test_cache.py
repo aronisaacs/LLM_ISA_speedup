@@ -7,61 +7,34 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from engine.eval_runner.cache import reuse_cached_result
+from engine.eval_runner.cache import reuse_cached_result, simulation_identity
 from engine.eval_runner.execute import shorten_result
+from engine.eval_runner.index import record_simulation
 from engine.kv_compress.spec import parse_kv_spec
 
 _MODEL = "pretrained=test/cache-model,dtype=bfloat16"
 
 
-def _payload(kv, task="wikitext", fewshot=0):
-    return {
-        "results": {task: {"acc,none": 0.5}},
-        "group_subtasks": {task: []},
-        "n-shot": {task: fewshot},
-        "configs": {task: {"metadata": {"kv": kv}}},
-        "config": {
-            "model_args": {"pretrained": "test/cache-model", "dtype": "bfloat16", "kv": kv},
-            "limit": None,
-            "gen_kwargs": None,
-        },
-    }
-
-
 class CacheReuseTests(unittest.TestCase):
-    def test_same_simulation_in_another_folder_is_copied(self):
+    def test_a_recorded_simulation_is_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            source = root / "old" / "dense.json"
-            source.parent.mkdir()
             kv = {"pipeline": []}
-            source.write_text(json.dumps(_payload(kv)))
-            dest = root / "new" / "again.json"
             base = {"model_args": _MODEL, "tasks": ["wikitext"], "num_fewshot": 0}
-            kind = reuse_cached_result(base, {}, parse_kv_spec(kv), dest, skip_unkeyed=False)
-            self.assertEqual(kind, "reused")
-            self.assertEqual(json.loads(dest.read_text())["results"]["wikitext"]["acc,none"], 0.5)
+            identity = simulation_identity(base, {}, parse_kv_spec(kv))
+            record_simulation(identity, {"wikitext": {"acc,none": 0.5}}, root=root)
+            kind = reuse_cached_result(base, {}, parse_kv_spec(kv), root=root)
+            self.assertEqual(kind, "skip")
 
     def test_a_different_pipeline_is_not_reused(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            source = root / "dense.json"
-            source.write_text(json.dumps(_payload({"pipeline": []})))
-            dest = root / "sparse.json"
+            base = {"model_args": _MODEL, "tasks": ["wikitext"], "num_fewshot": 0}
+            dense = {"pipeline": []}
+            record_simulation(simulation_identity(base, {}, parse_kv_spec(dense)), {"wikitext": {"acc,none": 0.5}}, root=root)
             kv = {"pipeline": [{"method": "vector_compress", "k_layers": "all", "v_layers": [], "prune_pct": 25}]}
-            base = {"model_args": _MODEL, "tasks": ["wikitext"], "num_fewshot": 0}
-            kind = reuse_cached_result(base, {}, parse_kv_spec(kv), dest, skip_unkeyed=False)
+            kind = reuse_cached_result(base, {}, parse_kv_spec(kv), root=root)
             self.assertIsNone(kind)
-            self.assertFalse(dest.exists())
-
-    def test_destination_already_holding_the_simulation_is_skipped(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            dest = Path(tmp) / "done.json"
-            kv = {"pipeline": []}
-            dest.write_text(json.dumps(_payload(kv)))
-            base = {"model_args": _MODEL, "tasks": ["wikitext"], "num_fewshot": 0}
-            kind = reuse_cached_result(base, {}, parse_kv_spec(kv), dest, skip_unkeyed=False)
-            self.assertEqual(kind, "skip")
 
 
 class ShortenResultTests(unittest.TestCase):

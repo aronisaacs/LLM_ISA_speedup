@@ -17,6 +17,7 @@ class ScoreRow:
     ppl: float
     delta: float
     path: str
+    kv: dict | None = None
 
 
 def word_perplexity(payload: dict) -> float:
@@ -83,9 +84,8 @@ def load_sweep_scores(
 
 
 def _from_index(metric, higher_is_better, method, task, pretrained) -> tuple[float, list[ScoreRow]]:
-    from engine.eval_runner.index import results_root, simulations
+    from engine.eval_runner.index import simulations
 
-    root = results_root()
     dense_ppl = None
     rows: list[tuple[Slot, int, float, str]] = []
     for record in simulations():
@@ -102,7 +102,6 @@ def _from_index(metric, higher_is_better, method, task, pretrained) -> tuple[flo
             slot, level = parse_singleton(kv)
         except ValueError:
             continue
-        stored = root / record["path"] if not Path(record["path"]).is_absolute() else Path(record["path"])
         value = (record.get("scores") or {}).get(task, {}).get(metric)
         if value is None:
             continue
@@ -113,8 +112,8 @@ def _from_index(metric, higher_is_better, method, task, pretrained) -> tuple[flo
             dense_ppl = ppl
             continue
         if level is None:
-            raise ValueError(f"{stored} singleton has no compression level")
-        rows.append((slot, level, ppl, str(stored)))
+            raise ValueError("singleton has no compression level")
+        rows.append((slot, level, ppl, "", kv))
     if dense_ppl is None:
         raise ValueError(f"no dense {task} result in the index")
     return dense_ppl, _scored(dense_ppl, rows, higher_is_better)
@@ -128,8 +127,10 @@ def _scored(dense_ppl, rows, higher_is_better) -> list[ScoreRow]:
             ppl=ppl,
             delta=(dense_ppl - ppl) if higher_is_better else (ppl - dense_ppl),
             path=path,
+            kv=kv,
         )
-        for slot, level, ppl, path in rows
+        for slot, level, ppl, path, *rest in ((item + (None,))[:5] for item in rows)
+        for kv in [rest[0]]
     ]
 
 

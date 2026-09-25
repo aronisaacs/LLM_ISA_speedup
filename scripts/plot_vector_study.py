@@ -322,31 +322,20 @@ def _pick_from_table(table: dict) -> tuple[str | None, float | None]:
 
 
 def _task_points_from_index() -> list[dict]:
-    from engine.eval_runner.index import results_root, simulations
+    from engine.eval_runner.index import simulations
 
-    root = results_root()
     points = []
     for record in simulations():
-        stored = record.get("path") or ""
-        path = Path(stored) if Path(stored).is_absolute() else root / stored
-        if not path.is_file():
+        if "budget" not in record:
             continue
-        payload = json.loads(path.read_text())
-        task, accuracy = _primary_score(payload)
-        if task is None:
+        task, accuracy = _primary_score({"results": record.get("scores") or {}})
+        if task is None or accuracy is None:
             continue
-        entry = _entry_from_metadata(payload, "scored")
-        if entry is None:
-            identity = record.get("identity") or {}
-            pipeline = (identity.get("kv") or {}).get("pipeline") or []
-            if pipeline:
-                continue
-            entry = {"budget": 0.0, "compression": 0.0}
         points.append(
             {
                 "task": task,
-                "budget": float(entry["budget"]),
-                "compression": float(entry["compression"]),
+                "budget": float(record["budget"]),
+                "compression": float(record.get("compression") or 0.0),
                 "accuracy": accuracy,
             }
         )

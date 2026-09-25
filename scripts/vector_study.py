@@ -7,7 +7,7 @@ Stages, in order:
   tasks   CEval, GSM8K, and HumanEval at each of those assignments
   plots   three resiliency curves and one degradation table per task
 
-Scores are read from results/index.json. New JSON goes in results/.
+Scores are read from results/index.json. A finished simulation is a row there.
 A rerun skips a simulation the index already lists.
 
   python scripts/vector_study.py --through sweep

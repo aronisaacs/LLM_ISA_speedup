@@ -51,7 +51,7 @@ def write_selections(scores_dir, out_dir, n_layers=None, budgets=BUDGETS, scored
     dense_ppl, rows = scored if scored is not None else load_sweep_scores(scores_dir)
     if n_layers is None:
         n_layers = max(row.slot.layer for row in rows) + 1
-    method_kv = kv_from_payload(json.loads(Path(rows[0].path).read_text()))
+    method_kv = rows[0].kv if rows[0].kv is not None else kv_from_payload(json.loads(Path(rows[0].path).read_text()))
     payloads = selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=budgets)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)

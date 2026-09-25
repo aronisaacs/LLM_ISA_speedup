@@ -24,12 +24,11 @@ from engine.eval_runner import (
     load_run,
     merge,
     reject_deprecated_kv_keys,
-    result_output_path,
+    shorten_result,
     split_base_and_configurations,
-    write_result_json,
 )
 from engine.eval_runner.cache import reuse_cached_result, simulation_identity
-from engine.eval_runner.index import record_result
+from engine.eval_runner.index import record_simulation
 from engine.eval_runner.progress import format_hms, kv_brief, say, summarize_scores
 from engine.kv_compress import install, parse_kv_spec
 
@@ -139,13 +138,10 @@ def _run_configurations(args) -> None:
     for offset, (index, configuration) in enumerate(mine, start=1):
         reject_deprecated_kv_keys(base, configuration)
         name = configuration.get("name", "configuration")
-        output_path = result_output_path(base, configuration)
         kv_spec = parse_kv_spec(merge(base, configuration, "kv", None))
-        cached = reuse_cached_result(
-            base, configuration, kv_spec, output_path, skip_unkeyed=args.skip_existing
-        )
+        cached = reuse_cached_result(base, configuration, kv_spec, None, skip_unkeyed=args.skip_existing)
         if cached is not None:
-            _say(label, f"[{index}/{total}]  {cached}  {name}  {output_path}")
+            _say(label, f"[{index}/{total}]  {cached}  {name}")
             continue
         previous_key = loaded_model_key
         lm, loaded_model_key, device, model_args = load_model_if_needed(
@@ -161,22 +157,33 @@ def _run_configurations(args) -> None:
             results = evaluate(lm, base, configuration, kv_spec, device, model_args)
         finally:
             uninstall()
-        output_path = write_result_json(
-            lm, base, configuration, results, simulation_identity(base, configuration, kv_spec)
-        )
-        if output_path is not None:
-            record_result(output_path)
+        if getattr(lm, "rank", 0) == 0:
+            _record(results, simulation_identity(base, configuration, kv_spec))
 
         finished += 1
         elapsed = time.monotonic() - started
         remaining_configs = len(mine) - offset
         remaining = (elapsed / finished) * remaining_configs if finished else 0
-        wrote = output_path if output_path is not None else "(rank skipped write)"
         _say(
             label,
-            f"done   {wrote}  {summarize_scores(results)}  "
+            f"done   {name}  {summarize_scores(results)}  "
             f"elapsed {format_hms(elapsed)}  eta {format_hms(remaining)}",
         )
+
+
+def _record(results: dict, identity: dict) -> None:
+    short = shorten_result({**results, "simulation": identity})
+    samples = None
+    counted = short.get("n-samples") or {}
+    if counted:
+        samples = next(iter(counted.values()))
+    budget = compression = None
+    for task_config in (short.get("configs") or {}).values():
+        metadata = (task_config or {}).get("metadata") or {}
+        if "kv_budget" in metadata:
+            budget = metadata["kv_budget"]
+            compression = metadata["kv_compression"]
+    record_simulation(identity, short.get("results") or {}, samples=samples, budget=budget, compression=compression)
 
 
 def _run_label(run: str) -> str:
