@@ -1,0 +1,57 @@
+"""The result index is one row per simulation, not one row per run folder."""
+
+from __future__ import annotations
+
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from engine.eval_runner.index import find_result, rebuild, record_result
+
+_PAYLOAD = {
+    "results": {"wikitext": {"word_perplexity,none": 8.5, "word_perplexity_stderr,none": 0.1, "alias": "wikitext"}},
+    "group_subtasks": {"wikitext": []},
+    "n-shot": {"wikitext": 0},
+    "configs": {"wikitext": {"metadata": {"kv": {"pipeline": []}}}},
+    "config": {
+        "model_args": {"pretrained": "test/index-model", "dtype": "bfloat16", "kv": {"pipeline": []}},
+        "limit": None,
+        "gen_kwargs": None,
+    },
+}
+
+
+class ResultIndexTests(unittest.TestCase):
+    def test_rebuild_keeps_one_row_and_the_score(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first = root / "study_a" / "dense.json"
+            second = root / "study_b" / "again.json"
+            first.parent.mkdir()
+            second.parent.mkdir()
+            first.write_text(json.dumps(_PAYLOAD))
+            second.write_text(json.dumps(_PAYLOAD))
+            rows = rebuild(root)
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["path"], "study_a/dense.json")
+            self.assertEqual(rows[0]["scores"]["wikitext"]["word_perplexity,none"], 8.5)
+            self.assertNotIn("alias", rows[0]["scores"]["wikitext"])
+            found = find_result(rows[0]["identity"], root)
+            self.assertEqual(found["path"], "study_a/dense.json")
+
+    def test_record_does_not_replace_the_first_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first = root / "a.json"
+            second = root / "b.json"
+            first.write_text(json.dumps(_PAYLOAD))
+            second.write_text(json.dumps(_PAYLOAD))
+            row = record_result(first, root)
+            record_result(second, root)
+            self.assertEqual(len(json.loads((root / "index.json").read_text())["simulations"]), 1)
+            self.assertEqual(find_result(row["identity"], root)["path"], "a.json")
+
+
+if __name__ == "__main__":
+    unittest.main()

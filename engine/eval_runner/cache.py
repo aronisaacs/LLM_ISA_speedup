@@ -81,6 +81,11 @@ def _same_simulation(path: Path, identity: dict) -> bool:
 
 
 def _find(identity: dict, output_path: Path) -> Path | None:
+    from engine.eval_runner.index import cached_path
+
+    indexed = cached_path(identity)
+    if indexed is not None and indexed.resolve() != output_path.resolve():
+        return indexed
     wanted = _canonical(identity)
     legacy = _canonical(_legacy(identity))
     for root in _roots(output_path):
@@ -114,6 +119,8 @@ def _index(root: Path) -> dict[str, Path]:
         return cached
     index: dict[str, Path] = {}
     for path in sorted(root.rglob("*.json")):
+        if path.name == "index.json":
+            continue
         identity = _identity_from_file(path)
         if identity is None:
             continue

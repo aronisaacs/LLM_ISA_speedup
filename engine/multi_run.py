@@ -29,6 +29,7 @@ from engine.eval_runner import (
     write_result_json,
 )
 from engine.eval_runner.cache import reuse_cached_result, simulation_identity
+from engine.eval_runner.index import record_result
 from engine.eval_runner.progress import format_hms, kv_brief, say, summarize_scores
 from engine.kv_compress import install, parse_kv_spec
 
@@ -163,6 +164,8 @@ def _run_configurations(args) -> None:
         output_path = write_result_json(
             lm, base, configuration, results, simulation_identity(base, configuration, kv_spec)
         )
+        if output_path is not None:
+            record_result(output_path)
 
         finished += 1
         elapsed = time.monotonic() - started
