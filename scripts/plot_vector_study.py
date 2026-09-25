@@ -47,9 +47,9 @@ def write_sweep_plots(scores_dir=None, out_dir=FIGURES, method="vector_compress"
     return paths
 
 
-def write_sweep_svg(dense_ppl, rows, level, n_layers, output: Path) -> None:
+def write_sweep_svg(dense_ppl, rows, level, n_layers, output: Path, title: str | None = None) -> None:
     keys, values = _curves(rows, level, n_layers)
-    output.write_text(_sweep_svg(dense_ppl, keys, values, level))
+    output.write_text(_sweep_svg(dense_ppl, keys, values, level, title=title))
 
 
 def write_task_tables(results_dir=None, study_dir=None, out_dir=FIGURES) -> list[Path]:
@@ -97,7 +97,7 @@ def _curves(rows, level, n_layers):
     return keys, values
 
 
-def _sweep_svg(dense_ppl, keys, values, level) -> str:
+def _sweep_svg(dense_ppl, keys, values, level, title: str | None = None) -> str:
     width, height = 920, 520
     pad_left, pad_right, pad_top, pad_bottom = 64, 28, 58, 56
     plot_w = width - pad_left - pad_right
@@ -125,8 +125,7 @@ def _sweep_svg(dense_ppl, keys, values, level) -> str:
         f'aria-label="WikiText perplexity by layer at {level}% vector compression">',
         '<rect width="100%" height="100%" fill="#ffffff"/>',
         f'<text x="{pad_left}" y="28" font-size="15" font-family="system-ui,sans-serif" fill="#212529">'
-        f"Per layer resiliency run on Llama 3.1 8B Instruct using WikiText "
-        f"with vector compression ({level}% compression)</text>",
+        f"{title or _default_sweep_title(level)}</text>",
     ]
     band_top = y_at(band)
     parts.append(
@@ -165,6 +164,13 @@ def _sweep_svg(dense_ppl, keys, values, level) -> str:
     parts.append(_legend(pad_left + plot_w - 168, pad_top + 12))
     parts.append("</svg>")
     return "".join(parts)
+
+
+def _default_sweep_title(level: int) -> str:
+    return (
+        "Per layer resiliency run on Llama 3.1 8B Instruct using WikiText "
+        f"with vector compression ({level}% compression)"
+    )
 
 
 def _polyline(series, x_at, y_at, color) -> str:
