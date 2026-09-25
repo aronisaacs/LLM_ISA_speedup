@@ -18,7 +18,11 @@ import sys
 import time
 from pathlib import Path
 
-from engine.eval_runner import (
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from engine.eval_runner import (  # noqa: E402
     evaluate,
     load_model_if_needed,
     load_run,

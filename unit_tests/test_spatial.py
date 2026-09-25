@@ -16,6 +16,7 @@ from engine.kv_compress.methods.spatial import apply_feature, apply_pool, apply_
 from engine.kv_compress.rope import RopeTables, apply_rope
 from engine.kv_compress.spec import parse_kv_spec
 from scripts.plot_spatial_chunk import write_wikitext_table
+from scripts.spatial_chunk import chunk_run
 
 
 def _chunk() -> torch.Tensor:
@@ -112,6 +113,18 @@ class PreRopeHookTests(unittest.TestCase):
             uninstall()
         expected = apply_pool(rotated, layer_idx=0, target="k", chunk=4)
         self.assertTrue(torch.allclose(stored, expected, atol=1e-5))
+
+
+class SpatialRunTests(unittest.TestCase):
+    def test_chunk_run_is_fourteen_wikitext_configs(self):
+        configurations = chunk_run()["configurations"]
+        names = [item["name"] for item in configurations]
+        self.assertEqual(len(names), 14)
+        self.assertEqual(names[0], "llama31_spatial_pool_k")
+        self.assertEqual(names[-2:], ["llama31_spatial_pool_k_postrope", "llama31_spatial_top1_k_postrope"])
+        self.assertTrue(configurations[0]["kv"]["pipeline"][0]["pre_rope"])
+        self.assertNotIn("pre_rope", configurations[-1]["kv"]["pipeline"][0])
+        self.assertEqual(configurations[0]["tasks"], ["wikitext"])
 
 
 class SpatialTableTests(unittest.TestCase):

@@ -159,7 +159,7 @@ def write_wikitext_table_from_index(figures_dir=FIGURES, pretrained="meta-llama/
         if method not in {name for name, _label, _stored in _METHODS}:
             continue
         target = _target(step)
-        rope = "post" if step.get("pre_rope") is False else "pre"
+        rope = "pre" if step.get("pre_rope") else "post"
         if target is None:
             continue
         scores[(method, target, rope)] = float(value)
