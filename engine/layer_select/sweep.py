@@ -7,7 +7,7 @@ from typing import Any
 
 from catalog.compressions import DENSE
 from engine.layer_select.apply import kv_for_slot
-from engine.layer_select.levels import LEVELS
+from engine.layer_select.rungs import rungs_for
 from engine.layer_select.slots import Slot, all_slots
 
 
@@ -20,8 +20,13 @@ def expand_singleton_configs(
     name_prefix: str,
     extra: dict[str, Any] | None = None,
 ) -> list[dict]:
-    """Dense first, then one configuration per (slot, level)."""
+    """Dense first, then one configuration per (slot, rung).
+
+    Rungs come from the method: prune-style methods use 25/50/75, and an
+    on/off method uses its single stored-ratio rung.
+    """
     extra = extra or {}
+    rungs = rungs_for(method_kv["pipeline"][0]["method"])
     configurations = [
         _make_configuration(
             name=f"{name_prefix}_dense",
@@ -31,7 +36,8 @@ def expand_singleton_configs(
         )
     ]
     for slot in all_slots(n_layers):
-        for pct in LEVELS:
+        for rung in rungs:
+            pct = rung.level
             configurations.append(
                 _make_configuration(
                     name=f"{name_prefix}_{method_tag}_{slot.tag()}_p{pct}",

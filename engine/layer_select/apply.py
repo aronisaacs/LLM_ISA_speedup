@@ -84,7 +84,14 @@ def parse_singleton(kv: dict | None) -> tuple[Slot | None, int | None]:
         slot = Slot(v_layers[0], "v")
     else:
         raise ValueError("kv is not a singleton slot")
-    return slot, _level_from_step(step)
+    level = _level_from_step(step)
+    if level is None:
+        from engine.layer_select.rungs import RUNGS
+
+        method_rungs = RUNGS.get(step.get("method"))
+        if method_rungs is not None and len(method_rungs) == 1:
+            level = method_rungs[0].level
+    return slot, level
 
 
 def slot_from_kv(kv: dict | None) -> Slot | None:
@@ -99,9 +106,10 @@ def _set_level(step: dict, pct: int) -> None:
         keep = int(round(n * (1 - pct / 100.0)))
         step["m"] = min(max(keep, 0), n)
         return
-    step["prune_pct"] = int(pct)
-    if method == "vector_compress":
-        step.pop("threshold", None)
+    if method in {"vector_compress", "checksparse_l1"}:
+        step["prune_pct"] = int(pct)
+        if method == "vector_compress":
+            step.pop("threshold", None)
 
 
 def _level_from_step(step: dict) -> int | None:

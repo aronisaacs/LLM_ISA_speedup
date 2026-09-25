@@ -7,7 +7,8 @@ WikiText scores. Pick argmax (Δcompression / ΔPPL). A slot cannot skip a rung.
 
 from __future__ import annotations
 
-from engine.layer_select.levels import LEVELS, mean_compression, next_level
+from engine.layer_select.levels import mean_compression, next_level
+from engine.layer_select.rungs import PRUNE, fraction_of
 from engine.layer_select.scores import ScoreRow, score_table
 from engine.layer_select.slots import Slot, all_slots
 
@@ -17,15 +18,16 @@ def rank_fill(
     n_layers: int,
     budget: float,
     dense_ppl: float | None = None,
+    rungs=PRUNE,
 ) -> dict[Slot, int]:
     slots = all_slots(n_layers)
     table = score_table(rows)
     if dense_ppl is None:
         dense_ppl = _infer_dense_ppl(rows)
-    _require_rungs(table, slots)
+    _require_rungs(table, slots, rungs)
     assignment = {slot: 0 for slot in slots}
-    while mean_compression(assignment, len(slots)) < budget:
-        pick = _best_step(assignment, slots, table, dense_ppl)
+    while mean_compression(assignment, len(slots), rungs) < budget:
+        pick = _best_step(assignment, slots, table, dense_ppl, rungs)
         if pick is None:
             break
         slot, new_level = pick
@@ -33,16 +35,19 @@ def rank_fill(
     return {slot: pct for slot, pct in assignment.items() if pct > 0}
 
 
-def _best_step(assignment, slots, table, dense_ppl):
+def _best_step(assignment, slots, table, dense_ppl, rungs):
+    levels = tuple(rung.level for rung in rungs)
     best = None
     for slot in slots:
         current = assignment[slot]
-        nxt = next_level(current)
+        nxt = next_level(current, levels)
         if nxt is None:
             continue
-        extra_pct = nxt - current
+        current_fraction = 0.0 if current == 0 else fraction_of(rungs, current)
+        extra = fraction_of(rungs, nxt) - current_fraction
         extra_ppl = _ppl(table, dense_ppl, slot, nxt) - _ppl(table, dense_ppl, slot, current)
-        efficiency = float("inf") if extra_ppl <= 0 else extra_pct / extra_ppl
+        efficiency = float("inf") if extra_ppl <= 0 else extra / extra_ppl
+        extra_pct = extra
         # Higher efficiency wins; then more extra compression; then smaller Slot.
         candidate = (efficiency, extra_pct, _slot_sort_key(slot), slot, nxt)
         if best is None or candidate[:3] > best[:3]:
@@ -72,10 +77,10 @@ def _infer_dense_ppl(rows: list[ScoreRow]) -> float:
     return rows[0].ppl - rows[0].delta
 
 
-def _require_rungs(table, slots):
+def _require_rungs(table, slots, rungs):
     missing = []
     for slot in slots:
-        for pct in LEVELS:
+        for pct in (rung.level for rung in rungs):
             if (slot, pct) not in table:
                 missing.append(f"{slot.tag()}@p{pct}")
     if missing:

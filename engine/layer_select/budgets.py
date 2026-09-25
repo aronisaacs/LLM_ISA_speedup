@@ -10,7 +10,8 @@ from catalog.models import LLAMA31_8B
 from catalog.tasks import CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT
 from engine.layer_select.apply import kv_for_assignment, method_template
 from engine.layer_select.greedy.rank_fill import rank_fill
-from engine.layer_select.levels import LEVELS, mean_compression
+from engine.layer_select.levels import mean_compression
+from engine.layer_select.rungs import rungs_for
 from engine.layer_select.scores import kv_from_payload, load_sweep_scores
 from engine.layer_select.slots import all_slots
 
@@ -28,17 +29,18 @@ BUDGET_RESULTS = f"{JSON_DIR}/budgets"
 def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS):
     """One rank-fill payload per budget. ``compression`` is the realized mean."""
     template = method_template(method_kv)
+    rungs = rungs_for(template["pipeline"][0]["method"])
     n_slots = len(all_slots(n_layers))
     payloads = []
     for budget in budgets:
-        assignment = rank_fill(rows, n_layers, budget, dense_ppl=dense_ppl)
+        assignment = rank_fill(rows, n_layers, budget, dense_ppl=dense_ppl, rungs=rungs)
         payloads.append(
             {
                 "tag": _budget_tag(budget),
                 "budget": budget,
-                "compression": mean_compression(assignment, n_slots),
+                "compression": mean_compression(assignment, n_slots, rungs),
                 "n_layers": n_layers,
-                "levels": list(LEVELS),
+                "levels": [rung.level for rung in rungs],
                 "dense_ppl": dense_ppl,
                 "assignment": [
                     {**slot.to_dict(), "level": pct} for slot, pct in sorted(assignment.items())

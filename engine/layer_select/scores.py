@@ -20,11 +20,16 @@ class ScoreRow:
 
 
 def word_perplexity(payload: dict) -> float:
+    return task_score(payload, "word_perplexity,none")
+
+
+def task_score(payload: dict, metric: str = "word_perplexity,none") -> float:
+    """First task metric in an lm-eval results dict. Higher or lower depends on the task."""
     table = (payload or {}).get("results") or {}
     for metrics in table.values():
-        if isinstance(metrics, dict) and metrics.get("word_perplexity,none") is not None:
-            return float(metrics["word_perplexity,none"])
-    raise ValueError("no word_perplexity,none in results")
+        if isinstance(metrics, dict) and metrics.get(metric) is not None:
+            return float(metrics[metric])
+    raise ValueError(f"no {metric} in results")
 
 
 def kv_from_payload(payload: dict) -> dict:
@@ -41,8 +46,12 @@ def kv_from_payload(payload: dict) -> dict:
     raise ValueError("no kv metadata in result JSON")
 
 
-def load_sweep_scores(results_dir: str | Path) -> tuple[float, list[ScoreRow]]:
-    """Return (dense_ppl, singleton rows with delta = ppl - dense)."""
+def load_sweep_scores(
+    results_dir: str | Path,
+    metric: str = "word_perplexity,none",
+    higher_is_better: bool = False,
+) -> tuple[float, list[ScoreRow]]:
+    """Return (dense score, singleton rows). ``delta`` is quality lost versus dense."""
     paths = sorted(Path(results_dir).glob("*.json"))
     dense_ppl = None
     rows: list[tuple[Slot, int, float, str]] = []
@@ -50,7 +59,7 @@ def load_sweep_scores(results_dir: str | Path) -> tuple[float, list[ScoreRow]]:
         if path.name.startswith("selected"):
             continue
         payload = json.loads(path.read_text())
-        ppl = word_perplexity(payload)
+        ppl = task_score(payload, metric)
         slot, level = parse_singleton(kv_from_payload(payload))
         if slot is None:
             dense_ppl = ppl
@@ -61,7 +70,13 @@ def load_sweep_scores(results_dir: str | Path) -> tuple[float, list[ScoreRow]]:
     if dense_ppl is None:
         raise ValueError(f"no dense result in {results_dir}")
     scored = [
-        ScoreRow(slot=slot, level=level, ppl=ppl, delta=ppl - dense_ppl, path=path)
+        ScoreRow(
+            slot=slot,
+            level=level,
+            ppl=ppl,
+            delta=(dense_ppl - ppl) if higher_is_better else (ppl - dense_ppl),
+            path=path,
+        )
         for slot, level, ppl, path in rows
     ]
     return dense_ppl, scored

@@ -18,12 +18,25 @@ def next_level(current: int, levels: tuple[int, ...] = LEVELS) -> int | None:
     return None
 
 
-def mean_compression(assignment: dict[Slot, int], n_slots: int) -> float:
-    """Average fraction of each slot that is zeroed. Unlisted slots count as 0."""
+def mean_compression(assignment: dict[Slot, int], n_slots: int, rungs=None) -> float:
+    """Average fraction of each slot that is removed. Unlisted slots count as 0.
+
+    ``rungs`` supplies the fraction for each level. Without them, the level
+    number is a percent.
+    """
     if n_slots <= 0:
         raise ValueError("n_slots must be positive")
-    total = sum(max(int(pct), 0) for pct in assignment.values())
-    return total / (n_slots * 100.0)
+    total = 0.0
+    for pct in assignment.values():
+        if int(pct) <= 0:
+            continue
+        if rungs is None:
+            total += int(pct) / 100.0
+        else:
+            from engine.layer_select.rungs import fraction_of
+
+            total += fraction_of(tuple(rungs), int(pct))
+    return total / n_slots
 
 
 def _check_levels(levels: tuple[int, ...]) -> None:

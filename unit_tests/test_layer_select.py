@@ -7,12 +7,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from catalog.compressions import CHECKSPARSE_L1_50, SPARSIFY_48, checksparse_l1
+from catalog.compressions import CHECKSPARSE_L1_50, SPARSIFY_48, checksparse_l1, spatial_pool
 from engine.kv_compress.spec import parse_kv_spec
 from engine.layer_select.apply import kv_for_assignment, kv_for_slot, kv_for_slots, parse_singleton, slot_from_kv
 from engine.layer_select.greedy.rank_fill import rank_fill
 from engine.layer_select.levels import LEVELS, next_level
-from engine.layer_select.scores import ScoreRow, load_sweep_scores, word_perplexity
+from engine.layer_select.scores import ScoreRow, load_sweep_scores, task_score, word_perplexity
 from engine.layer_select.slots import Slot, all_slots
 from engine.layer_select.sweep import expand_singleton_configs
 
@@ -56,6 +56,20 @@ class SweepExpanderTests(unittest.TestCase):
         )
         self.assertEqual({slot.target for slot, _level in parsed}, {"k", "v"})
         self.assertEqual({level for _slot, level in parsed}, {25, 50, 75})
+
+    def test_on_off_method_has_one_rung_and_no_prune_percent(self):
+        configs = expand_singleton_configs(
+            n_layers=2,
+            method_kv=spatial_pool(pre_rope=True),
+            method_tag="spatial_pool",
+            results_dir="results/sweep",
+            name_prefix="m",
+        )
+        self.assertEqual(len(configs), 1 + 4)
+        step = configs[1]["kv"]["pipeline"][0]
+        self.assertEqual(step["method"], "spatial_pool")
+        self.assertNotIn("prune_pct", step)
+        self.assertEqual(parse_singleton(configs[1]["kv"]), (Slot(0, "k"), 100))
 
 
 def _row(slot, level, delta, dense=10.0):
@@ -155,6 +169,10 @@ class ScoreReaderTests(unittest.TestCase):
             self.assertAlmostEqual(by_key[(Slot(0, "k"), 25)], 0.4)
             self.assertAlmostEqual(by_key[(Slot(0, "k"), 50)], 1.0)
             self.assertEqual(word_perplexity({"results": {"wikitext": {"word_perplexity,none": 3.5}}}), 3.5)
+            self.assertEqual(task_score({"results": {"gsm8k": {"exact_match,none": 0.8}}}, "exact_match,none"), 0.8)
+            _dense, acc_rows = load_sweep_scores(folder, metric="word_perplexity,none", higher_is_better=True)
+            acc_delta = {(row.slot, row.level): row.delta for row in acc_rows}
+            self.assertAlmostEqual(acc_delta[(Slot(0, "k"), 25)], -0.4)
 
 
 if __name__ == "__main__":
