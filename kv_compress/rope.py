@@ -21,6 +21,7 @@ class RopeTables:
     rope_theta: float
     head_dim: int
     inv_freq: tuple[float, ...] | None = None
+    attention_scaling: float = 1.0
 
     def cos_sin(self, positions: torch.Tensor, dtype: torch.dtype) -> tuple[torch.Tensor, torch.Tensor]:
         if positions.ndim != 1:
@@ -36,7 +37,7 @@ class RopeTables:
             raise ValueError(
                 f"RoPE head_dim={self.head_dim} did not produce a matching table (got {emb.shape[-1]})"
             )
-        return emb.cos().to(dtype=dtype), emb.sin().to(dtype=dtype)
+        return (emb.cos() * self.attention_scaling).to(dtype=dtype), (emb.sin() * self.attention_scaling).to(dtype=dtype)
 
 
 def rotate_half(tensor: torch.Tensor) -> torch.Tensor:
@@ -61,9 +62,14 @@ def rope_from_config(config) -> RopeTables | None:
     """Read ``rope_theta`` and head dim off a decoder config. Missing theta skips RoPE."""
     if config is None:
         return None
+    parameters = getattr(config, "rope_parameters", None)
+    if parameters is None and isinstance(config, dict):
+        parameters = config.get("rope_parameters")
     theta = getattr(config, "rope_theta", None)
     if theta is None and isinstance(config, dict):
         theta = config.get("rope_theta")
+    if theta is None and isinstance(parameters, dict):
+        theta = parameters.get("rope_theta")
     if not isinstance(theta, (int, float)) or isinstance(theta, bool):
         return None
     head_dim = getattr(config, "head_dim", None)

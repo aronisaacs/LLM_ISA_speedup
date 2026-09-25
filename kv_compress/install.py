@@ -62,12 +62,16 @@ def _rope_tables(lm: Any):
     decoder = _decoder_module(lm)
     rotary = getattr(decoder, "rotary_emb", None)
     inv_freq = getattr(rotary, "inv_freq", None)
-    if inv_freq is None:
+    scaling = getattr(rotary, "attention_scaling", 1.0)
+    if not isinstance(scaling, (int, float)) or isinstance(scaling, bool):
+        scaling = 1.0
+    if inv_freq is None and scaling == 1.0:
         return tables
     return type(tables)(
         rope_theta=tables.rope_theta,
         head_dim=tables.head_dim,
-        inv_freq=tuple(float(value) for value in inv_freq.detach().float().cpu().tolist()),
+        inv_freq=None if inv_freq is None else tuple(float(value) for value in inv_freq.detach().float().cpu().tolist()),
+        attention_scaling=float(scaling),
     )
 
 
