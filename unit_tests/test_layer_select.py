@@ -12,6 +12,7 @@ from engine.kv_compress.spec import parse_kv_spec
 from engine.layer_select.apply import kv_for_assignment, kv_for_slot, kv_for_slots, parse_singleton, slot_from_kv
 from engine.layer_select.greedy.rank_fill import rank_fill
 from engine.layer_select.levels import LEVELS, next_level
+from engine.layer_select.rungs import rungs_for
 from engine.layer_select.scores import ScoreRow, load_sweep_scores, task_score, word_perplexity
 from engine.layer_select.slots import Slot, all_slots
 from engine.layer_select.sweep import expand_singleton_configs
@@ -147,6 +148,18 @@ class ApplyTests(unittest.TestCase):
         spec = parse_kv_spec(kv)
         self.assertEqual(spec.pipeline[0].method, "sparsify_nm")
         self.assertEqual(slot_from_kv(kv_for_slot(CHECKSPARSE_L1_50, Slot(4, "v"), level=50)), Slot(4, "v"))
+
+
+class RungTests(unittest.TestCase):
+    def test_prune_methods_climb_three_rungs_and_on_off_methods_have_one(self):
+        self.assertEqual([rung.level for rung in rungs_for("vector_compress")], [25, 50, 75])
+        self.assertEqual([rung.fraction for rung in rungs_for("vector_compress")], [0.25, 0.50, 0.75])
+        pool = rungs_for("spatial_pool")
+        self.assertEqual(pool[0].level, 100)
+        self.assertAlmostEqual(pool[0].fraction, 7 / 8)
+        self.assertAlmostEqual(rungs_for("qjl")[0].fraction, 0.75)
+        with self.assertRaises(ValueError):
+            rungs_for("dynamic_precision")
 
 
 class ScoreReaderTests(unittest.TestCase):

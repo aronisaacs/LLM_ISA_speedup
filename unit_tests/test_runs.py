@@ -8,8 +8,9 @@ import unittest
 from pathlib import Path
 
 from catalog.compressions import CHECKSPARSE_L1_50, DENSE, DYNAMIC_PRECISION_1684, SPARSIFY_48, vector_compress
+from catalog.tasks import ARC_EASY_256, GSM8K_32, WIKITEXT_FULL
 from engine.eval_runner.device import apply_device, available_device
-from engine.eval_runner.load_run import load_run
+from engine.eval_runner.load_run import grid, load_run
 from engine.kv_compress.spec import parse_kv_spec
 
 
@@ -28,6 +29,32 @@ class LoadRunTests(unittest.TestCase):
             self.assertEqual(loaded["configurations"][0]["name"], "one")
         finally:
             path.unlink()
+
+    def test_grid_crosses_methods_then_tasks(self):
+        configurations = grid(
+            results="results",
+            methods=(("dense", DENSE), ("sparsify48", SPARSIFY_48)),
+            tasks=(ARC_EASY_256, GSM8K_32),
+            model_tag="llama32_1b",
+        )
+        names = [item["name"] for item in configurations]
+        self.assertEqual(
+            names,
+            [
+                "llama32_1b_arc_easy_dense",
+                "llama32_1b_gsm8k_dense",
+                "llama32_1b_arc_easy_sparsify48",
+                "llama32_1b_gsm8k_sparsify48",
+            ],
+        )
+        self.assertEqual(configurations[0]["tasks"], ["arc_easy"])
+        self.assertEqual(configurations[0]["limit"], 256)
+        self.assertNotIn("name_task", configurations[0])
+
+    def test_one_task_without_a_name_stays_out_of_the_configuration_name(self):
+        configurations = grid(results="results", methods=(("qjl_k", DENSE),), tasks=[WIKITEXT_FULL])
+        self.assertEqual(configurations[0]["name"], "llama31_qjl_k")
+        self.assertEqual(configurations[0]["tasks"], ["wikitext"])
 
     def test_python_run_requires_run_function(self):
         with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as handle:

@@ -8,8 +8,10 @@ import unittest
 from pathlib import Path
 
 from catalog.compressions import vector_compress
-from engine.eval_runner.execute import is_finished_result
+from engine.eval_runner.cache import reuse_cached_result, simulation_identity
+from engine.eval_runner.index import record_simulation
 from engine.eval_runner.load_run import load_run
+from engine.kv_compress.spec import parse_kv_spec
 from engine.layer_select.apply import kv_for_slot, parse_singleton
 from engine.layer_select.budgets import (
     BUDGETS,
@@ -176,16 +178,14 @@ class PlotTests(unittest.TestCase):
 
 
 class ResumeTests(unittest.TestCase):
-    def test_finished_json_is_skippable_and_the_study_asks_for_that(self):
+    def test_a_recorded_simulation_is_skipped(self):
         with tempfile.TemporaryDirectory() as tmp:
-            folder = Path(tmp)
-            done = folder / "done.json"
-            broken = folder / "broken.json"
-            done.write_text(json.dumps({"results": {"gsm8k": {"exact_match,flexible-extract": 0.2}}}))
-            broken.write_text("{")
-            self.assertTrue(is_finished_result(done))
-            self.assertFalse(is_finished_result(broken))
-            self.assertFalse(is_finished_result(folder / "missing.json"))
+            root = Path(tmp)
+            base = {"model_args": "pretrained=test/model,dtype=bfloat16", "tasks": ["wikitext"], "num_fewshot": 0}
+            kv = {"pipeline": []}
+            identity = simulation_identity(base, {}, parse_kv_spec(kv))
+            record_simulation(identity, {"wikitext": {"word_perplexity,none": 8.8}}, root=root)
+            self.assertEqual(reuse_cached_result(base, {}, parse_kv_spec(kv), root=root), "skip")
         command = _multi_run_command(Path("study.json"))
         self.assertIn("--skip-existing", command)
 
