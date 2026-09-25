@@ -67,6 +67,11 @@ def spatial_feature(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
     return _spatial("spatial_feature", k_layers, v_layers, chunk, pre_rope)
 
 
+def qjl(k_layers="all", v_layers="all", bits=4):
+    """Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE."""
+    return _step("qjl", k_layers, v_layers, bits=int(bits))
+
+
 def _spatial(method, k_layers, v_layers, chunk, pre_rope, **kwargs):
     payload = _step(method, k_layers, v_layers, chunk=chunk, **kwargs)
     if pre_rope:

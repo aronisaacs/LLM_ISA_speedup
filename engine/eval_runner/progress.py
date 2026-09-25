@@ -52,6 +52,8 @@ def kv_brief(spec) -> str:
         elif method in {"spatial_pool", "spatial_top1", "spatial_tile", "spatial_feature"}:
             rope = "pre-rope" if step.get("pre_rope") else "post-rope"
             parts.append(f"{method} chunk={step.get('chunk', '?')} {rope}")
+        elif method == "qjl":
+            parts.append(f"hadamard bits={step.get('bits', '?')}")
         elif method == "dynamic_precision":
             bits = step.get("bits", "?")
             pcts = step.get("pcts", "?")
