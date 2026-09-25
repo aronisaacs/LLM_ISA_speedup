@@ -7,7 +7,7 @@ Stages, in order:
   tasks   CEval, GSM8K, and HumanEval at each of those assignments
   plots   three resiliency curves and one degradation table per task
 
-Scores are read from results/index.json. A finished simulation is a row there.
+Scores are read from results.json. A finished simulation is a row there.
 A rerun skips a simulation the index already lists.
 
   python scripts/vector_study.py --through sweep
@@ -31,13 +31,12 @@ if str(ROOT) not in sys.path:
 from catalog.compressions import vector_compress  # noqa: E402
 from catalog.models import LLAMA31_8B  # noqa: E402
 from catalog.tasks import WIKITEXT_FULL  # noqa: E402
-from engine.layer_select.budgets import LLAMA31_LAYERS, RESULTS, write_budget_run, write_selections  # noqa: E402
+from engine.layer_select.budgets import FIGURES, LLAMA31_LAYERS, write_budget_run, write_selections  # noqa: E402
 from engine.layer_select.scores import load_sweep_scores  # noqa: E402
 from engine.layer_select.sweep import expand_singleton_configs  # noqa: E402
 from scripts.plot_vector_study import write_sweep_plots, write_task_tables  # noqa: E402
 
 STAGES = ("sweep", "greedy", "tasks", "plots")
-FIGURES = f"{RESULTS}/figures"
 PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"
 
 
@@ -47,7 +46,7 @@ def sweep_run() -> dict:
         n_layers=LLAMA31_LAYERS,
         method_kv=vector_compress(prune_pct=25),
         method_tag="vector",
-        results_dir=RESULTS,
+        results_dir=FIGURES,
         name_prefix="llama31",
         extra=WIKITEXT_FULL,
     )
@@ -80,12 +79,12 @@ def _run_stage(stage: str) -> None:
         return
     if stage == "greedy":
         scored = load_sweep_scores(method="vector_compress", pretrained=PRETRAINED)
-        selections = write_selections(None, RESULTS, scored=scored)
-        run_path = write_budget_run(selections, Path(RESULTS) / "budgets_run.json")
+        selections = write_selections(None, FIGURES, scored=scored)
+        run_path = write_budget_run(selections, Path(FIGURES) / "budgets_run.json")
         print(f"wrote  {run_path}  ({len(selections)} budgets)")
         return
     if stage == "tasks":
-        _multi_run(json.loads((Path(RESULTS) / "budgets_run.json").read_text()))
+        _multi_run(json.loads((Path(FIGURES) / "budgets_run.json").read_text()))
         return
     for path in write_sweep_plots(out_dir=FIGURES, method="vector_compress", pretrained=PRETRAINED):
         print(f"wrote  {path}")

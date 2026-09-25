@@ -1,6 +1,6 @@
 """One row per finished simulation.
 
-``results/index.json`` is the record: identity, scores, sample count, and,
+``results.json`` is the record: identity, scores, sample count, and,
 for a budget eval, the target budget and the realized compression.
 """
 
@@ -11,15 +11,15 @@ from pathlib import Path
 
 from engine.eval_runner.cache import _canonical, _identity_from_file, _legacy
 
-_NAME = "index.json"
+_NAME = "results.json"
 
 
-def results_root() -> Path:
-    return Path(__file__).resolve().parents[2] / "results"
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
 
 
 def index_path(root: Path | None = None) -> Path:
-    return (root or results_root()) / _NAME
+    return (root or repo_root()) / _NAME
 
 
 def simulations(root: Path | None = None) -> list[dict]:
@@ -47,7 +47,7 @@ def record_simulation(
     root: Path | None = None,
 ) -> dict:
     """Append this simulation when the index does not already list it."""
-    root = root or results_root()
+    root = root or repo_root()
     existing = find_result(identity, root)
     if existing is not None:
         return existing
@@ -66,7 +66,7 @@ def record_simulation(
 
 def record_result(path: Path, root: Path | None = None) -> dict | None:
     """Add a result JSON to the index if its simulation is not already listed."""
-    root = root or results_root()
+    root = root or repo_root()
     row = _row_from_file(path)
     if row is None:
         return None
@@ -80,9 +80,9 @@ def record_result(path: Path, root: Path | None = None) -> dict | None:
     )
 
 
-def rebuild(root: Path | None = None) -> list[dict]:
-    """Scan ``root`` and keep the first JSON for each simulation."""
-    root = (root or results_root()).resolve()
+def rebuild(root: Path) -> list[dict]:
+    """Scan ``root`` for old result JSON files and write ``results.json`` there."""
+    root = root.resolve()
     rows = []
     seen: set[str] = set()
     if not root.is_dir():

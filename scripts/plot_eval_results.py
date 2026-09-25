@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Turn multi_run.py result JSONs into a dense-vs-compression accuracy chart.
 
-Reads lm-eval dumps listed in results/index.json, labels each configuration from its kv.pipeline
+Reads scores from results.json, labels each configuration from its kv.pipeline
 (dense vs sparsify n:m, etc.), and writes an SVG bar chart plus a text table.
 """
 
@@ -190,7 +190,7 @@ def main() -> None:
         default=None,
         help="Result JSON files or globs. Default: every JSON in the results index.",
     )
-    parser.add_argument("-o", "--output", default="results/figures/accuracy_vs_compression.svg")
+    parser.add_argument("-o", "--output", default="figures/accuracy_vs_compression.svg")
     args = parser.parse_args()
 
     paths: list[Path] = []

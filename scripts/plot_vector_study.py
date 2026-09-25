@@ -20,7 +20,7 @@ if str(ROOT) not in sys.path:
 from engine.layer_select.levels import LEVELS  # noqa: E402
 from engine.layer_select.scores import load_sweep_scores, word_perplexity  # noqa: E402
 
-FIGURES = "results/figures"
+FIGURES = "figures"
 
 TASK_TITLES = {
     "ceval-valid": "CEval",

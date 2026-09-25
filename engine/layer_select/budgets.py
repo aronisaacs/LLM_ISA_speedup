@@ -18,7 +18,7 @@ from engine.layer_select.slots import all_slots
 LLAMA31_LAYERS = 32
 BUDGETS = (0.10, 0.20, 0.30, 0.40, 0.50, 0.60)
 TASKS = (CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT)
-RESULTS = "results"
+FIGURES = "figures"
 
 
 def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS):
@@ -68,7 +68,7 @@ def write_selections(scores_dir, out_dir, n_layers=None, budgets=BUDGETS, scored
     return payloads
 
 
-def budget_run(selections, tasks=TASKS, results_dir=RESULTS) -> dict:
+def budget_run(selections, tasks=TASKS, results_dir=FIGURES) -> dict:
     """Dense plus one configuration per selection, for each task."""
     configurations = []
     for task in tasks:
@@ -95,14 +95,14 @@ def budget_run(selections, tasks=TASKS, results_dir=RESULTS) -> dict:
     }
 
 
-def write_budget_run(selections, path, tasks=TASKS, results_dir=RESULTS) -> Path:
+def write_budget_run(selections, path, tasks=TASKS, results_dir=FIGURES) -> Path:
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(budget_run(selections, tasks=tasks, results_dir=results_dir), indent=2) + "\n")
     return destination
 
 
-def _task_configuration(task, tag, kv, budget, compression, results_dir=RESULTS) -> dict:
+def _task_configuration(task, tag, kv, budget, compression, results_dir=FIGURES) -> dict:
     extra = {key: value for key, value in task.items() if key not in {"name_task", "file"}}
     configuration = {
         "name": f"llama31_{task['name_task']}_{tag}",

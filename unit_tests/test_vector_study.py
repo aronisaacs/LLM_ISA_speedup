@@ -94,7 +94,7 @@ class BudgetTests(unittest.TestCase):
         self.assertTrue(humaneval["confirm_run_unsafe_code"])
         self.assertEqual(
             humaneval["output_path"],
-            "results/humaneval_instruct_dense.json",
+            "figures/humaneval_instruct_dense.json",
         )
 
     def test_write_selections_round_trip(self):

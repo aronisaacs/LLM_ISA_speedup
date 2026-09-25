@@ -49,7 +49,7 @@ class ResultIndexTests(unittest.TestCase):
             second.write_text(json.dumps(_PAYLOAD))
             row = record_result(first, root)
             record_result(second, root)
-            self.assertEqual(len(json.loads((root / "index.json").read_text())["simulations"]), 1)
+            self.assertEqual(len(json.loads((root / "results.json").read_text())["simulations"]), 1)
             self.assertEqual(find_result(row["identity"], root)["scores"]["wikitext"]["word_perplexity,none"], 8.5)
 
     def test_record_simulation_keeps_samples_and_budget(self):
@@ -67,7 +67,7 @@ class ResultIndexTests(unittest.TestCase):
             again = record_simulation(identity, {"gsm8k": {"exact_match,flexible-extract": 0.9}}, root=root)
             self.assertEqual(again["samples"]["effective"], 32)
             self.assertEqual(row["budget"], 0.1)
-            self.assertEqual(len(json.loads((root / "index.json").read_text())["simulations"]), 1)
+            self.assertEqual(len(json.loads((root / "results.json").read_text())["simulations"]), 1)
 
 
 if __name__ == "__main__":

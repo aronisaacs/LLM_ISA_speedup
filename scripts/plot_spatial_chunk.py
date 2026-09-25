@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
 
 from engine.layer_select.scores import word_perplexity  # noqa: E402
 
-FIGURES = "results/figures"
+FIGURES = "figures"
 
 _METHODS = (
     ("spatial_pool", "Pooling", "1/8"),
@@ -137,9 +137,8 @@ def _table_svg(rows) -> str:
 
 def write_wikitext_table_from_index(figures_dir=FIGURES, pretrained="meta-llama/Llama-3.1-8B-Instruct") -> Path:
     """Look up chunk simulations and the dense WikiText baseline in the results index."""
-    from engine.eval_runner.index import results_root, simulations
+    from engine.eval_runner.index import simulations
 
-    root = results_root()
     dense = None
     scores = {}
     for record in simulations():

@@ -58,7 +58,7 @@ def load_sweep_scores(
 ) -> tuple[float, list[ScoreRow]]:
     """Return (dense score, singleton rows). ``delta`` is quality lost versus dense.
 
-    With no directory, rows come from ``results/index.json``. ``method`` keeps
+    With no directory, rows come from ``results.json``. ``method`` keeps
     only that pipeline (plus the dense baseline).
     """
     if results_dir is None:
