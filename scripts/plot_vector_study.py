@@ -17,9 +17,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from layer_select.budgets import BUDGET_RESULTS, FIGURES_DIR, JSON_DIR, SWEEP_RESULTS  # noqa: E402
-from layer_select.levels import LEVELS  # noqa: E402
-from layer_select.scores import load_sweep_scores, word_perplexity  # noqa: E402
+from engine.layer_select.budgets import BUDGET_RESULTS, FIGURES_DIR, JSON_DIR, SWEEP_RESULTS  # noqa: E402
+from engine.layer_select.levels import LEVELS  # noqa: E402
+from engine.layer_select.scores import load_sweep_scores, word_perplexity  # noqa: E402
 
 TASK_TITLES = {
     "ceval-valid": "CEval",

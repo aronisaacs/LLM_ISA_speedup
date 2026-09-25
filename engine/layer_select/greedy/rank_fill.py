@@ -7,9 +7,9 @@ WikiText scores. Pick argmax (Δcompression / ΔPPL). A slot cannot skip a rung.
 
 from __future__ import annotations
 
-from layer_select.levels import LEVELS, mean_compression, next_level
-from layer_select.scores import ScoreRow, score_table
-from layer_select.slots import Slot, all_slots
+from engine.layer_select.levels import LEVELS, mean_compression, next_level
+from engine.layer_select.scores import ScoreRow, score_table
+from engine.layer_select.slots import Slot, all_slots
 
 
 def rank_fill(

@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from layer_select.budgets import (  # noqa: E402
+from engine.layer_select.budgets import (  # noqa: E402
     BUDGET_RESULTS,
     FIGURES_DIR,
     JSON_DIR,
@@ -79,7 +79,7 @@ def _multi_run(run_path: Path) -> None:
 def _multi_run_command(run_path: Path) -> list[str]:
     return [
         sys.executable,
-        str(ROOT / "multi_run.py"),
+        str(ROOT / "engine" / "multi_run.py"),
         "--run",
         str(run_path),
         "--skip-existing",

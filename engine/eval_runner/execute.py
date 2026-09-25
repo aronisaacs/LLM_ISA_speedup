@@ -8,8 +8,8 @@ import os
 from contextlib import contextmanager
 from pathlib import Path
 
-from eval_runner.device import apply_device, available_device
-from eval_runner.load_run import merge
+from engine.eval_runner.device import apply_device, available_device
+from engine.eval_runner.load_run import merge
 
 _EVAL_DEFAULTS = {
     "num_fewshot": None,
@@ -137,7 +137,7 @@ def normalize_samples(samples):
         except json.JSONDecodeError:
             path = Path(text)
             if not path.is_file():
-                path = Path(__file__).resolve().parents[1] / text
+                path = Path(__file__).resolve().parents[2] / text
             return json.loads(path.read_text())
     return samples
 

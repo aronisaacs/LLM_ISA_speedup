@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import torch
 
-from kv_compress.methods import METHODS
+from engine.kv_compress.methods import METHODS
 
 
 def apply_pool(

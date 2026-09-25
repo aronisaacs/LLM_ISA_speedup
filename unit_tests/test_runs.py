@@ -8,9 +8,9 @@ import unittest
 from pathlib import Path
 
 from catalog.compressions import CHECKSPARSE_L1_50, DENSE, DYNAMIC_PRECISION_1684, SPARSIFY_48, vector_compress
-from eval_runner.device import apply_device, available_device
-from eval_runner.load_run import load_run
-from kv_compress.spec import parse_kv_spec
+from engine.eval_runner.device import apply_device, available_device
+from engine.eval_runner.load_run import load_run
+from engine.kv_compress.spec import parse_kv_spec
 
 ROOT = Path(__file__).resolve().parents[1]
 

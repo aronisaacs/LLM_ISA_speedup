@@ -9,8 +9,8 @@ from __future__ import annotations
 from catalog.compressions import vector_compress
 from catalog.models import LLAMA31_8B
 from catalog.tasks import WIKITEXT_FULL
-from layer_select.budgets import LLAMA31_LAYERS, SWEEP_RESULTS
-from layer_select.sweep import expand_singleton_configs
+from engine.layer_select.budgets import LLAMA31_LAYERS, SWEEP_RESULTS
+from engine.layer_select.sweep import expand_singleton_configs
 
 
 def run():

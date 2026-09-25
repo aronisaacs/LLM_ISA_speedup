@@ -8,13 +8,13 @@ import unittest
 from pathlib import Path
 
 from catalog.compressions import CHECKSPARSE_L1_50, SPARSIFY_48, checksparse_l1
-from kv_compress.spec import parse_kv_spec
-from layer_select.apply import kv_for_assignment, kv_for_slot, kv_for_slots, parse_singleton, slot_from_kv
-from layer_select.greedy.rank_fill import rank_fill
-from layer_select.levels import LEVELS, next_level
-from layer_select.scores import ScoreRow, load_sweep_scores, word_perplexity
-from layer_select.slots import Slot, all_slots
-from layer_select.sweep import expand_singleton_configs
+from engine.kv_compress.spec import parse_kv_spec
+from engine.layer_select.apply import kv_for_assignment, kv_for_slot, kv_for_slots, parse_singleton, slot_from_kv
+from engine.layer_select.greedy.rank_fill import rank_fill
+from engine.layer_select.levels import LEVELS, next_level
+from engine.layer_select.scores import ScoreRow, load_sweep_scores, word_perplexity
+from engine.layer_select.slots import Slot, all_slots
+from engine.layer_select.sweep import expand_singleton_configs
 
 
 class SlotTests(unittest.TestCase):

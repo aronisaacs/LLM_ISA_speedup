@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import torch
 
-from kv_compress.methods import get_method
-from kv_compress.spec import KvSpec, LayerSelection
+from engine.kv_compress.methods import get_method
+from engine.kv_compress.spec import KvSpec, LayerSelection
 
 
 def compress_kv(

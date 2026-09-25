@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from types import SimpleNamespace
 
-from eval_runner.progress import format_hms, kv_brief, summarize_scores
+from engine.eval_runner.progress import format_hms, kv_brief, summarize_scores
 
 
 class ProgressTests(unittest.TestCase):

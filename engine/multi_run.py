@@ -6,7 +6,7 @@ walks its own slice of the list (index modulo the device count). Set
 CUDA_VISIBLE_DEVICES to choose which GPUs take part. One GPU, MPS, or CPU
 runs in this process.
 
-python multi_run.py --run runs/compression_x_task.py
+python engine/multi_run.py --run runs/compression_x_task.py
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import sys
 import time
 from pathlib import Path
 
-from eval_runner import (
+from engine.eval_runner import (
     evaluate,
     is_finished_result,
     load_model_if_needed,
@@ -29,8 +29,8 @@ from eval_runner import (
     split_base_and_configurations,
     write_result_json,
 )
-from eval_runner.progress import format_hms, kv_brief, say, summarize_scores
-from kv_compress import install, parse_kv_spec
+from engine.eval_runner.progress import format_hms, kv_brief, say, summarize_scores
+from engine.kv_compress import install, parse_kv_spec
 
 
 def main() -> None:

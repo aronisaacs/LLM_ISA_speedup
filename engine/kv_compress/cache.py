@@ -11,9 +11,9 @@ from typing import Any
 
 import torch
 
-from kv_compress.pipeline import compress_kv
-from kv_compress.rope import RopeTables, apply_rope
-from kv_compress.spec import KvSpec, LayerSelection
+from engine.kv_compress.pipeline import compress_kv
+from engine.kv_compress.rope import RopeTables, apply_rope
+from engine.kv_compress.spec import KvSpec, LayerSelection
 
 _original_update: Callable[..., Any] | None = None
 

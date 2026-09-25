@@ -11,11 +11,11 @@ import json
 import tempfile
 
 from catalog.compressions import spatial_pool, spatial_top1
-from eval_runner.load_run import load_run
-from kv_compress.cache import patch_cache_update
-from kv_compress.methods.spatial import apply_feature, apply_pool, apply_tile, apply_top1
-from kv_compress.rope import RopeTables, apply_rope
-from kv_compress.spec import parse_kv_spec
+from engine.eval_runner.load_run import load_run
+from engine.kv_compress.cache import patch_cache_update
+from engine.kv_compress.methods.spatial import apply_feature, apply_pool, apply_tile, apply_top1
+from engine.kv_compress.rope import RopeTables, apply_rope
+from engine.kv_compress.spec import parse_kv_spec
 from scripts.plot_spatial_chunk import write_wikitext_table
 
 ROOT = Path(__file__).resolve().parents[1]

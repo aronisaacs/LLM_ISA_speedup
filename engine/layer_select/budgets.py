@@ -8,11 +8,11 @@ from pathlib import Path
 from catalog.compressions import DENSE
 from catalog.models import LLAMA31_8B
 from catalog.tasks import CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT
-from layer_select.apply import kv_for_assignment, method_template
-from layer_select.greedy.rank_fill import rank_fill
-from layer_select.levels import LEVELS, mean_compression
-from layer_select.scores import kv_from_payload, load_sweep_scores
-from layer_select.slots import all_slots
+from engine.layer_select.apply import kv_for_assignment, method_template
+from engine.layer_select.greedy.rank_fill import rank_fill
+from engine.layer_select.levels import LEVELS, mean_compression
+from engine.layer_select.scores import kv_from_payload, load_sweep_scores
+from engine.layer_select.slots import all_slots
 
 LLAMA31_LAYERS = 32
 BUDGETS = (0.10, 0.20, 0.30, 0.40, 0.50, 0.60)

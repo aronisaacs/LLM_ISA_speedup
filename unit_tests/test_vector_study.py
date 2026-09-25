@@ -9,10 +9,10 @@ from pathlib import Path
 
 from catalog.compressions import vector_compress
 from catalog.tasks import GSM8K_20PCT
-from eval_runner.execute import is_finished_result, normalize_samples
-from eval_runner.load_run import load_run
-from layer_select.apply import kv_for_slot, parse_singleton
-from layer_select.budgets import (
+from engine.eval_runner.execute import is_finished_result, normalize_samples
+from engine.eval_runner.load_run import load_run
+from engine.layer_select.apply import kv_for_slot, parse_singleton
+from engine.layer_select.budgets import (
     BUDGETS,
     LLAMA31_LAYERS,
     budget_run,
@@ -20,9 +20,9 @@ from layer_select.budgets import (
     write_budget_run,
     write_selections,
 )
-from layer_select.levels import LEVELS
-from layer_select.scores import ScoreRow
-from layer_select.slots import Slot, all_slots
+from engine.layer_select.levels import LEVELS
+from engine.layer_select.scores import ScoreRow
+from engine.layer_select.slots import Slot, all_slots
 from scripts.plot_vector_study import write_sweep_plots, write_task_tables
 from scripts.vector_study import _multi_run_command
 

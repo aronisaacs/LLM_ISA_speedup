@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from layer_select.slots import Slot
+from engine.layer_select.slots import Slot
 
 LEVELS = (25, 50, 75)
 

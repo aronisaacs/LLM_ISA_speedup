@@ -1,14 +1,14 @@
 """Boilerplate behind multi_run.py: load a run, pick device, call lm-eval."""
 
-from eval_runner.device import apply_device, available_device
-from eval_runner.execute import (
+from engine.eval_runner.device import apply_device, available_device
+from engine.eval_runner.execute import (
     evaluate,
     is_finished_result,
     load_model_if_needed,
     result_output_path,
     write_result_json,
 )
-from eval_runner.load_run import load_run, merge, reject_deprecated_kv_keys, split_base_and_configurations
+from engine.eval_runner.load_run import load_run, merge, reject_deprecated_kv_keys, split_base_and_configurations
 
 __all__ = [
     "apply_device",

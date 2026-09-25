@@ -22,8 +22,8 @@ def get_method(name: str) -> Method:
         raise ValueError(f"Unknown KV compress method {name!r}. Known methods: {known}") from error
 
 
-from kv_compress.methods import checksparse_l1 as _checksparse_l1  # noqa: E402,F401
-from kv_compress.methods import dynamic_precision as _dynamic_precision  # noqa: E402,F401
-from kv_compress.methods import sparsify_nm as _sparsify_nm  # noqa: E402,F401
-from kv_compress.methods import spatial as _spatial  # noqa: E402,F401
-from kv_compress.methods import vector_compress as _vector_compress  # noqa: E402,F401
+from engine.kv_compress.methods import checksparse_l1 as _checksparse_l1  # noqa: E402,F401
+from engine.kv_compress.methods import dynamic_precision as _dynamic_precision  # noqa: E402,F401
+from engine.kv_compress.methods import sparsify_nm as _sparsify_nm  # noqa: E402,F401
+from engine.kv_compress.methods import spatial as _spatial  # noqa: E402,F401
+from engine.kv_compress.methods import vector_compress as _vector_compress  # noqa: E402,F401

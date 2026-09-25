@@ -6,8 +6,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from layer_select.apply import parse_singleton
-from layer_select.slots import Slot
+from engine.layer_select.apply import parse_singleton
+from engine.layer_select.slots import Slot
 
 
 @dataclass(frozen=True)

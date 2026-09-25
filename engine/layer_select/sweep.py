@@ -6,9 +6,9 @@ from copy import deepcopy
 from typing import Any
 
 from catalog.compressions import DENSE
-from layer_select.apply import kv_for_slot
-from layer_select.levels import LEVELS
-from layer_select.slots import Slot, all_slots
+from engine.layer_select.apply import kv_for_slot
+from engine.layer_select.levels import LEVELS
+from engine.layer_select.slots import Slot, all_slots
 
 
 def expand_singleton_configs(

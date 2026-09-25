@@ -10,9 +10,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from kv_compress.cache import patch_cache_update
-from kv_compress.rope import rope_from_config
-from kv_compress.spec import KvSpec, LayerSelection
+from engine.kv_compress.cache import patch_cache_update
+from engine.kv_compress.rope import rope_from_config
+from engine.kv_compress.spec import KvSpec, LayerSelection
 
 
 def install(lm: Any, spec: KvSpec) -> Callable[[], None]:

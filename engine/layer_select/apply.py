@@ -6,7 +6,7 @@ from collections import defaultdict
 from copy import deepcopy
 
 from catalog.compressions import DENSE
-from layer_select.slots import Slot
+from engine.layer_select.slots import Slot
 
 
 def method_template(kv: dict) -> dict:

@@ -6,7 +6,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-import multi_run
+import engine.multi_run as multi_run
 
 
 class WorkerSliceTests(unittest.TestCase):

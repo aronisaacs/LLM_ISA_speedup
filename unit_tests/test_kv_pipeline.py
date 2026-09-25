@@ -8,10 +8,10 @@ import unittest
 
 import torch
 
-from kv_compress.cache import patch_cache_update
-from kv_compress.install import install
-from kv_compress.pipeline import compress_kv
-from kv_compress.spec import parse_kv_spec
+from engine.kv_compress.cache import patch_cache_update
+from engine.kv_compress.install import install
+from engine.kv_compress.pipeline import compress_kv
+from engine.kv_compress.spec import parse_kv_spec
 
 
 class ParseKvSpecTests(unittest.TestCase):
@@ -30,7 +30,7 @@ class ParseKvSpecTests(unittest.TestCase):
             parse_kv_spec({"pipeline": [{"method": "not_a_method", "k_layers": "all"}]})
 
     def test_layer_lists_and_all(self):
-        from kv_compress import methods as methods_module
+        from engine.kv_compress import methods as methods_module
 
         def _identity(tensor, **_kwargs):
             return tensor
@@ -59,7 +59,7 @@ class ParseKvSpecTests(unittest.TestCase):
             methods_module.METHODS.pop("identity", None)
 
     def test_negative_layer_is_rejected(self):
-        from kv_compress import methods as methods_module
+        from engine.kv_compress import methods as methods_module
 
         def _identity(tensor, **_kwargs):
             return tensor

@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from layer_select.scores import word_perplexity  # noqa: E402
+from engine.layer_select.scores import word_perplexity  # noqa: E402
 
 RESULTS = "results/spatial_chunk"
 FIGURES = "results/spatial_chunk/figures"

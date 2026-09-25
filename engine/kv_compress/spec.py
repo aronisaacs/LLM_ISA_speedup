@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
-from kv_compress.methods import METHODS
+from engine.kv_compress.methods import METHODS
 
 LayerSelection = Literal["all"] | frozenset[int]
 
