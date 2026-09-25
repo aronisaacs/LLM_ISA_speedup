@@ -1,4 +1,4 @@
-"""Chunk rewrites, inverse RoPE, and the 14-config WikiText run. No model load."""
+"""Chunk rewrites, inverse RoPE, and the spatial WikiText sweep. No model load."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from engine.kv_compress.methods.spatial import apply_feature, apply_pool, apply_
 from engine.kv_compress.rope import RopeTables, apply_rope
 from engine.kv_compress.spec import parse_kv_spec
 from scripts.plot_spatial_chunk import write_wikitext_table
-from scripts.spatial_chunk import chunk_run
+from scripts.spatial_study import sweep_run
 
 
 def _chunk() -> torch.Tensor:
@@ -126,15 +126,29 @@ class PreRopeHookTests(unittest.TestCase):
 
 
 class SpatialRunTests(unittest.TestCase):
-    def test_chunk_run_is_fourteen_wikitext_configs(self):
-        configurations = chunk_run()["configurations"]
+    def test_sweep_covers_every_method_slot_once(self):
+        configurations = sweep_run()["configurations"]
         names = [item["name"] for item in configurations]
-        self.assertEqual(len(names), 14)
-        self.assertEqual(names[0], "llama31_spatial_pool_k")
-        self.assertEqual(names[-2:], ["llama31_spatial_pool_k_postrope", "llama31_spatial_top1_k_postrope"])
-        self.assertTrue(configurations[0]["kv"]["pipeline"][0]["pre_rope"])
-        self.assertNotIn("pre_rope", configurations[-1]["kv"]["pipeline"][0])
+        self.assertEqual(names[0], "llama31_dense")
+        self.assertEqual(names.count("llama31_dense"), 1)
+        self.assertEqual(len(names), 1 + 4 * 32 * 2)
         self.assertEqual(configurations[0]["tasks"], ["wikitext"])
+        pool_key = next(item for item in configurations if item["name"] == "llama31_spatial_pool_k00_p100")
+        self.assertTrue(pool_key["kv"]["pipeline"][0]["pre_rope"])
+        self.assertEqual(pool_key["kv"]["pipeline"][0]["k_layers"], [0])
+
+    def test_gsm8k_budgets_are_named_per_method(self):
+        from catalog.tasks import GSM8K_20PCT
+        from engine.layer_select.budgets import budget_run
+
+        selection = {
+            "tag": "spatial_pool_p15",
+            "budget": 0.15,
+            "compression": 0.15,
+            "kv": spatial_pool(k_layers=[0], v_layers=[]),
+        }
+        names = [item["name"] for item in budget_run([selection], tasks=(GSM8K_20PCT,))["configurations"]]
+        self.assertEqual(names, ["llama31_gsm8k_dense", "llama31_gsm8k_spatial_pool_p15"])
 
 
 class SpatialTableTests(unittest.TestCase):
