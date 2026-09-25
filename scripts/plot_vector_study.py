@@ -17,9 +17,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from engine.layer_select.budgets import BUDGET_RESULTS, FIGURES_DIR, JSON_DIR, SWEEP_RESULTS  # noqa: E402
 from engine.layer_select.levels import LEVELS  # noqa: E402
 from engine.layer_select.scores import load_sweep_scores, word_perplexity  # noqa: E402
+
+FIGURES = "results/figures"
 
 TASK_TITLES = {
     "ceval-valid": "CEval",
@@ -30,8 +31,11 @@ TASK_TITLES = {
 _TAG = re.compile(r"^(.*)_p(\d+)$")
 
 
-def write_sweep_plots(scores_dir=SWEEP_RESULTS, out_dir=FIGURES_DIR) -> list[Path]:
-    dense_ppl, rows = load_sweep_scores(scores_dir)
+def write_sweep_plots(scores_dir=None, out_dir=FIGURES, method="vector_compress", pretrained=None) -> list[Path]:
+    if scores_dir is None:
+        dense_ppl, rows = load_sweep_scores(method=method, pretrained=pretrained)
+    else:
+        dense_ppl, rows = load_sweep_scores(scores_dir)
     n_layers = max(row.slot.layer for row in rows) + 1
     destination = Path(out_dir)
     destination.mkdir(parents=True, exist_ok=True)
@@ -48,14 +52,18 @@ def write_sweep_svg(dense_ppl, rows, level, n_layers, output: Path) -> None:
     output.write_text(_sweep_svg(dense_ppl, keys, values, level))
 
 
-def write_task_tables(results_dir=BUDGET_RESULTS, study_dir=JSON_DIR, out_dir=FIGURES_DIR) -> list[Path]:
-    index = _load_budget_index(study_dir)
+def write_task_tables(results_dir=None, study_dir=None, out_dir=FIGURES) -> list[Path]:
     grouped: dict[str, list[dict]] = defaultdict(list)
-    for path in sorted(Path(results_dir).glob("*.json")):
-        point = _task_point(path, index)
-        if point is None:
-            continue
-        grouped[point["task"]].append(point)
+    if results_dir is None:
+        for point in _task_points_from_index():
+            grouped[point["task"]].append(point)
+    else:
+        index = _load_budget_index(study_dir) if study_dir is not None else {}
+        for path in sorted(Path(results_dir).glob("*.json")):
+            point = _task_point(path, index)
+            if point is None:
+                continue
+            grouped[point["task"]].append(point)
     if not grouped:
         raise ValueError(f"no task results in {results_dir}")
     destination = Path(out_dir)
@@ -313,6 +321,38 @@ def _pick_from_table(table: dict) -> tuple[str | None, float | None]:
     return None, None
 
 
+def _task_points_from_index() -> list[dict]:
+    from engine.eval_runner.index import results_root, simulations
+
+    root = results_root()
+    points = []
+    for record in simulations():
+        stored = record.get("path") or ""
+        path = Path(stored) if Path(stored).is_absolute() else root / stored
+        if not path.is_file():
+            continue
+        payload = json.loads(path.read_text())
+        task, accuracy = _primary_score(payload)
+        if task is None:
+            continue
+        entry = _entry_from_metadata(payload, "scored")
+        if entry is None:
+            identity = record.get("identity") or {}
+            pipeline = (identity.get("kv") or {}).get("pipeline") or []
+            if pipeline:
+                continue
+            entry = {"budget": 0.0, "compression": 0.0}
+        points.append(
+            {
+                "task": task,
+                "budget": float(entry["budget"]),
+                "compression": float(entry["compression"]),
+                "accuracy": accuracy,
+            }
+        )
+    return points
+
+
 def _load_budget_index(study_dir) -> dict:
     path = Path(study_dir) / "budgets.json"
     if not path.is_file():
@@ -362,10 +402,10 @@ def _ticks(low, high, count):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Redraw vector-study figures from result JSON.")
-    parser.add_argument("--scores", default=SWEEP_RESULTS)
-    parser.add_argument("--tasks", default=BUDGET_RESULTS)
-    parser.add_argument("--json", default=JSON_DIR)
-    parser.add_argument("--figures", default=FIGURES_DIR)
+    parser.add_argument("--scores", default=None, help="Sweep JSON directory. Default: the results index.")
+    parser.add_argument("--tasks", default=None, help="Task JSON directory. Default: the results index.")
+    parser.add_argument("--json", default=None, help="Directory with budgets.json, when --tasks is a folder.")
+    parser.add_argument("--figures", default=FIGURES)
     args = parser.parse_args()
     for path in write_sweep_plots(args.scores, args.figures):
         print(path)

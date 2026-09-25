@@ -46,13 +46,13 @@ class VisibleDeviceTests(unittest.TestCase):
 
 class WorkerCommandTests(unittest.TestCase):
     def test_command_pins_a_slice_and_keeps_skip_existing(self):
-        command = multi_run.worker_command("runs/vector_sweep.py", 1, 4, True)
+        command = multi_run.worker_command("study.json", 1, 4, True)
         self.assertIn("--worker", command)
         self.assertIn("1", command)
         self.assertIn("--workers", command)
         self.assertIn("4", command)
         self.assertIn("--skip-existing", command)
-        self.assertIn("runs/vector_sweep.py", command)
+        self.assertIn("study.json", command)
 
 
 if __name__ == "__main__":

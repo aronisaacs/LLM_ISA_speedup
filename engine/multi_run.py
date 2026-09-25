@@ -6,7 +6,7 @@ walks its own slice of the list (index modulo the device count). Set
 CUDA_VISIBLE_DEVICES to choose which GPUs take part. One GPU, MPS, or CPU
 runs in this process.
 
-python engine/multi_run.py --run runs/comparisons.py:compression_x_task
+python engine/multi_run.py --run study.json
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ def _parse_args():
     parser.add_argument(
         "--run",
         required=True,
-        help="Python run (run() or path.py:function) or JSON, e.g. runs/comparisons.py:compression_x_task",
+        help="Python run (run() or path.py:function) or a JSON list of configurations",
     )
     parser.add_argument(
         "--skip-existing",

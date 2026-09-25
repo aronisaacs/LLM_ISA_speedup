@@ -12,49 +12,8 @@ from engine.eval_runner.device import apply_device, available_device
 from engine.eval_runner.load_run import load_run
 from engine.kv_compress.spec import parse_kv_spec
 
-ROOT = Path(__file__).resolve().parents[1]
-
 
 class LoadRunTests(unittest.TestCase):
-    def test_compression_x_task_expands_dense_then_sparsify(self):
-        loaded = load_run(ROOT / "runs" / "comparisons.py:compression_x_task")
-        names = [configuration["name"] for configuration in loaded["configurations"]]
-        self.assertEqual(
-            names,
-            [
-                "llama32_1b_arc_easy_dense",
-                "llama32_1b_gsm8k_dense",
-                "llama32_1b_arc_easy_sparsify48",
-                "llama32_1b_gsm8k_sparsify48",
-            ],
-        )
-        self.assertEqual(loaded["configurations"][0]["kv"], {"pipeline": []})
-        self.assertEqual(loaded["configurations"][2]["kv"]["pipeline"][0]["method"], "sparsify_nm")
-        self.assertEqual(
-            loaded["configurations"][0]["output_path"],
-            "results/compression_x_task/llama32_1b_arc_easy_dense.json",
-        )
-
-    def test_compression_x_ceval_is_llama31_dense_then_sparsify(self):
-        loaded = load_run(ROOT / "runs" / "comparisons.py:compression_x_ceval")
-        names = [configuration["name"] for configuration in loaded["configurations"]]
-        self.assertEqual(names, ["llama31_ceval_dense", "llama31_ceval_sparsify48"])
-        self.assertEqual(loaded["num_fewshot"], 5)
-        self.assertEqual(loaded["configurations"][0]["tasks"], ["ceval-valid"])
-        self.assertEqual(loaded["configurations"][0]["kv"], {"pipeline": []})
-        self.assertEqual(
-            loaded["configurations"][1]["output_path"],
-            "results/compression_x_ceval/llama31_ceval_sparsify48.json",
-        )
-
-    def test_model_x_compression_x_task_groups_by_model_then_compression(self):
-        loaded = load_run(ROOT / "runs" / "comparisons.py:model_x_compression_x_task")
-        names = [configuration["name"] for configuration in loaded["configurations"]]
-        self.assertEqual(names[0], "llama31_ceval_dense")
-        self.assertEqual(names[3], "llama31_ceval_sparsify48")
-        self.assertEqual(names[-1], "codellama7b_humaneval_sparsify48")
-        self.assertEqual(len(names), 14)
-
     def test_json_run_still_loads(self):
         payload = {
             "device": "cpu",
@@ -79,11 +38,6 @@ class LoadRunTests(unittest.TestCase):
                 load_run(path)
         finally:
             path.unlink()
-
-    def test_compression_x_task_does_not_hardcode_mps(self):
-        loaded = load_run(ROOT / "runs" / "comparisons.py:compression_x_task")
-        self.assertNotIn("device", loaded)
-        self.assertNotIn("mps", loaded["model_args"])
 
     def test_available_device_is_a_known_backend(self):
         self.assertIn(available_device(), {"cuda", "mps", "cpu"})

@@ -23,6 +23,11 @@ def index_path(root: Path | None = None) -> Path:
     return (root or results_root()) / _NAME
 
 
+def simulations(root: Path | None = None) -> list[dict]:
+    """Every finished simulation in the index."""
+    return _rows(root)
+
+
 def find_result(identity: dict, root: Path | None = None) -> dict | None:
     """The index row for this simulation, or ``None`` when it has not been scored."""
     rows = _rows(root)

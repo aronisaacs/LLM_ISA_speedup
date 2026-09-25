@@ -1,7 +1,6 @@
 """Turn WikiText sweep scores into a mixed-level layer assignment.
 
-  python scripts/select_layers.py --scores results/sweep --budget 0.5 \\
-      --out results/sweep/selected.json
+  python scripts/select_layers.py --budget 0.5 --out results/selected.json
 """
 
 from __future__ import annotations
@@ -26,11 +25,11 @@ def main() -> None:
         help="Mean compression across key and value slots in [0, 1], e.g. 0.5 = 50%% average",
     )
     parser.add_argument("--out", required=True, help="Write selected.json here")
-    parser.add_argument("--scores", required=True, help="Directory of singleton sweep JSONs")
+    parser.add_argument("--scores", default=None, help="Sweep JSON directory. Default: the results index.")
     parser.add_argument("--n-layers", type=int, default=None)
     args = parser.parse_args()
 
-    dense_ppl, rows = load_sweep_scores(args.scores)
+    dense_ppl, rows = load_sweep_scores(args.scores, method="vector_compress" if args.scores is None else None)
     n_layers = args.n_layers or _n_layers_from_rows(rows)
     assignment = rank_fill(rows, n_layers, args.budget, dense_ppl=dense_ppl)
     template = method_template(kv_from_payload(json.loads(Path(rows[0].path).read_text())))

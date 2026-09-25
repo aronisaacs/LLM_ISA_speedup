@@ -17,9 +17,7 @@ if str(ROOT) not in sys.path:
 
 from engine.layer_select.scores import word_perplexity  # noqa: E402
 
-RESULTS = "results/spatial_chunk"
-FIGURES = "results/spatial_chunk/figures"
-DENSE = "results/vector_study/json/sweep/llama31_dense.json"
+FIGURES = "results/figures"
 
 _METHODS = (
     ("spatial_pool", "Pooling", "1/8"),
@@ -31,8 +29,8 @@ _TARGETS = (("k", "Keys"), ("v", "Values"), ("both", "Both"))
 
 
 def write_wikitext_table(
-    results_dir=RESULTS,
-    dense_path=DENSE,
+    results_dir,
+    dense_path,
     figures_dir=FIGURES,
 ) -> Path:
     dense = word_perplexity(json.loads(Path(dense_path).read_text()))
@@ -137,12 +135,94 @@ def _table_svg(rows) -> str:
     return "".join(parts)
 
 
+def write_wikitext_table_from_index(figures_dir=FIGURES, pretrained="meta-llama/Llama-3.1-8B-Instruct") -> Path:
+    """Look up chunk simulations and the dense WikiText baseline in the results index."""
+    from engine.eval_runner.index import results_root, simulations
+
+    root = results_root()
+    dense = None
+    scores = {}
+    for record in simulations():
+        identity = record.get("identity") or {}
+        if "wikitext" not in (identity.get("tasks") or []):
+            continue
+        if identity.get("pretrained") != pretrained:
+            continue
+        pipeline = (identity.get("kv") or {}).get("pipeline") or []
+        value = (record.get("scores") or {}).get("wikitext", {}).get("word_perplexity,none")
+        if value is None:
+            continue
+        if not pipeline:
+            dense = float(value)
+            continue
+        step = pipeline[0]
+        method = step.get("method")
+        if method not in {name for name, _label, _stored in _METHODS}:
+            continue
+        target = _target(step)
+        rope = "post" if step.get("pre_rope") is False else "pre"
+        if target is None:
+            continue
+        scores[(method, target, rope)] = float(value)
+    if dense is None:
+        raise ValueError("no dense WikiText baseline in the index")
+    rows = [("Baseline", "—", "—", f"{dense:.2f}", "0%", "8/8")]
+    for method, method_label, stored in _METHODS:
+        for target, target_label in _TARGETS:
+            rows.append(
+                (
+                    method_label,
+                    target_label,
+                    "pre-RoPE",
+                    f"{scores[(method, target, 'pre')]:.2f}",
+                    _degradation(scores[(method, target, "pre")], dense),
+                    stored,
+                )
+            )
+    for method, method_label, stored in _METHODS[:2]:
+        perplexity = scores[(method, "k", "post")]
+        rows.append(
+            (
+                method_label,
+                "Keys",
+                "post-RoPE",
+                f"{perplexity:.2f}",
+                _degradation(perplexity, dense),
+                stored,
+            )
+        )
+    destination = Path(figures_dir)
+    destination.mkdir(parents=True, exist_ok=True)
+    path = destination / "wikitext.svg"
+    path.write_text(_table_svg(rows))
+    return path
+
+
+def _target(step: dict) -> str | None:
+    k_layers = step.get("k_layers")
+    v_layers = step.get("v_layers")
+    k_on = k_layers == "all" or k_layers not in (None, [], ())
+    v_on = v_layers == "all" or v_layers not in (None, [], ())
+    if k_on and v_on:
+        return "both"
+    if k_on:
+        return "k"
+    if v_on:
+        return "v"
+    return None
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Draw the chunk-compression WikiText table.")
-    parser.add_argument("--results", default=RESULTS)
-    parser.add_argument("--dense", default=DENSE)
+    parser.add_argument("--results", default=None, help="Folder of chunk JSONs. Default: the results index.")
+    parser.add_argument("--dense", default=None)
     parser.add_argument("--figures", default=FIGURES)
     args = parser.parse_args()
+    if args.results is None:
+        print(write_wikitext_table_from_index(args.figures))
+        return
+    if args.dense is None:
+        raise SystemExit("--dense is required with --results")
     print(write_wikitext_table(args.results, args.dense, args.figures))
 
 

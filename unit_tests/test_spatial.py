@@ -10,15 +10,12 @@ import torch
 import json
 import tempfile
 
-from catalog.compressions import spatial_pool, spatial_top1
-from engine.eval_runner.load_run import load_run
+from catalog.compressions import spatial_pool
 from engine.kv_compress.cache import patch_cache_update
 from engine.kv_compress.methods.spatial import apply_feature, apply_pool, apply_tile, apply_top1
 from engine.kv_compress.rope import RopeTables, apply_rope
 from engine.kv_compress.spec import parse_kv_spec
 from scripts.plot_spatial_chunk import write_wikitext_table
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def _chunk() -> torch.Tensor:
@@ -115,24 +112,6 @@ class PreRopeHookTests(unittest.TestCase):
             uninstall()
         expected = apply_pool(rotated, layer_idx=0, target="k", chunk=4)
         self.assertTrue(torch.allclose(stored, expected, atol=1e-5))
-
-
-class SpatialRunTests(unittest.TestCase):
-    def test_run_has_fourteen_wikitext_configs(self):
-        loaded = load_run(ROOT / "runs" / "llama31.py:spatial_chunk")
-        names = [configuration["name"] for configuration in loaded["configurations"]]
-        self.assertEqual(len(names), 14)
-        self.assertEqual(names[0], "llama31_spatial_pool_k")
-        self.assertEqual(names[-2], "llama31_spatial_pool_k_postrope")
-        self.assertEqual(names[-1], "llama31_spatial_top1_k_postrope")
-        self.assertEqual(loaded["configurations"][0]["tasks"], ["wikitext"])
-        self.assertTrue(loaded["configurations"][0]["kv"]["pipeline"][0]["pre_rope"])
-        post = loaded["configurations"][-1]["kv"]["pipeline"][0]
-        self.assertNotIn("pre_rope", post)
-        self.assertEqual(post["method"], "spatial_top1")
-        self.assertEqual(loaded["configurations"][0]["output_path"], "results/spatial_chunk/llama31_spatial_pool_k.json")
-        keys_only = spatial_top1(k_layers="all", v_layers=[])
-        self.assertEqual(keys_only["pipeline"][0]["v_layers"], [])
 
 
 class SpatialTableTests(unittest.TestCase):

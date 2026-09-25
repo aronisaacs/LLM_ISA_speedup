@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Turn multi_run.py result JSONs into a dense-vs-compression accuracy chart.
 
-Reads lm-eval dumps (default results/compression_x_task/*.json), labels each configuration from its kv.pipeline
+Reads lm-eval dumps listed in results/index.json, labels each configuration from its kv.pipeline
 (dense vs sparsify n:m, etc.), and writes an SVG bar chart plus a text table.
 """
 
@@ -187,14 +187,23 @@ def main() -> None:
     parser.add_argument(
         "inputs",
         nargs="*",
-        default=["results/compression_x_task/*.json"],
-        help="Result JSON files or globs (default: results/compression_x_task/*.json)",
+        default=None,
+        help="Result JSON files or globs. Default: every JSON in the results index.",
     )
-    parser.add_argument("-o", "--output", default="results/compression_x_task/accuracy_vs_compression.svg")
+    parser.add_argument("-o", "--output", default="results/figures/accuracy_vs_compression.svg")
     args = parser.parse_args()
 
     paths: list[Path] = []
-    for item in args.inputs:
+    if not args.inputs:
+        from engine.eval_runner.index import results_root, simulations
+
+        root = results_root()
+        for record in simulations():
+            stored = record.get("path") or ""
+            path = Path(stored) if Path(stored).is_absolute() else root / stored
+            if path.is_file():
+                paths.append(path)
+    for item in args.inputs or []:
         match = list(Path().glob(item)) if any(ch in item for ch in "*?[]") else [Path(item)]
         paths.extend(path for path in match if path.is_file() and path.suffix == ".json")
     paths = sorted({path.resolve() for path in paths})

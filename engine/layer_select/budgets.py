@@ -18,12 +18,7 @@ from engine.layer_select.slots import all_slots
 LLAMA31_LAYERS = 32
 BUDGETS = (0.10, 0.20, 0.30, 0.40, 0.50, 0.60)
 TASKS = (CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT)
-
-STUDY_DIR = "results/vector_study"
-JSON_DIR = f"{STUDY_DIR}/json"
-FIGURES_DIR = f"{STUDY_DIR}/figures"
-SWEEP_RESULTS = f"{JSON_DIR}/sweep"
-BUDGET_RESULTS = f"{JSON_DIR}/budgets"
+RESULTS = "results"
 
 
 def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS):
@@ -51,9 +46,9 @@ def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS
     return payloads
 
 
-def write_selections(scores_dir, out_dir, n_layers=None, budgets=BUDGETS) -> list[dict]:
-    """Read a sweep directory and write ``selected_pXX.json`` plus ``budgets.json``."""
-    dense_ppl, rows = load_sweep_scores(scores_dir)
+def write_selections(scores_dir, out_dir, n_layers=None, budgets=BUDGETS, scored=None) -> list[dict]:
+    """Read a sweep directory, or ``scored`` from the index, and write selections."""
+    dense_ppl, rows = scored if scored is not None else load_sweep_scores(scores_dir)
     if n_layers is None:
         n_layers = max(row.slot.layer for row in rows) + 1
     method_kv = kv_from_payload(json.loads(Path(rows[0].path).read_text()))
@@ -73,11 +68,13 @@ def write_selections(scores_dir, out_dir, n_layers=None, budgets=BUDGETS) -> lis
     return payloads
 
 
-def budget_run(selections, tasks=TASKS) -> dict:
+def budget_run(selections, tasks=TASKS, results_dir=RESULTS) -> dict:
     """Dense plus one configuration per selection, for each task."""
     configurations = []
     for task in tasks:
-        configurations.append(_task_configuration(task, "dense", DENSE, budget=0.0, compression=0.0))
+        configurations.append(
+            _task_configuration(task, "dense", DENSE, budget=0.0, compression=0.0, results_dir=results_dir)
+        )
     for selection in selections:
         for task in tasks:
             configurations.append(
@@ -87,6 +84,7 @@ def budget_run(selections, tasks=TASKS) -> dict:
                     selection["kv"],
                     budget=selection["budget"],
                     compression=selection["compression"],
+                    results_dir=results_dir,
                 )
             )
     return {
@@ -97,19 +95,19 @@ def budget_run(selections, tasks=TASKS) -> dict:
     }
 
 
-def write_budget_run(selections, path, tasks=TASKS) -> Path:
+def write_budget_run(selections, path, tasks=TASKS, results_dir=RESULTS) -> Path:
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(json.dumps(budget_run(selections, tasks=tasks), indent=2) + "\n")
+    destination.write_text(json.dumps(budget_run(selections, tasks=tasks, results_dir=results_dir), indent=2) + "\n")
     return destination
 
 
-def _task_configuration(task, tag, kv, budget, compression) -> dict:
+def _task_configuration(task, tag, kv, budget, compression, results_dir=RESULTS) -> dict:
     extra = {key: value for key, value in task.items() if key not in {"name_task", "file"}}
     configuration = {
         "name": f"llama31_{task['name_task']}_{tag}",
         "kv": kv,
-        "output_path": f"{BUDGET_RESULTS}/{task['file']}_{tag}.json",
+        "output_path": f"{results_dir.rstrip('/')}/{task['file']}_{tag}.json",
         "metadata": {"kv_budget": budget, "kv_compression": compression},
     }
     configuration.update(extra)

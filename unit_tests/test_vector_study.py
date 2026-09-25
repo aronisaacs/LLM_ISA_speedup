@@ -47,7 +47,9 @@ def _rows(n_layers):
 
 class VectorSweepTests(unittest.TestCase):
     def test_sweep_is_wikitext_singletons_at_three_rungs(self):
-        loaded = load_run(ROOT / "runs" / "vector_sweep.py")
+        from scripts.vector_study import sweep_run
+
+        loaded = sweep_run()
         configurations = loaded["configurations"]
         self.assertEqual(len(configurations), 1 + LLAMA31_LAYERS * 2 * len(LEVELS))
         self.assertEqual(loaded["model_args"], "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16")
@@ -90,7 +92,7 @@ class BudgetTests(unittest.TestCase):
         self.assertTrue(humaneval["confirm_run_unsafe_code"])
         self.assertEqual(
             humaneval["output_path"],
-            "results/vector_study/json/budgets/humaneval_instruct_dense.json",
+            "results/humaneval_instruct_dense.json",
         )
 
     def test_write_selections_round_trip(self):
@@ -184,7 +186,7 @@ class ResumeTests(unittest.TestCase):
             self.assertTrue(is_finished_result(done))
             self.assertFalse(is_finished_result(broken))
             self.assertFalse(is_finished_result(folder / "missing.json"))
-        command = _multi_run_command(Path("runs/vector_sweep.py"))
+        command = _multi_run_command(Path("study.json"))
         self.assertIn("--skip-existing", command)
 
 
