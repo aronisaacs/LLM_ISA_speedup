@@ -50,7 +50,7 @@ class QjlRewriteTests(unittest.TestCase):
 
 class QjlRunTests(unittest.TestCase):
     def test_run_is_three_post_rope_wikitext_configs(self):
-        loaded = load_run(ROOT / "runs" / "qjl.py")
+        loaded = load_run(ROOT / "runs" / "llama31.py:qjl")
         names = [item["name"] for item in loaded["configurations"]]
         self.assertEqual(names, ["llama31_qjl_k", "llama31_qjl_v", "llama31_qjl_both"])
         step = loaded["configurations"][0]["kv"]["pipeline"][0]

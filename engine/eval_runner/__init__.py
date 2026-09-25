@@ -8,12 +8,13 @@ from engine.eval_runner.execute import (
     result_output_path,
     write_result_json,
 )
-from engine.eval_runner.load_run import load_run, merge, reject_deprecated_kv_keys, split_base_and_configurations
+from engine.eval_runner.load_run import grid, load_run, merge, reject_deprecated_kv_keys, split_base_and_configurations
 
 __all__ = [
     "apply_device",
     "available_device",
     "evaluate",
+    "grid",
     "is_finished_result",
     "load_model_if_needed",
     "result_output_path",

@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class LoadRunTests(unittest.TestCase):
     def test_compression_x_task_expands_dense_then_sparsify(self):
-        loaded = load_run(ROOT / "runs" / "compression_x_task.py")
+        loaded = load_run(ROOT / "runs" / "comparisons.py:compression_x_task")
         names = [configuration["name"] for configuration in loaded["configurations"]]
         self.assertEqual(
             names,
@@ -36,7 +36,7 @@ class LoadRunTests(unittest.TestCase):
         )
 
     def test_compression_x_ceval_is_llama31_dense_then_sparsify(self):
-        loaded = load_run(ROOT / "runs" / "compression_x_ceval.py")
+        loaded = load_run(ROOT / "runs" / "comparisons.py:compression_x_ceval")
         names = [configuration["name"] for configuration in loaded["configurations"]]
         self.assertEqual(names, ["llama31_ceval_dense", "llama31_ceval_sparsify48"])
         self.assertEqual(loaded["num_fewshot"], 5)
@@ -48,7 +48,7 @@ class LoadRunTests(unittest.TestCase):
         )
 
     def test_model_x_compression_x_task_groups_by_model_then_compression(self):
-        loaded = load_run(ROOT / "runs" / "model_x_compression_x_task.py")
+        loaded = load_run(ROOT / "runs" / "comparisons.py:model_x_compression_x_task")
         names = [configuration["name"] for configuration in loaded["configurations"]]
         self.assertEqual(names[0], "llama31_ceval_dense")
         self.assertEqual(names[3], "llama31_ceval_sparsify48")
@@ -81,7 +81,7 @@ class LoadRunTests(unittest.TestCase):
             path.unlink()
 
     def test_compression_x_task_does_not_hardcode_mps(self):
-        loaded = load_run(ROOT / "runs" / "compression_x_task.py")
+        loaded = load_run(ROOT / "runs" / "comparisons.py:compression_x_task")
         self.assertNotIn("device", loaded)
         self.assertNotIn("mps", loaded["model_args"])
 

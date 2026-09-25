@@ -119,7 +119,7 @@ class PreRopeHookTests(unittest.TestCase):
 
 class SpatialRunTests(unittest.TestCase):
     def test_run_has_fourteen_wikitext_configs(self):
-        loaded = load_run(ROOT / "runs" / "spatial_chunk.py")
+        loaded = load_run(ROOT / "runs" / "llama31.py:spatial_chunk")
         names = [configuration["name"] for configuration in loaded["configurations"]]
         self.assertEqual(len(names), 14)
         self.assertEqual(names[0], "llama31_spatial_pool_k")

@@ -6,7 +6,7 @@ walks its own slice of the list (index modulo the device count). Set
 CUDA_VISIBLE_DEVICES to choose which GPUs take part. One GPU, MPS, or CPU
 runs in this process.
 
-python engine/multi_run.py --run runs/compression_x_task.py
+python engine/multi_run.py --run runs/comparisons.py:compression_x_task
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ def _parse_args():
     parser.add_argument(
         "--run",
         required=True,
-        help="Python run (run()) or JSON, e.g. runs/compression_x_task.py",
+        help="Python run (run() or path.py:function) or JSON, e.g. runs/comparisons.py:compression_x_task",
     )
     parser.add_argument(
         "--skip-existing",
@@ -121,13 +121,12 @@ def _spawn_workers(args, devices: list[str]) -> None:
 def _run_configurations(args) -> None:
     worker = 0 if args.worker is None else args.worker
     workers = 1 if args.workers is None else args.workers
-    run_path = Path(args.run)
-    base, configurations = split_base_and_configurations(load_run(run_path))
+    base, configurations = split_base_and_configurations(load_run(args.run))
     total = len(configurations)
     mine = configurations_for_worker(configurations, worker, workers)
     label = _device_label(workers)
     if label is None:
-        say(f"run  {run_path.stem}  {total} configuration{'s' if total != 1 else ''}")
+        say(f"run  {_run_label(args.run)}  {total} configuration{'s' if total != 1 else ''}")
     else:
         say(f"{label}  {len(mine)} of {total} configurations")
 
@@ -170,6 +169,15 @@ def _run_configurations(args) -> None:
             f"done   {wrote}  {summarize_scores(results)}  "
             f"elapsed {format_hms(elapsed)}  eta {format_hms(remaining)}",
         )
+
+
+def _run_label(run: str) -> str:
+    text = str(run)
+    marker = ".py:"
+    index = text.rfind(marker)
+    if index == -1:
+        return Path(text).stem
+    return f"{Path(text[: index + 3]).stem}:{text[index + len(marker) :]}"
 
 
 def _device_label(workers: int) -> str | None:
