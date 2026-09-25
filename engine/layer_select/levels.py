@@ -8,14 +8,28 @@ LEVELS = (25, 50, 75)
 
 
 def next_level(current: int, levels: tuple[int, ...] = LEVELS) -> int | None:
-    """Next rung strictly above ``current`` (0 = uncompressed)."""
+    """Next rung after ``current`` (0 = uncompressed).
+
+    Increasing rungs are walked by magnitude, so 25 then 50 then 75. A code
+    that shrinks, such as 4 bits then 3 then 2 then 1, is walked in the order
+    the tuple lists.
+    """
     _check_levels(levels)
     if current < 0:
         raise ValueError("current level must be >= 0")
-    for pct in levels:
-        if pct > current:
-            return int(pct)
-    return None
+    if all(levels[index] < levels[index + 1] for index in range(len(levels) - 1)):
+        for pct in levels:
+            if pct > current:
+                return int(pct)
+        return None
+    if current == 0:
+        return int(levels[0])
+    for index, pct in enumerate(levels):
+        if pct == current:
+            if index + 1 == len(levels):
+                return None
+            return int(levels[index + 1])
+    raise ValueError(f"level {current} is not one of {list(levels)}")
 
 
 def mean_compression(assignment: dict[Slot, int], n_slots: int, rungs=None) -> float:
@@ -42,8 +56,8 @@ def mean_compression(assignment: dict[Slot, int], n_slots: int, rungs=None) -> f
 def _check_levels(levels: tuple[int, ...]) -> None:
     if not levels:
         raise ValueError("levels must be non-empty")
-    previous = 0
+    seen: set[int] = set()
     for pct in levels:
-        if not isinstance(pct, int) or isinstance(pct, bool) or pct <= previous or pct > 100:
-            raise ValueError("levels must be increasing integers in 1..100")
-        previous = pct
+        if not isinstance(pct, int) or isinstance(pct, bool) or pct < 1 or pct > 100 or pct in seen:
+            raise ValueError("levels must be distinct integers in 1..100")
+        seen.add(pct)

@@ -1,6 +1,7 @@
 """Rungs a compression method can climb, and the byte fraction each rung removes.
 
-Prune-style methods use 25/50/75 percent. A method that is only on or off for a
+Prune-style methods use 25/50/75 percent. QJL walks 4, 3, 2, then 1 bits, and
+the level number is that bit width. A method that is only on or off for a
 layer has one rung, and the fraction is how much of that slot the method drops.
 """
 
@@ -18,7 +19,8 @@ class Rung:
 PRUNE = (Rung(25, 0.25), Rung(50, 0.50), Rung(75, 0.75))
 _ON_POOL = (Rung(100, 7 / 8),)
 _ON_TWO_VECTORS = (Rung(100, 6 / 8),)
-_ON_FOUR_BIT = (Rung(100, 0.75),)
+# Mildest code first. 4 bits removes 12/16 of a slot; 1 bit removes 15/16.
+QJL = (Rung(4, 12 / 16), Rung(3, 13 / 16), Rung(2, 14 / 16), Rung(1, 15 / 16))
 
 RUNGS = {
     "vector_compress": PRUNE,
@@ -28,7 +30,7 @@ RUNGS = {
     "spatial_top1": _ON_TWO_VECTORS,
     "spatial_tile": _ON_TWO_VECTORS,
     "spatial_feature": _ON_TWO_VECTORS,
-    "qjl": _ON_FOUR_BIT,
+    "qjl": QJL,
 }
 
 

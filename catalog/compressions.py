@@ -68,7 +68,10 @@ def spatial_feature(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
 
 
 def qjl(k_layers="all", v_layers="all", bits=4):
-    """Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE."""
+    """Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE.
+
+    The sweep climber overwrites ``bits`` per slot, walking 4, then 3, then 2, then 1.
+    """
     return _step("qjl", k_layers, v_layers, bits=int(bits))
 
 

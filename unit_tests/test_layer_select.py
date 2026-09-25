@@ -151,13 +151,16 @@ class ApplyTests(unittest.TestCase):
 
 
 class RungTests(unittest.TestCase):
-    def test_prune_methods_climb_three_rungs_and_on_off_methods_have_one(self):
+    def test_prune_climbs_three_rungs_qjl_climbs_bit_widths_and_spatial_is_on_or_off(self):
         self.assertEqual([rung.level for rung in rungs_for("vector_compress")], [25, 50, 75])
         self.assertEqual([rung.fraction for rung in rungs_for("vector_compress")], [0.25, 0.50, 0.75])
         pool = rungs_for("spatial_pool")
         self.assertEqual(pool[0].level, 100)
         self.assertAlmostEqual(pool[0].fraction, 7 / 8)
-        self.assertAlmostEqual(rungs_for("qjl")[0].fraction, 0.75)
+        qjl_rungs = rungs_for("qjl")
+        self.assertEqual([rung.level for rung in qjl_rungs], [4, 3, 2, 1])
+        self.assertAlmostEqual(qjl_rungs[0].fraction, 0.75)
+        self.assertAlmostEqual(qjl_rungs[-1].fraction, 15 / 16)
         with self.assertRaises(ValueError):
             rungs_for("dynamic_precision")
 
