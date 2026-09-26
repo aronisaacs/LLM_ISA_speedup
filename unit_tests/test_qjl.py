@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import math
+import tempfile
 import unittest
+from pathlib import Path
 
 import torch
 
@@ -15,6 +17,7 @@ from engine.layer_select.levels import next_level
 from engine.layer_select.rungs import rungs_for
 from engine.layer_select.scores import ScoreRow
 from engine.layer_select.slots import Slot, all_slots
+from scripts.plot_qjl import write_qjl_study
 from scripts.qjl_study import sweep_run
 
 
@@ -97,6 +100,27 @@ class QjlRunTests(unittest.TestCase):
             rows.append(ScoreRow(slot=slot, level=level, ppl=10.0 + delta, delta=delta, path=f"{slot.tag()}p{level}.json"))
         chosen = rank_fill(rows, n_layers=1, budget=0.84, dense_ppl=10.0, rungs=rungs_for("qjl"))
         self.assertEqual(chosen, {Slot(0, "v"): 4, Slot(0, "k"): 1})
+
+    def test_figures_cover_each_bit_width_and_each_task(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = write_qjl_study(tmp)
+            names = sorted(path.name for path in paths)
+            gsm8k = Path(tmp, "qjl_gsm8k.svg").read_text()
+        self.assertEqual(
+            names,
+            [
+                "qjl_ceval.svg",
+                "qjl_gsm8k.svg",
+                "qjl_humaneval.svg",
+                "qjl_sweep_1bit.svg",
+                "qjl_sweep_2bit.svg",
+                "qjl_sweep_3bit.svg",
+                "qjl_sweep_4bit.svg",
+            ],
+        )
+        self.assertIn("Baseline", gsm8k)
+        self.assertIn("60%", gsm8k)
+        self.assertIn("90%", gsm8k)
 
 
 if __name__ == "__main__":
