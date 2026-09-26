@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WikiText table for the uniform chunk-compression run.
+"""Sweep curves and the GSM8K table for the spatial study.
 
   python scripts/plot_spatial_chunk.py
 """
@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from engine.layer_select.scores import word_perplexity  # noqa: E402
+from engine.layer_select.scores import load_sweep_scores, word_perplexity  # noqa: E402
+from scripts.plot_vector_study import _format_percent, _table_svg as _budget_table_svg, write_sweep_svg  # noqa: E402
 
 FIGURES = "figures"
 
@@ -25,6 +26,8 @@ _METHODS = (
     ("spatial_tile", "Per-tile", "2/8"),
     ("spatial_feature", "Per-feature", "2/8"),
 )
+_STUDY = tuple((method, label) for method, label, _stored in _METHODS)
+_PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"
 _TARGETS = (("k", "Keys"), ("v", "Values"), ("both", "Both"))
 
 
@@ -211,14 +214,80 @@ def _target(step: dict) -> str | None:
     return None
 
 
+def write_spatial_study(figures_dir=FIGURES, pretrained=_PRETRAINED) -> list[Path]:
+    """One WikiText sweep curve per method, and the GSM8K budget table."""
+    destination = Path(figures_dir)
+    destination.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for method, label in _STUDY:
+        dense_ppl, rows = load_sweep_scores(method=method, pretrained=pretrained)
+        n_layers = max(row.slot.layer for row in rows) + 1
+        path = destination / f"{method}_sweep.svg"
+        write_sweep_svg(
+            dense_ppl,
+            rows,
+            100,
+            n_layers,
+            path,
+            title=f"Per layer resiliency run on Llama 3.1 8B Instruct using WikiText with {label}",
+        )
+        paths.append(path)
+    table = destination / "spatial_gsm8k.svg"
+    table.write_text(_budget_table_svg("GSM8K, spatial", _gsm8k_rows(pretrained)))
+    paths.append(table)
+    return paths
+
+
+def _gsm8k_rows(pretrained: str) -> list[tuple[str, str, str, str]]:
+    from engine.eval_runner.index import simulations
+
+    labels = dict(_STUDY)
+    baseline = None
+    points = []
+    for record in simulations():
+        identity = record.get("identity") or {}
+        if identity.get("pretrained") != pretrained or "gsm8k" not in (identity.get("tasks") or []):
+            continue
+        accuracy = (record.get("scores") or {}).get("gsm8k", {}).get("exact_match,flexible-extract")
+        if accuracy is None:
+            continue
+        pipeline = (identity.get("kv") or {}).get("pipeline") or []
+        if not pipeline:
+            if record.get("budget") in (0, 0.0):
+                baseline = float(accuracy)
+            continue
+        method = pipeline[0].get("method")
+        if method not in labels or "budget" not in record:
+            continue
+        points.append(
+            (method, float(record["budget"]), float(record.get("compression") or 0.0), float(accuracy))
+        )
+    if baseline is None:
+        raise ValueError("no dense Llama 3.1 GSM8K baseline in the index")
+    points.sort(key=lambda item: (list(labels).index(item[0]), item[1]))
+    rows = [("Baseline", f"{baseline * 100:.2f}", "0%", "0%")]
+    for method, budget, compression, accuracy in points:
+        drop = 0.0 if baseline == 0 else (baseline - accuracy) / baseline * 100.0
+        rows.append(
+            (
+                f"{labels[method]} {_format_percent(budget)}",
+                f"{accuracy * 100:.2f}",
+                f"{drop:.2f}%",
+                _format_percent(compression),
+            )
+        )
+    return rows
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Draw the chunk-compression WikiText table.")
-    parser.add_argument("--results", default=None, help="Folder of chunk JSONs. Default: the results index.")
+    parser = argparse.ArgumentParser(description="Draw the spatial sweep curves and GSM8K table.")
+    parser.add_argument("--results", default=None, help="Folder of old uniform-chunk JSONs.")
     parser.add_argument("--dense", default=None)
     parser.add_argument("--figures", default=FIGURES)
     args = parser.parse_args()
     if args.results is None:
-        print(write_wikitext_table_from_index(args.figures))
+        for path in write_spatial_study(args.figures):
+            print(path)
         return
     if args.dense is None:
         raise SystemExit("--dense is required with --results")
