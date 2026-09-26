@@ -67,6 +67,15 @@ def spatial_feature(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
     return _spatial("spatial_feature", k_layers, v_layers, chunk, pre_rope)
 
 
+def quantize(k_layers="all", v_layers="all", bits=8, group=32):
+    """Symmetric int8 or int4, one absmax scale per group of 32. Post-RoPE.
+
+    Values group features inside a token. Keys group tokens inside a feature,
+    using the tokens in this update. The sweep climber walks 8 bits, then 4.
+    """
+    return _step("quantize", k_layers, v_layers, bits=int(bits), group=int(group))
+
+
 def qjl(k_layers="all", v_layers="all", bits=4):
     """Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE.
 

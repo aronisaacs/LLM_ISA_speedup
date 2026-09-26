@@ -93,6 +93,8 @@ def kv_brief(spec) -> str:
             parts.append(f"{method} chunk={step.get('chunk', '?')} {rope}")
         elif method == "qjl":
             parts.append(f"hadamard bits={step.get('bits', '?')}")
+        elif method == "quantize":
+            parts.append(f"quantize int{step.get('bits', '?')} group={step.get('group', '?')}")
         elif method == "dynamic_precision":
             bits = step.get("bits", "?")
             pcts = step.get("pcts", "?")

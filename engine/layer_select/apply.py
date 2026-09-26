@@ -101,7 +101,7 @@ def slot_from_kv(kv: dict | None) -> Slot | None:
 
 def _set_level(step: dict, pct: int) -> None:
     method = step.get("method")
-    if method == "qjl":
+    if method in {"qjl", "quantize"}:
         step["bits"] = int(pct)
         return
     if method == "sparsify_nm":
@@ -118,7 +118,7 @@ def _set_level(step: dict, pct: int) -> None:
 def _level_from_step(step: dict) -> int | None:
     if not step:
         return None
-    if step.get("method") == "qjl" and step.get("bits") is not None:
+    if step.get("method") in {"qjl", "quantize"} and step.get("bits") is not None:
         return int(step["bits"])
     if step.get("prune_pct") is not None:
         return int(step["prune_pct"])
