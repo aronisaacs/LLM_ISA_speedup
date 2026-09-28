@@ -70,8 +70,9 @@ def spatial_feature(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
 def quantize(k_layers="all", v_layers="all", bits=8, group=32):
     """Symmetric int8 or int4, one absmax scale per group of 32. Post-RoPE.
 
-    Values group features inside a token. Keys group tokens inside a feature,
-    using the tokens in this update. The sweep climber walks 8 bits, then 4.
+    Values group features inside a token. Keys group tokens inside a feature
+    across the cache. A short tail stays full precision until the group fills.
+    The sweep climber walks 8 bits, then 4.
     """
     return _step("quantize", k_layers, v_layers, bits=int(bits), group=int(group))
 

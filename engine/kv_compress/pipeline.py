@@ -17,14 +17,21 @@ def compress_kv(
     value_states: torch.Tensor,
     layer_idx: int,
     spec: KvSpec,
+    seq_start: int = 0,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Apply enabled pipeline steps to this layer's new K and V chunks."""
+    """Apply enabled pipeline steps to this layer's new K and V chunks.
+
+    ``seq_start`` is how many tokens this layer already stored. Key quantize
+    uses it so a chunk that begins inside an open group is left exact.
+    """
     for step in spec.pipeline:
         method = get_method(step.method)
+        kwargs = dict(step.kwargs)
+        kwargs["seq_start"] = seq_start
         if _layer_enabled(step.k_layers, layer_idx):
-            key_states = method(key_states, layer_idx=layer_idx, target="k", **step.kwargs)
+            key_states = method(key_states, layer_idx=layer_idx, target="k", **kwargs)
         if _layer_enabled(step.v_layers, layer_idx):
-            value_states = method(value_states, layer_idx=layer_idx, target="v", **step.kwargs)
+            value_states = method(value_states, layer_idx=layer_idx, target="v", **kwargs)
     return key_states, value_states
 
 

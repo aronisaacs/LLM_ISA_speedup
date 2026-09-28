@@ -40,12 +40,17 @@ class QuantizeRewriteTests(unittest.TestCase):
         expected = torch.stack((_qdq(feature0, 4), _qdq(feature1, 4)), dim=-1).view(1, 1, 4, 2)
         self.assertTrue(torch.allclose(rebuilt, expected, atol=1e-5))
 
-    def test_key_tail_is_its_own_group(self):
+    def test_key_tail_stays_full_precision(self):
         channel = torch.arange(40, dtype=torch.float32)
         tensor = channel.view(1, 1, 40, 1)
         rebuilt = apply(tensor, layer_idx=0, target="k", bits=8, group=32).view(40)
-        expected = torch.cat((_qdq(channel[:32], 8), _qdq(channel[32:], 8)))
-        self.assertTrue(torch.allclose(rebuilt, expected, atol=1e-5))
+        self.assertTrue(torch.allclose(rebuilt[:32], _qdq(channel[:32], 8), atol=1e-5))
+        self.assertTrue(torch.equal(rebuilt[32:], channel[32:]))
+
+    def test_key_chunk_inside_an_open_group_stays_exact(self):
+        token = torch.tensor([[[[1.25], [-3.5], [0.5]]]])
+        rebuilt = apply(token, layer_idx=0, target="k", bits=4, group=4, seq_start=6)
+        self.assertTrue(torch.equal(rebuilt, token))
 
     def test_single_decode_key_stays_exact(self):
         token = torch.tensor([[[[1.25, -3.5]]]])
@@ -55,6 +60,93 @@ class QuantizeRewriteTests(unittest.TestCase):
     def test_zero_group_stays_zero(self):
         tensor = torch.zeros(1, 1, 2, 8)
         self.assertTrue(torch.equal(apply(tensor, layer_idx=0, target="v", bits=8, group=4), tensor))
+
+
+class QuantizeCacheTests(unittest.TestCase):
+    def test_a_filled_group_of_generated_keys_is_quantized(self):
+        from transformers.cache_utils import DynamicCache
+
+        from engine.kv_compress.cache import patch_cache_update
+        from engine.kv_compress.spec import parse_kv_spec
+
+        group = 4
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "quantize",
+                        "bits": 4,
+                        "group": group,
+                        "k_layers": "all",
+                        "v_layers": [],
+                    }
+                ]
+            }
+        )
+        raw = torch.tensor(
+            [8.0, 1.0, -4.0, 2.0, 0.5, -0.25, 0.125, 3.0, 0.05],
+            dtype=torch.float32,
+        ).view(1, 1, 9, 1)
+        values = torch.zeros_like(raw)
+        uninstall = patch_cache_update(spec)
+        try:
+            cache = DynamicCache()
+            stored, _ = cache.update(raw[:, :, :6], values[:, :, :6], 0)
+            self.assertTrue(torch.allclose(stored[0, 0, :4, 0], _qdq(raw[0, 0, :4, 0], 4), atol=1e-5))
+            self.assertTrue(torch.equal(stored[0, 0, 4:6, 0], raw[0, 0, 4:6, 0]))
+            opened = stored[0, 0, :4, 0].clone()
+
+            stored, _ = cache.update(raw[:, :, 6:7], values[:, :, 6:7], 0)
+            self.assertTrue(torch.equal(stored[0, 0, 4:7, 0], raw[0, 0, 4:7, 0]))
+            self.assertTrue(torch.equal(stored[0, 0, :4, 0], opened))
+
+            stored, _ = cache.update(raw[:, :, 7:8], values[:, :, 7:8], 0)
+            self.assertTrue(torch.equal(stored[0, 0, :4, 0], opened))
+            self.assertTrue(torch.allclose(stored[0, 0, 4:8, 0], _qdq(raw[0, 0, 4:8, 0], 4), atol=1e-5))
+            self.assertTrue(torch.equal(cache.layers[0].keys, stored))
+
+            stored, _ = cache.update(raw[:, :, 8:9], values[:, :, 8:9], 0)
+            self.assertTrue(torch.equal(stored[0, 0, 8, 0], raw[0, 0, 8, 0]))
+            self.assertTrue(torch.allclose(stored[0, 0, 4:8, 0], _qdq(raw[0, 0, 4:8, 0], 4), atol=1e-5))
+        finally:
+            uninstall()
+
+    def test_a_later_chunk_closes_the_group_it_finishes(self):
+        from transformers.cache_utils import DynamicCache
+
+        from engine.kv_compress.cache import patch_cache_update
+        from engine.kv_compress.spec import parse_kv_spec
+
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "quantize",
+                        "bits": 4,
+                        "group": 4,
+                        "k_layers": [0],
+                        "v_layers": "all",
+                    }
+                ]
+            }
+        )
+        raw = torch.tensor([8.0, 1.0, -4.0, 2.0, 0.5, -0.25, 0.125, 3.0, 0.05], dtype=torch.float32)
+        keys = raw.view(1, 1, 9, 1)
+        values = torch.tensor([8.0, 1.0, -0.5, 0.25]).view(1, 4).repeat(9, 1).view(1, 1, 9, 4)
+        uninstall = patch_cache_update(spec)
+        try:
+            cache = DynamicCache()
+            cache.update(keys[:, :, :6], values[:, :, :6], 0)
+            stored, stored_values = cache.update(keys[:, :, 6:], values[:, :, 6:], 0)
+            self.assertTrue(torch.allclose(stored[0, 0, 4:8, 0], _qdq(raw[4:8], 4), atol=1e-5))
+            self.assertTrue(torch.equal(stored[0, 0, 8, 0], raw[8]))
+            self.assertTrue(torch.allclose(stored_values[0, 0, 6], _qdq(values[0, 0, 6], 4), atol=1e-5))
+
+            other, other_values = cache.update(keys[:, :, :6], values[:, :, :6], 1)
+            self.assertTrue(torch.equal(other, keys[:, :, :6]))
+            self.assertTrue(torch.allclose(other_values, _qdq(values[:, :, :6], 4), atol=1e-5))
+        finally:
+            uninstall()
 
 
 class QuantizeRunTests(unittest.TestCase):
