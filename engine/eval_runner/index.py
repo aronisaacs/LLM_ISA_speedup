@@ -38,6 +38,17 @@ def find_result(identity: dict, root: Path | None = None) -> dict | None:
     return None
 
 
+def drop_simulations(predicate, root: Path | None = None) -> int:
+    """Remove index rows for which ``predicate`` is true. Returns how many dropped."""
+    root = root or repo_root()
+    rows = _rows(root)
+    kept = [row for row in rows if not predicate(row)]
+    removed = len(rows) - len(kept)
+    if removed:
+        _write(root, kept)
+    return removed
+
+
 def record_simulation(
     identity: dict,
     scores: dict,

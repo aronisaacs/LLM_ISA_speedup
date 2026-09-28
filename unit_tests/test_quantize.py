@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,7 +16,7 @@ from engine.layer_select.levels import next_level
 from engine.layer_select.rungs import rungs_for
 from engine.layer_select.slots import Slot
 from scripts.plot_quantize import write_quantize_study
-from scripts.quantize_study import sweep_run
+from scripts.quantize_study import drop_stale_task_rows, sweep_run, tasks_run
 
 
 def _qdq(values: torch.Tensor, bits: int) -> torch.Tensor:
@@ -170,6 +171,28 @@ class QuantizeRunTests(unittest.TestCase):
         self.assertNotIn("pre_rope", eight["kv"]["pipeline"][0])
         self.assertEqual(eight["tasks"], ["wikitext"])
 
+    def test_task_rerun_drops_old_budget_rows_and_keeps_the_sweep(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            rows = [
+                _row(["wikitext"], [{"method": "quantize", "bits": 8}], budget=None),
+                _row(["gsm8k"], [], budget=0.0),
+                _row(["gsm8k"], [{"method": "quantize", "bits": 8}], budget=0.15),
+                _row(["ceval-valid"], [{"method": "vector_compress", "prune_pct": 25}], budget=0.1),
+            ]
+            (root / "results.json").write_text(json.dumps({"simulations": rows}))
+            self.assertEqual(drop_stale_task_rows(root), 1)
+            kept = json.loads((root / "results.json").read_text())["simulations"]
+            tasks = [row["identity"]["tasks"] for row in kept]
+            self.assertEqual(tasks, [["wikitext"], ["gsm8k"], ["ceval-valid"]])
+
+    def test_tasks_run_covers_each_budget_on_each_task(self):
+        names = [item["name"] for item in tasks_run()["configurations"]]
+        self.assertEqual(names[0], "llama31_ceval_dense")
+        self.assertIn("llama31_gsm8k_quantize_p15", names)
+        self.assertIn("llama31_humaneval_instruct_quantize_p75", names)
+        self.assertEqual(len(names), 3 * (1 + 5))
+
     def test_assignment_can_mix_eight_bits_and_four_bits(self):
         kv = kv_for_assignment(quantize(), {Slot(3, "k"): 8, Slot(7, "v"): 4})
         by_bits = {step["bits"]: step for step in kv["pipeline"]}
@@ -196,6 +219,20 @@ class QuantizeRunTests(unittest.TestCase):
         self.assertIn("Baseline", gsm8k)
         self.assertIn("15%", gsm8k)
         self.assertIn("75%", gsm8k)
+
+
+def _row(tasks: list[str], pipeline: list[dict], budget: float | None) -> dict:
+    row = {
+        "identity": {
+            "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+            "tasks": tasks,
+            "kv": {"pipeline": pipeline},
+        },
+        "scores": {},
+    }
+    if budget is not None:
+        row["budget"] = budget
+    return row
 
 
 if __name__ == "__main__":
