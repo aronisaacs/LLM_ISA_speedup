@@ -395,11 +395,12 @@ def _tag_from_stem(stem: str) -> str | None:
 
 
 def _file_stem(task: str) -> str:
-    return {
+    short = {
         "ceval-valid": "ceval",
         "gsm8k": "gsm8k",
         "humaneval_instruct": "humaneval",
     }.get(task, task.replace("-", "_"))
+    return f"vector_compress_{short}"
 
 
 def _format_percent(fraction: float) -> str:

@@ -144,7 +144,7 @@ class PlotTests(unittest.TestCase):
             self.assertIn("Baseline", curve)
             self.assertIn("5% degradation band", curve)
             tables = write_task_tables(tasks, study, study)
-            self.assertEqual(tables[0].name, "ceval.svg")
+            self.assertEqual(tables[0].name, "vector_compress_ceval.svg")
             table = tables[0].read_text()
             self.assertIn("Llama 3.1 8B Instruct — CEval", table)
             self.assertIn("Baseline", table)
