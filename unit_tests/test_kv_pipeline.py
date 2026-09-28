@@ -10,6 +10,13 @@ import torch
 
 from engine.kv_compress.cache import patch_cache_update
 from engine.kv_compress.install import install
+from engine.kv_compress.methods.vector_compress import (
+    apply as vector_apply,
+    disable_zero_run_profile,
+    enable_zero_run_profile,
+    take_zero_run_profile,
+    zero_run_count,
+)
 from engine.kv_compress.pipeline import compress_kv
 from engine.kv_compress.spec import parse_kv_spec
 
@@ -300,6 +307,39 @@ class VectorCompressTests(unittest.TestCase):
         key = torch.tensor([0.1, -0.9, 0.4, 2.0]).reshape(1, 1, 1, 4)
         out_key, _ = compress_kv(key, key.clone(), layer_idx=0, spec=spec)
         self.assertTrue(torch.equal(out_key.reshape(4), torch.tensor([0.0, -0.9, 0.0, 2.0])))
+
+
+class ZeroRunProfileTests(unittest.TestCase):
+    def tearDown(self):
+        disable_zero_run_profile()
+
+    def test_zero_run_count_known_patterns(self):
+        self.assertEqual(zero_run_count(torch.tensor([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0])), 2)
+        self.assertEqual(zero_run_count(torch.tensor([1.0, 2.0, 3.0])), 0)
+        self.assertEqual(zero_run_count(torch.tensor([0.0, 0.0, 0.0])), 1)
+        rows = torch.zeros(2, 3)
+        self.assertEqual(zero_run_count(rows), 2)
+
+    def test_profiled_prune_records_runs_without_changing_values(self):
+        key = torch.tensor([0.1, -0.9, 0.4, 2.0]).reshape(1, 1, 1, 4)
+        enable_zero_run_profile()
+        out = vector_apply(key, layer_idx=0, target="k", prune_pct=50)
+        stats = take_zero_run_profile()
+        self.assertTrue(torch.equal(out.reshape(4), torch.tensor([0.0, -0.9, 0.0, 2.0])))
+        self.assertEqual(stats["runs"], 2)
+        self.assertEqual(stats["vectors"], 1)
+        self.assertEqual(stats["mean"], 2.0)
+        again = vector_apply(key, layer_idx=0, target="k", prune_pct=50)
+        self.assertTrue(torch.equal(again.reshape(4), torch.tensor([0.0, -0.9, 0.0, 2.0])))
+        fresh = take_zero_run_profile()
+        self.assertEqual(fresh["runs"], 2)
+        self.assertEqual(fresh["vectors"], 1)
+
+    def test_profile_off_does_not_record(self):
+        key = torch.tensor([0.1, -0.9, 0.4, 2.0]).reshape(1, 1, 1, 4)
+        out = vector_apply(key, layer_idx=0, target="k", prune_pct=50)
+        self.assertTrue(torch.equal(out.reshape(4), torch.tensor([0.0, -0.9, 0.0, 2.0])))
+        self.assertEqual(take_zero_run_profile()["vectors"], 0)
 
 
 if __name__ == "__main__":
