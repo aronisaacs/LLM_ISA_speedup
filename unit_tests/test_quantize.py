@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
 import torch
 
@@ -12,6 +14,7 @@ from engine.layer_select.apply import kv_for_assignment
 from engine.layer_select.levels import next_level
 from engine.layer_select.rungs import rungs_for
 from engine.layer_select.slots import Slot
+from scripts.plot_quantize import write_quantize_study
 from scripts.quantize_study import sweep_run
 
 
@@ -82,6 +85,25 @@ class QuantizeRunTests(unittest.TestCase):
         self.assertEqual(by_bits[8]["v_layers"], [])
         self.assertEqual(by_bits[4]["k_layers"], [])
         self.assertEqual(by_bits[4]["v_layers"], [7])
+
+    def test_figures_cover_both_widths_and_each_task(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = write_quantize_study(tmp)
+            names = sorted(path.name for path in paths)
+            gsm8k = Path(tmp, "quantize_gsm8k.svg").read_text()
+        self.assertEqual(
+            names,
+            [
+                "quantize_ceval.svg",
+                "quantize_gsm8k.svg",
+                "quantize_humaneval.svg",
+                "quantize_sweep_4bit.svg",
+                "quantize_sweep_8bit.svg",
+            ],
+        )
+        self.assertIn("Baseline", gsm8k)
+        self.assertIn("15%", gsm8k)
+        self.assertIn("75%", gsm8k)
 
 
 if __name__ == "__main__":
