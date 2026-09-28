@@ -162,7 +162,7 @@ class RungTests(unittest.TestCase):
         self.assertAlmostEqual(qjl_rungs[0].fraction, 0.75)
         self.assertAlmostEqual(qjl_rungs[-1].fraction, 15 / 16)
         with self.assertRaises(ValueError):
-            rungs_for("dynamic_precision")
+            rungs_for("not_a_method")
 
 
 class ScoreReaderTests(unittest.TestCase):

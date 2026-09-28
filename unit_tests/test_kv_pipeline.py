@@ -302,49 +302,5 @@ class VectorCompressTests(unittest.TestCase):
         self.assertTrue(torch.equal(out_key.reshape(4), torch.tensor([0.0, -0.9, 0.0, 2.0])))
 
 
-class DynamicPrecisionTests(unittest.TestCase):
-    def test_loud_tile_stays_full_quiet_tile_is_coarse(self):
-        spec = parse_kv_spec(
-            {
-                "pipeline": [
-                    {
-                        "method": "dynamic_precision",
-                        "tile": 8,
-                        "bits": [16, 4],
-                        "pcts": [50, 50],
-                        "k_layers": "all",
-                        "v_layers": [],
-                    }
-                ]
-            }
-        )
-        loud = torch.tensor([10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0])
-        quiet = torch.tensor([0.01, 0.03, -0.02, 0.09, 0.04, -0.07, 0.05, 0.20])
-        key = torch.cat([loud, quiet]).reshape(1, 1, 1, 16)
-        out_key, out_value = compress_kv(key, key.clone(), layer_idx=0, spec=spec)
-        self.assertTrue(torch.equal(out_key.reshape(16)[:8], loud))
-        self.assertFalse(torch.equal(out_key.reshape(16)[8:], quiet))
-        self.assertTrue(torch.equal(out_value, key))
-
-    def test_all_16bit_is_identity(self):
-        spec = parse_kv_spec(
-            {
-                "pipeline": [
-                    {
-                        "method": "dynamic_precision",
-                        "tile": 8,
-                        "bits": [16],
-                        "pcts": [100],
-                        "k_layers": "all",
-                        "v_layers": "all",
-                    }
-                ]
-            }
-        )
-        key = torch.arange(8, dtype=torch.float32).reshape(1, 1, 1, 8)
-        out_key, _ = compress_kv(key, key, layer_idx=0, spec=spec)
-        self.assertTrue(torch.equal(out_key, key))
-
-
 if __name__ == "__main__":
     unittest.main()

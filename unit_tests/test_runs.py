@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from catalog.compressions import CHECKSPARSE_L1_50, DENSE, DYNAMIC_PRECISION_1684, SPARSIFY_48, vector_compress
+from catalog.compressions import CHECKSPARSE_L1_50, DENSE, SPARSIFY_48, vector_compress
 from catalog.tasks import ARC_EASY_256, GSM8K_32, WIKITEXT_FULL
 from engine.eval_runner.device import apply_device, available_device
 from engine.eval_runner.load_run import grid, load_run
@@ -84,7 +84,3 @@ class LoadRunTests(unittest.TestCase):
         vector = parse_kv_spec(vector_compress(threshold=0.1))
         self.assertEqual(vector.pipeline[0].method, "vector_compress")
         self.assertEqual(vector.pipeline[0].kwargs["threshold"], 0.1)
-        dyn = parse_kv_spec(DYNAMIC_PRECISION_1684)
-        self.assertEqual(dyn.pipeline[0].method, "dynamic_precision")
-        self.assertEqual(dyn.pipeline[0].kwargs["bits"], [16, 8, 4])
-        self.assertEqual(dyn.pipeline[0].kwargs["pcts"], [25, 50, 25])
