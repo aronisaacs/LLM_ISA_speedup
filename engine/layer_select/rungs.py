@@ -27,6 +27,7 @@ QUANT = (Rung(8, 0.5), Rung(4, 0.75))
 
 RUNGS = {
     "vector_compress": PRUNE,
+    "vector_compress_pair": PRUNE,
     "checksparse_l1": PRUNE,
     "sparsify_nm": PRUNE,
     "spatial_pool": _ON_POOL,

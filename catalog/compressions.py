@@ -35,6 +35,11 @@ def vector_compress(k_layers="all", v_layers="all", threshold=0.0, prune_pct=Non
     return _step("vector_compress", k_layers, v_layers, threshold=threshold)
 
 
+def vector_compress_pair(k_layers="all", v_layers="all", prune_pct=50):
+    """Zero the weakest adjacent pairs. Pair magnitude is a² + b²."""
+    return _step("vector_compress_pair", k_layers, v_layers, prune_pct=int(prune_pct))
+
+
 def spatial_pool(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
     """Replace each closed chunk with its mean. Keys undo RoPE unless ``pre_rope`` is false."""
     return _spatial("spatial_pool", k_layers, v_layers, chunk, pre_rope)

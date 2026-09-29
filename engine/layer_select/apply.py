@@ -109,7 +109,7 @@ def _set_level(step: dict, pct: int) -> None:
         keep = int(round(n * (1 - pct / 100.0)))
         step["m"] = min(max(keep, 0), n)
         return
-    if method in {"vector_compress", "checksparse_l1"}:
+    if method in {"vector_compress", "vector_compress_pair", "checksparse_l1"}:
         step["prune_pct"] = int(pct)
         if method == "vector_compress":
             step.pop("threshold", None)

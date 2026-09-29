@@ -309,6 +309,65 @@ class VectorCompressTests(unittest.TestCase):
         self.assertTrue(torch.equal(out_key.reshape(4), torch.tensor([0.0, -0.9, 0.0, 2.0])))
 
 
+class VectorCompressPairTests(unittest.TestCase):
+    def test_prune_pct_zeros_the_weakest_pairs(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "vector_compress_pair",
+                        "prune_pct": 50,
+                        "k_layers": "all",
+                        "v_layers": "all",
+                    }
+                ]
+            }
+        )
+        # Magnitudes: 0.02, 9, 4, 0.5. Half the pairs go, both features each.
+        key = torch.tensor([0.1, 0.1, 3.0, 0.0, 0.0, 2.0, 0.5, 0.5]).reshape(1, 1, 1, 8)
+        out_key, _ = compress_kv(key, key.clone(), layer_idx=0, spec=spec)
+        self.assertTrue(
+            torch.equal(out_key.reshape(8), torch.tensor([0.0, 0.0, 3.0, 0.0, 0.0, 2.0, 0.0, 0.0]))
+        )
+
+    def test_a_large_partner_keeps_its_pair(self):
+        spec = parse_kv_spec(
+            {
+                "pipeline": [
+                    {
+                        "method": "vector_compress_pair",
+                        "prune_pct": 50,
+                        "k_layers": [0],
+                        "v_layers": [],
+                    }
+                ]
+            }
+        )
+        key = torch.tensor([0.2, 0.2, 0.0, 3.0]).reshape(1, 1, 1, 4)
+        out_key, out_value = compress_kv(key, key.clone(), layer_idx=0, spec=spec)
+        self.assertTrue(torch.equal(out_key.reshape(4), torch.tensor([0.0, 0.0, 0.0, 3.0])))
+        self.assertTrue(torch.equal(out_value, key))
+
+    def test_zero_percent_is_identity_and_full_prune_is_zero(self):
+        key = torch.tensor([1.0, -2.0, 0.5, 0.25]).reshape(1, 1, 1, 4)
+        kept = parse_kv_spec(
+            {"pipeline": [{"method": "vector_compress_pair", "prune_pct": 0, "k_layers": "all", "v_layers": "all"}]}
+        )
+        cleared = parse_kv_spec(
+            {"pipeline": [{"method": "vector_compress_pair", "prune_pct": 100, "k_layers": "all", "v_layers": "all"}]}
+        )
+        self.assertTrue(torch.equal(compress_kv(key, key, layer_idx=0, spec=kept)[0], key))
+        self.assertTrue(torch.equal(compress_kv(key, key, layer_idx=0, spec=cleared)[0], torch.zeros_like(key)))
+
+    def test_odd_feature_count_is_rejected(self):
+        spec = parse_kv_spec(
+            {"pipeline": [{"method": "vector_compress_pair", "prune_pct": 50, "k_layers": "all", "v_layers": "all"}]}
+        )
+        key = torch.arange(3, dtype=torch.float32).reshape(1, 1, 1, 3)
+        with self.assertRaises(ValueError):
+            compress_kv(key, key, layer_idx=0, spec=spec)
+
+
 class ZeroRunProfileTests(unittest.TestCase):
     def tearDown(self):
         disable_zero_run_profile()

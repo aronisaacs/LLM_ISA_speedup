@@ -10,3 +10,4 @@ from compression_topics.quantize.algorithms import quantize as _quantize  # noqa
 from compression_topics.sparsify.algorithms import sparsify_nm as _sparsify_nm  # noqa: F401
 from compression_topics.spatial.algorithms import spatial as _spatial  # noqa: F401
 from compression_topics.vector.algorithms import vector_compress as _vector_compress  # noqa: F401
+from compression_topics.vector.algorithms import vector_compress_pair as _vector_compress_pair  # noqa: F401

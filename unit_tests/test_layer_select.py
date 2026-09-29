@@ -154,6 +154,7 @@ class RungTests(unittest.TestCase):
     def test_prune_climbs_three_rungs_qjl_climbs_bit_widths_and_spatial_is_on_or_off(self):
         self.assertEqual([rung.level for rung in rungs_for("vector_compress")], [25, 50, 75])
         self.assertEqual([rung.fraction for rung in rungs_for("vector_compress")], [0.25, 0.50, 0.75])
+        self.assertEqual([rung.level for rung in rungs_for("vector_compress_pair")], [25, 50, 75])
         pool = rungs_for("spatial_pool")
         self.assertEqual(pool[0].level, 100)
         self.assertAlmostEqual(pool[0].fraction, 7 / 8)
