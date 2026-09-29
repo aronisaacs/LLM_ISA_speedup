@@ -24,50 +24,13 @@ def apply_pool(
     return _apply(tensor, target=target, chunk=chunk, kind="pool")
 
 
-def apply_top1(
-    tensor: torch.Tensor,
-    *,
-    layer_idx: int,
-    target: str,
-    chunk: int = 8,
-    **_unused,
-) -> torch.Tensor:
-    del layer_idx, _unused
-    return _apply(tensor, target=target, chunk=chunk, kind="top1")
-
-
-def apply_tile(
-    tensor: torch.Tensor,
-    *,
-    layer_idx: int,
-    target: str,
-    chunk: int = 8,
-    tile: int = 8,
-    **_unused,
-) -> torch.Tensor:
-    del layer_idx, _unused
-    return _apply(tensor, target=target, chunk=chunk, kind="tile", tile=tile)
-
-
-def apply_feature(
-    tensor: torch.Tensor,
-    *,
-    layer_idx: int,
-    target: str,
-    chunk: int = 8,
-    **_unused,
-) -> torch.Tensor:
-    del layer_idx, _unused
-    return _apply(tensor, target=target, chunk=chunk, kind="feature")
-
-
-def _apply(tensor: torch.Tensor, *, target: str, chunk: int, kind: str, tile: int = 8) -> torch.Tensor:
+def _apply(tensor: torch.Tensor, *, target: str, chunk: int, kind: str) -> torch.Tensor:
     if target == "v":
-        return _rewrite(tensor.transpose(-1, -2), chunk=chunk, kind=kind, tile=tile).transpose(-1, -2)
-    return _rewrite(tensor, chunk=chunk, kind=kind, tile=tile)
+        return _rewrite(tensor.transpose(-1, -2), chunk=chunk, kind=kind).transpose(-1, -2)
+    return _rewrite(tensor, chunk=chunk, kind=kind)
 
 
-def _rewrite(tensor: torch.Tensor, *, chunk: int, kind: str, tile: int = 8) -> torch.Tensor:
+def _rewrite(tensor: torch.Tensor, *, chunk: int, kind: str) -> torch.Tensor:
     _check_chunk(chunk)
     if tensor.ndim < 2:
         raise ValueError(f"spatial {kind} expects a sequence and a feature dimension")
@@ -80,65 +43,11 @@ def _rewrite(tensor: torch.Tensor, *, chunk: int, kind: str, tile: int = 8) -> t
     mean = chunks.mean(dim=-2, keepdim=True)
     if kind == "pool":
         filled = mean.expand_as(chunks)
-    elif kind == "top1":
-        filled = _keep_token(chunks, mean)
-    elif kind == "feature":
-        filled = _keep_features(chunks, mean)
-    elif kind == "tile":
-        filled = _keep_tiles(chunks, mean, tile)
     else:
         raise ValueError(f"unknown spatial kind {kind!r}")
     out = tensor.clone()
     out[..., :closed, :] = filled.reshape_as(prefix)
     return out
-
-
-def _keep_token(chunks: torch.Tensor, mean: torch.Tensor) -> torch.Tensor:
-    distance = (chunks - mean).norm(dim=-1)
-    winner = distance.argmax(dim=-1)
-    index = winner.unsqueeze(-1).unsqueeze(-1).expand(*winner.shape, 1, chunks.shape[-1])
-    out = mean.expand_as(chunks).clone()
-    out.scatter_(-2, index, chunks.gather(-2, index))
-    return out
-
-
-def _keep_features(chunks: torch.Tensor, mean: torch.Tensor) -> torch.Tensor:
-    winner = (chunks - mean).abs().argmax(dim=-2)
-    mask = _position_mask(winner, chunks.shape[-2])
-    out = mean.expand_as(chunks).clone()
-    return torch.where(mask, chunks, out)
-
-
-def _keep_tiles(chunks: torch.Tensor, mean: torch.Tensor, tile: int) -> torch.Tensor:
-    if not isinstance(tile, int) or isinstance(tile, bool) or tile <= 0:
-        raise ValueError("spatial tile must be a positive integer")
-    features = chunks.shape[-1]
-    closed = (features // tile) * tile
-    if closed == 0:
-        return chunks
-    if closed != features:
-        out = chunks.clone()
-        out[..., :closed] = _tile_closed(chunks[..., :closed], mean[..., :closed], tile, closed)
-        return out
-    return _tile_closed(chunks, mean, tile, features)
-
-
-def _tile_closed(chunks: torch.Tensor, mean: torch.Tensor, tile: int, features: int) -> torch.Tensor:
-    n_tiles = features // tile
-    tiled = chunks.reshape(*chunks.shape[:-1], n_tiles, tile)
-    mean_tiled = mean.reshape(*mean.shape[:-1], n_tiles, tile)
-    winner = (tiled - mean_tiled).norm(dim=-1).argmax(dim=-2)
-    mask = _position_mask(winner, chunks.shape[-2])
-    out = mean_tiled.expand_as(tiled).clone()
-    out = torch.where(mask.unsqueeze(-1), tiled, out)
-    return out.reshape_as(chunks)
-
-
-def _position_mask(winner: torch.Tensor, chunk: int) -> torch.Tensor:
-    """True where the token index along the chunk matches ``winner``."""
-    positions = torch.arange(chunk, device=winner.device)
-    view = (1,) * (winner.ndim - 1) + (chunk, 1)
-    return winner.unsqueeze(-2) == positions.view(view)
 
 
 def _check_chunk(chunk: int) -> None:
@@ -147,6 +56,3 @@ def _check_chunk(chunk: int) -> None:
 
 
 METHODS["spatial_pool"] = apply_pool
-METHODS["spatial_top1"] = apply_top1
-METHODS["spatial_tile"] = apply_tile
-METHODS["spatial_feature"] = apply_feature
