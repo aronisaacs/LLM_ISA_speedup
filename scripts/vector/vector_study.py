@@ -10,9 +10,9 @@ Stages, in order:
 Scores are read from results.json. A finished simulation is a row there.
 A rerun skips a simulation the index already lists.
 
-  python scripts/vector_study.py --through sweep
-  python scripts/vector_study.py
-  python scripts/vector_study.py --from tasks
+  python scripts/vector/vector_study.py --through sweep
+  python scripts/vector/vector_study.py
+  python scripts/vector/vector_study.py --from tasks
 """
 
 from __future__ import annotations
@@ -24,17 +24,19 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from catalog.compressions import vector_compress  # noqa: E402
 from catalog.models import BATCH_SIZE, LLAMA31_8B  # noqa: E402
 from catalog.tasks import WIKITEXT_FULL  # noqa: E402
-from engine.layer_select.budgets import FIGURES, LLAMA31_LAYERS, write_budget_run, write_selections  # noqa: E402
+from engine.layer_select.budgets import LLAMA31_LAYERS, write_budget_run, write_selections  # noqa: E402
 from engine.layer_select.scores import load_sweep_scores  # noqa: E402
 from engine.layer_select.sweep import expand_singleton_configs  # noqa: E402
-from scripts.plot_vector_study import write_sweep_plots, write_task_tables  # noqa: E402
+from scripts.vector.plot_vector_study import write_sweep_plots, write_task_tables  # noqa: E402
+
+FIGURES = str(Path(__file__).resolve().parent / "figures")
 
 STAGES = ("sweep", "greedy", "tasks", "plots")
 PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"

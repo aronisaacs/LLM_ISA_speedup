@@ -5,7 +5,7 @@ Each method is scored on every key and every value, then rank-filled to
 15/30/45/60 percent mean compression. GSM8K is the 20 percent subset.
 No figures are written.
 
-  python scripts/spatial_study.py
+  python scripts/spatial/spatial_study.py
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -24,9 +24,11 @@ from catalog.compressions import spatial_feature, spatial_pool, spatial_tile, sp
 from catalog.models import BATCH_SIZE, LLAMA31_8B  # noqa: E402
 from catalog.tasks import GSM8K_20PCT, WIKITEXT_FULL  # noqa: E402
 from engine.eval_runner.progress import mirror_terminal  # noqa: E402
-from engine.layer_select.budgets import FIGURES, LLAMA31_LAYERS, budget_run, selections_for_budgets  # noqa: E402
+from engine.layer_select.budgets import LLAMA31_LAYERS, budget_run, selections_for_budgets  # noqa: E402
 from engine.layer_select.scores import load_sweep_scores  # noqa: E402
 from engine.layer_select.sweep import expand_singleton_configs  # noqa: E402
+
+FIGURES = str(Path(__file__).resolve().parent / "figures")
 
 PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"
 BUDGETS = (0.15, 0.30, 0.45, 0.60)

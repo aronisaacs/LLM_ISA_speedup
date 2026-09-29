@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Sweep resiliency curves and per-task degradation tables for the vector study.
 
-  python scripts/plot_vector_study.py
+  python scripts/vector/plot_vector_study.py
 """
 
 from __future__ import annotations
@@ -13,14 +13,14 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from engine.layer_select.levels import LEVELS  # noqa: E402
 from engine.layer_select.scores import load_sweep_scores, word_perplexity  # noqa: E402
 
-FIGURES = "figures"
+FIGURES = str(Path(__file__).resolve().parent / "figures")
 
 TASK_TITLES = {
     "ceval-valid": "CEval",

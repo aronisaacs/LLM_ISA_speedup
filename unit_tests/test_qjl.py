@@ -17,8 +17,8 @@ from engine.layer_select.levels import next_level
 from engine.layer_select.rungs import rungs_for
 from engine.layer_select.scores import ScoreRow
 from engine.layer_select.slots import Slot, all_slots
-from scripts.plot_qjl import write_qjl_study
-from scripts.qjl_study import sweep_run
+from scripts.qjl.plot_qjl import write_qjl_study
+from scripts.qjl.qjl_study import sweep_run
 
 
 class QjlRewriteTests(unittest.TestCase):

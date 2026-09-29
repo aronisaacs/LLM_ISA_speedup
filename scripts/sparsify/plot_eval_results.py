@@ -14,7 +14,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -195,7 +195,11 @@ def main() -> None:
         default=None,
         help="Result JSON files or globs. Default: every JSON in the results index.",
     )
-    parser.add_argument("-o", "--output", default="figures/accuracy_vs_compression.svg")
+    parser.add_argument(
+        "-o",
+        "--output",
+        default=str(Path(__file__).resolve().parent / "figures" / "accuracy_vs_compression.svg"),
+    )
     args = parser.parse_args()
 
     paths: list[Path] = []

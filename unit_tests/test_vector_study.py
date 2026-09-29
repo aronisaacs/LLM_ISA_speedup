@@ -24,8 +24,8 @@ from engine.layer_select.budgets import (
 from engine.layer_select.levels import LEVELS
 from engine.layer_select.scores import ScoreRow
 from engine.layer_select.slots import Slot, all_slots
-from scripts.plot_vector_study import write_sweep_plots, write_task_tables
-from scripts.vector_study import _multi_run_command
+from scripts.vector.plot_vector_study import write_sweep_plots, write_task_tables
+from scripts.vector.vector_study import _multi_run_command
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -49,7 +49,7 @@ def _rows(n_layers):
 
 class VectorSweepTests(unittest.TestCase):
     def test_sweep_is_wikitext_singletons_at_three_rungs(self):
-        from scripts.vector_study import sweep_run
+        from scripts.vector.vector_study import sweep_run
 
         loaded = sweep_run()
         configurations = loaded["configurations"]

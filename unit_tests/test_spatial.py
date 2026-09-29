@@ -15,8 +15,8 @@ from engine.kv_compress.cache import patch_cache_update
 from engine.kv_compress.methods.spatial import apply_feature, apply_pool, apply_tile, apply_top1
 from engine.kv_compress.rope import RopeTables, apply_rope
 from engine.kv_compress.spec import parse_kv_spec
-from scripts.plot_spatial_chunk import write_wikitext_table
-from scripts.spatial_study import sweep_run
+from scripts.spatial.plot_spatial_chunk import write_wikitext_table
+from scripts.spatial.spatial_study import sweep_run
 
 
 def _chunk() -> torch.Tensor:

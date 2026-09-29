@@ -15,8 +15,8 @@ from engine.layer_select.apply import kv_for_assignment
 from engine.layer_select.levels import next_level
 from engine.layer_select.rungs import rungs_for
 from engine.layer_select.slots import Slot
-from scripts.plot_quantize import write_quantize_study
-from scripts.quantize_study import drop_stale_task_rows, sweep_run, tasks_run
+from scripts.quantize.plot_quantize import write_quantize_study
+from scripts.quantize.quantize_study import drop_stale_task_rows, sweep_run, tasks_run
 
 
 def _qdq(values: torch.Tensor, bits: int) -> torch.Tensor:

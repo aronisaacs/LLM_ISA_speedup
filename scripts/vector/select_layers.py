@@ -1,6 +1,6 @@
 """Turn WikiText sweep scores into a mixed-level layer assignment.
 
-  python scripts/select_layers.py --budget 0.5 --out results/selected.json
+  python scripts/vector/select_layers.py --budget 0.5 --out results/selected.json
 """
 
 from __future__ import annotations

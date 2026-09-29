@@ -6,7 +6,7 @@ layer. lm-eval applies ``limit`` per CEval subject, so ``limit`` 1 is one
 question from each subject (about 52), the closest cap to 64 that still covers
 every subject. Scores are not written to results.json.
 
-  python scripts/vector_zero_runs.py
+  python scripts/vector/vector_zero_runs.py
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -31,7 +31,7 @@ from engine.kv_compress.methods.vector_compress import (  # noqa: E402
 )
 
 PERCENTAGES = (10, 20, 30, 40, 50, 60)
-OUT = ROOT / "figures" / "zero_runs.json"
+OUT = Path(__file__).resolve().parent / "figures" / "zero_runs.json"
 
 
 def main() -> None:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """WikiText sweep curves and task tables for the QJL bit-width study.
 
-  python scripts/plot_qjl.py
+  python scripts/qjl/plot_qjl.py
 """
 
 from __future__ import annotations
@@ -9,19 +9,19 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from engine.layer_select.scores import load_sweep_scores  # noqa: E402
-from scripts.plot_vector_study import (  # noqa: E402
+from scripts.vector.plot_vector_study import (  # noqa: E402
     _format_percent,
     _primary_score,
     _table_svg,
     write_sweep_svg,
 )
 
-FIGURES = "figures"
+FIGURES = str(Path(__file__).resolve().parent / "figures")
 _PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"
 _BITS = (4, 3, 2, 1)
 _TASKS = (
