@@ -14,7 +14,7 @@ from typing import Any
 
 import torch
 
-from engine.kv_compress.methods.quantize import write_closed_key_groups
+from compression_topics.quantize.algorithms.quantize import write_closed_key_groups
 from engine.kv_compress.pipeline import compress_kv
 from engine.kv_compress.rope import RopeTables, apply_rope
 from engine.kv_compress.spec import KvSpec, LayerSelection, PipelineStep

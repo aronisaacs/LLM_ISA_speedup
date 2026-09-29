@@ -8,15 +8,15 @@ import unittest
 
 import torch
 
-from engine.kv_compress.cache import patch_cache_update
-from engine.kv_compress.install import install
-from engine.kv_compress.methods.vector_compress import (
+from compression_topics.vector.algorithms.vector_compress import (
     apply as vector_apply,
     disable_zero_run_profile,
     enable_zero_run_profile,
     take_zero_run_profile,
     zero_run_count,
 )
+from engine.kv_compress.cache import patch_cache_update
+from engine.kv_compress.install import install
 from engine.kv_compress.pipeline import compress_kv
 from engine.kv_compress.spec import parse_kv_spec
 

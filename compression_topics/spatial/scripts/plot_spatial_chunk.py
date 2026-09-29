@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Sweep curves and the GSM8K table for the spatial study.
 
-  python scripts/spatial/plot_spatial_chunk.py
+  python compression_topics/spatial/scripts/plot_spatial_chunk.py
 """
 
 from __future__ import annotations
@@ -11,14 +11,14 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from engine.layer_select.scores import load_sweep_scores, word_perplexity  # noqa: E402
-from scripts.vector.plot_vector_study import _format_percent, _table_svg as _budget_table_svg, write_sweep_svg  # noqa: E402
+from compression_topics.vector.scripts.plot_vector_study import _format_percent, _table_svg as _budget_table_svg, write_sweep_svg  # noqa: E402
 
-FIGURES = str(Path(__file__).resolve().parent / "figures")
+FIGURES = str(Path(__file__).resolve().parents[1] / "figures")
 
 _METHODS = (
     ("spatial_pool", "Pooling", "1/8"),

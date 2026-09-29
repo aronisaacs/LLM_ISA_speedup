@@ -10,15 +10,15 @@ from pathlib import Path
 import torch
 
 from catalog.compressions import qjl
-from engine.kv_compress.methods.qjl import apply, centroids, hadamard, sign_diagonal
+from compression_topics.qjl.algorithms.qjl import apply, centroids, hadamard, sign_diagonal
 from engine.layer_select.apply import kv_for_assignment
 from engine.layer_select.greedy.rank_fill import rank_fill
 from engine.layer_select.levels import next_level
 from engine.layer_select.rungs import rungs_for
 from engine.layer_select.scores import ScoreRow
 from engine.layer_select.slots import Slot, all_slots
-from scripts.qjl.plot_qjl import write_qjl_study
-from scripts.qjl.qjl_study import sweep_run
+from compression_topics.qjl.scripts.plot_qjl import write_qjl_study
+from compression_topics.qjl.scripts.qjl_study import sweep_run
 
 
 class QjlRewriteTests(unittest.TestCase):

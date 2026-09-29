@@ -10,13 +10,13 @@ from pathlib import Path
 import torch
 
 from catalog.compressions import quantize
-from engine.kv_compress.methods.quantize import apply
+from compression_topics.quantize.algorithms.quantize import apply
 from engine.layer_select.apply import kv_for_assignment
 from engine.layer_select.levels import next_level
 from engine.layer_select.rungs import rungs_for
 from engine.layer_select.slots import Slot
-from scripts.quantize.plot_quantize import write_quantize_study
-from scripts.quantize.quantize_study import drop_stale_task_rows, sweep_run, tasks_run
+from compression_topics.quantize.scripts.plot_quantize import write_quantize_study
+from compression_topics.quantize.scripts.quantize_study import drop_stale_task_rows, sweep_run, tasks_run
 
 
 def _qdq(values: torch.Tensor, bits: int) -> torch.Tensor:

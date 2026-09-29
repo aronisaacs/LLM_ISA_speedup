@@ -1,7 +1,7 @@
 """KV-cache compression package used by multi_run.py.
 
 Parse a JSON kv spec (parse_kv_spec) and attach it to a loaded HF model
-(install) by wrapping Transformers Cache.update. Methods live in kv_compress.methods.
+(install) by wrapping Transformers Cache.update. Algorithm code lives in compression_topics.
 """
 
 from engine.kv_compress.install import install

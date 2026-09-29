@@ -11,7 +11,7 @@ Task rows already in the index were scored before key groups closed across
 decode, so those rows are dropped first. Dense baselines stay. A second run
 skips whatever this one finished.
 
-  python scripts/quantize/quantize_study.py
+  python compression_topics/quantize/scripts/quantize_study.py
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -35,7 +35,7 @@ from engine.layer_select.budgets import LLAMA31_LAYERS, budget_run, selections_f
 from engine.layer_select.scores import load_sweep_scores  # noqa: E402
 from engine.layer_select.sweep import expand_singleton_configs  # noqa: E402
 
-FIGURES = str(Path(__file__).resolve().parent / "figures")
+FIGURES = str(Path(__file__).resolve().parents[1] / "figures")
 
 PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"
 BUDGETS = (0.15, 0.30, 0.45, 0.60, 0.75)

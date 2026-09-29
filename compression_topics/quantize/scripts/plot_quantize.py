@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""WikiText sweep curves and task tables for the QJL bit-width study.
+"""WikiText sweep curves and task tables for the uniform int8/int4 study.
 
-  python scripts/qjl/plot_qjl.py
+  python compression_topics/quantize/scripts/plot_quantize.py
 """
 
 from __future__ import annotations
@@ -9,21 +9,21 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from engine.layer_select.scores import load_sweep_scores  # noqa: E402
-from scripts.vector.plot_vector_study import (  # noqa: E402
+from compression_topics.vector.scripts.plot_vector_study import (  # noqa: E402
     _format_percent,
     _primary_score,
     _table_svg,
     write_sweep_svg,
 )
 
-FIGURES = str(Path(__file__).resolve().parent / "figures")
+FIGURES = str(Path(__file__).resolve().parents[1] / "figures")
 _PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"
-_BITS = (4, 3, 2, 1)
+_BITS = (8, 4)
 _TASKS = (
     ("ceval-valid", "CEval", "ceval"),
     ("gsm8k", "GSM8K", "gsm8k"),
@@ -31,15 +31,15 @@ _TASKS = (
 )
 
 
-def write_qjl_study(figures_dir=FIGURES, pretrained=_PRETRAINED) -> list[Path]:
+def write_quantize_study(figures_dir=FIGURES, pretrained=_PRETRAINED) -> list[Path]:
     """One WikiText curve per bit width, then CEval, GSM8K, and HumanEval."""
     destination = Path(figures_dir)
     destination.mkdir(parents=True, exist_ok=True)
-    dense_ppl, rows = load_sweep_scores(method="qjl", pretrained=pretrained)
+    dense_ppl, rows = load_sweep_scores(method="quantize", pretrained=pretrained)
     n_layers = max(row.slot.layer for row in rows) + 1
     paths = []
     for bits in _BITS:
-        path = destination / f"qjl_sweep_{bits}bit.svg"
+        path = destination / f"quantize_sweep_{bits}bit.svg"
         write_sweep_svg(
             dense_ppl,
             rows,
@@ -48,13 +48,13 @@ def write_qjl_study(figures_dir=FIGURES, pretrained=_PRETRAINED) -> list[Path]:
             path,
             title=(
                 "Per layer resiliency run on Llama 3.1 8B Instruct using WikiText "
-                f"with QJL at {bits} bits"
+                f"with int{bits} quantization"
             ),
         )
         paths.append(path)
     for task, title, stem in _TASKS:
-        path = destination / f"qjl_{stem}.svg"
-        path.write_text(_table_svg(f"{title}, QJL", _task_rows(task, pretrained)))
+        path = destination / f"quantize_{stem}.svg"
+        path.write_text(_table_svg(f"{title}, quantize", _task_rows(task, pretrained)))
         paths.append(path)
     return paths
 
@@ -76,7 +76,7 @@ def _task_rows(task: str, pretrained: str) -> list[tuple[str, str, str, str]]:
             if baseline is None or record.get("budget") in (0, 0.0):
                 baseline = float(accuracy)
             continue
-        if pipeline[0].get("method") != "qjl" or "budget" not in record:
+        if pipeline[0].get("method") != "quantize" or "budget" not in record:
             continue
         points.append((float(record["budget"]), float(record.get("compression") or 0.0), float(accuracy)))
     if baseline is None:
@@ -95,7 +95,7 @@ def _show_accuracy(accuracy: float) -> str:
 
 
 def main() -> None:
-    for path in write_qjl_study():
+    for path in write_quantize_study():
         print(path)
 
 

@@ -7,7 +7,7 @@ another layer's values go to 1 bit. Budgets are 60/70/80/90 percent mean
 compression. A slot at 1 bit removes 15/16 of that slot, so 95 percent is
 above the ladder. No figures.
 
-  python scripts/qjl/qjl_study.py
+  python compression_topics/qjl/scripts/qjl_study.py
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -30,7 +30,7 @@ from engine.layer_select.budgets import LLAMA31_LAYERS, budget_run, selections_f
 from engine.layer_select.scores import load_sweep_scores  # noqa: E402
 from engine.layer_select.sweep import expand_singleton_configs  # noqa: E402
 
-FIGURES = str(Path(__file__).resolve().parent / "figures")
+FIGURES = str(Path(__file__).resolve().parents[1] / "figures")
 
 PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"
 BUDGETS = (0.60, 0.70, 0.80, 0.90)

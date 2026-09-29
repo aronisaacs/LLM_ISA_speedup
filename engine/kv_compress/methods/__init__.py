@@ -1,7 +1,7 @@
-"""Registry of KV rewrite callables used by the pipeline.
+"""Name → apply() table used by the pipeline.
 
-Each method is apply(tensor, *, layer_idx, target, **kwargs) -> tensor and
-registers itself on METHODS. get_method looks up a JSON "method" name.
+Each algorithm under compression_topics registers itself on METHODS when this
+module is imported. get_method looks up a JSON "method" name.
 """
 
 from collections.abc import Callable
@@ -22,9 +22,4 @@ def get_method(name: str) -> Method:
         raise ValueError(f"Unknown KV compress method {name!r}. Known methods: {known}") from error
 
 
-from engine.kv_compress.methods import checksparse_l1 as _checksparse_l1  # noqa: E402,F401
-from engine.kv_compress.methods import qjl as _qjl  # noqa: E402,F401
-from engine.kv_compress.methods import quantize as _quantize  # noqa: E402,F401
-from engine.kv_compress.methods import sparsify_nm as _sparsify_nm  # noqa: E402,F401
-from engine.kv_compress.methods import spatial as _spatial  # noqa: E402,F401
-from engine.kv_compress.methods import vector_compress as _vector_compress  # noqa: E402,F401
+import compression_topics as _compression_topics  # noqa: E402,F401
