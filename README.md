@@ -1,6 +1,6 @@
 # LLM_ISA_speedup
 
-KV-cache compression studies for Llama 3.1 8B. Scores land in `results.json`. A finished row is skipped on the next run.
+KV-cache compression studies for Llama 3.1 8B. Each experiment is its own script under `compression_topics/`. Scores land in `results.json`. A finished row is skipped on the next run.
 
 ## DGX
 
@@ -24,9 +24,7 @@ Long work goes through `job`, which is tmux. `tlist` lists sessions, `tat <job>`
 
 First-time env setup is in `env/environment.dgx.yml`.
 
-## Launch script
-
-Fill in `GPUS`, `JOB`, `COMMIT`, and `COMMAND`. `git log -1` must start with `COMMIT` before `job` runs. If `tlist` already shows `JOB`, run `tkill` on it first.
+A shell for an experiment script looks like this. `git log -1` must be the commit that contains that script. If `tlist` already shows the session name, `tkill` it first. The `python -u` line is that script, not a generic runner.
 
 ```bash
 cd /data/users/aroni/projects/LLM_ISA_speedup
@@ -39,13 +37,8 @@ gpuwho
 nvidia-smi --query-gpu=index,memory.used,utilization.gpu --format=csv
 tlist
 
-GPUS=0,1,2,3
-JOB=study
-COMMIT=0123456
-COMMAND="python -u compression_topics/vector/scripts/vector_study.py"
-
 mkdir -p "$HOME/logs"
-job "$JOB" 'bash -lc "source /opt/conda/etc/profile.d/conda.sh && conda activate llm_isa_dgx && cd /data/users/aroni/projects/LLM_ISA_speedup && export CUDA_VISIBLE_DEVICES='"$GPUS"' && export HF_HUB_CACHE=$HOME/models/huggingface && export HF_DATASETS_CACHE=$HOME/datasets/huggingface && '"$COMMAND"' 2>&1 | tee $HOME/logs/'"$JOB"'.log"'
+job vector_study 'bash -lc "source /opt/conda/etc/profile.d/conda.sh && conda activate llm_isa_dgx && cd /data/users/aroni/projects/LLM_ISA_speedup && export CUDA_VISIBLE_DEVICES=0,1,2,3 && export HF_HUB_CACHE=$HOME/models/huggingface && export HF_DATASETS_CACHE=$HOME/datasets/huggingface && python -u compression_topics/vector/scripts/vector_study.py 2>&1 | tee $HOME/logs/vector_study.log"'
 ```
 
-Watch with `tail -f ~/logs/$JOB.log`.
+Watch with `tail -f ~/logs/vector_study.log`.
