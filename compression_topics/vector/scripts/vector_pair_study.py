@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""WikiText sweep, greedy budgets, and task evals for pair-magnitude vector compression.
+"""WikiText sweep, greedy budgets, and GSM8K for pair-magnitude vector compression.
 
 Stages, in order:
   sweep   WikiText singletons at 25/50/75% for every key and value
   greedy  rank-fill at 10–60% mean compression
-  tasks   CEval, GSM8K, and HumanEval at each of those assignments
+  tasks   GSM8K at each of those assignments
   plots   one WikiText resiliency curve per rung
 
 Scores are read from results.json. A finished simulation is a row there.
@@ -30,7 +30,7 @@ if str(ROOT) not in sys.path:
 
 from catalog.compressions import vector_compress_pair  # noqa: E402
 from catalog.models import BATCH_SIZE, LLAMA31_8B  # noqa: E402
-from catalog.tasks import WIKITEXT_FULL  # noqa: E402
+from catalog.tasks import GSM8K_20PCT, WIKITEXT_FULL  # noqa: E402
 from compression_topics.vector.scripts.plot_vector_study import write_sweep_plots  # noqa: E402
 from engine.layer_select.budgets import LLAMA31_LAYERS, selections_for_budgets, write_budget_run  # noqa: E402
 from engine.layer_select.scores import load_sweep_scores  # noqa: E402
@@ -79,7 +79,12 @@ def _run_stage(stage: str) -> None:
             print(f"wrote  {path}")
         return
     if stage == "greedy":
-        run_path = write_budget_run(_payloads(), Path(FIGURES) / "budgets_run.json", results_dir=FIGURES)
+        run_path = write_budget_run(
+            _payloads(),
+            Path(FIGURES) / "budgets_run.json",
+            tasks=(GSM8K_20PCT,),
+            results_dir=FIGURES,
+        )
         print(f"wrote  {run_path}")
         return
     if stage == "tasks":
