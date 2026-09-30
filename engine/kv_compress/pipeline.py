@@ -9,6 +9,7 @@ from __future__ import annotations
 import torch
 
 from engine.kv_compress.methods import get_method
+from engine.kv_compress.rope import RopeTables
 from engine.kv_compress.spec import KvSpec, LayerSelection
 
 
@@ -18,16 +19,19 @@ def compress_kv(
     layer_idx: int,
     spec: KvSpec,
     seq_start: int = 0,
+    rope: RopeTables | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Apply enabled pipeline steps to this layer's new K and V chunks.
 
     ``seq_start`` is how many tokens this layer already stored. Key quantize
     uses it so a chunk that begins inside an open group is left exact.
+    ``rope`` is forwarded to every method. Methods that do not use it ignore it.
     """
     for step in spec.pipeline:
         method = get_method(step.method)
         kwargs = dict(step.kwargs)
         kwargs["seq_start"] = seq_start
+        kwargs["rope"] = rope
         if _layer_enabled(step.k_layers, layer_idx):
             key_states = method(key_states, layer_idx=layer_idx, target="k", **kwargs)
         if _layer_enabled(step.v_layers, layer_idx):

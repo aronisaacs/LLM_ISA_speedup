@@ -168,7 +168,6 @@ class QuantizeRunTests(unittest.TestCase):
         self.assertEqual(eight["kv"]["pipeline"][0]["bits"], 8)
         self.assertEqual(eight["kv"]["pipeline"][0]["group"], 32)
         self.assertEqual(four["kv"]["pipeline"][0]["bits"], 4)
-        self.assertNotIn("pre_rope", eight["kv"]["pipeline"][0])
         self.assertEqual(eight["tasks"], ["wikitext"])
 
     def test_task_rerun_drops_old_budget_rows_and_keeps_the_sweep(self):

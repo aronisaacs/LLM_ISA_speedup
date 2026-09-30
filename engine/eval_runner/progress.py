@@ -91,8 +91,7 @@ def kv_brief(spec) -> str:
         elif method == "vector_compress_pair":
             parts.append(f"vector pairs prune={step.get('prune_pct', '?')}%")
         elif method == "spatial_pool":
-            rope = "pre-rope" if step.get("pre_rope") else "post-rope"
-            parts.append(f"{method} chunk={step.get('chunk', '?')} {rope}")
+            parts.append(f"spatial_pool chunk={step.get('chunk', '?')}")
         elif method == "qjl":
             parts.append(f"hadamard bits={step.get('bits', '?')}")
         elif method == "quantize":

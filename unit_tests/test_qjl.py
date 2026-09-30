@@ -66,7 +66,6 @@ class QjlRunTests(unittest.TestCase):
         self.assertEqual(four["kv"]["pipeline"][0]["method"], "qjl")
         self.assertEqual(four["kv"]["pipeline"][0]["bits"], 4)
         self.assertEqual(one["kv"]["pipeline"][0]["bits"], 1)
-        self.assertNotIn("pre_rope", four["kv"]["pipeline"][0])
         self.assertEqual(four["tasks"], ["wikitext"])
 
     def test_climber_walks_four_bits_down_to_one(self):

@@ -12,11 +12,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-import torch
-
 from compression_topics.quantize.algorithms.quantize import write_closed_key_groups
 from engine.kv_compress.pipeline import compress_kv
-from engine.kv_compress.rope import RopeTables, apply_rope
+from engine.kv_compress.rope import RopeTables
 from engine.kv_compress.spec import KvSpec, LayerSelection, PipelineStep
 
 _original_update: Callable[..., Any] | None = None
@@ -25,8 +23,7 @@ _original_update: Callable[..., Any] | None = None
 def patch_cache_update(spec: KvSpec, rope: RopeTables | None = None) -> Callable[[], None]:
     """Wrap ``Cache.update`` so new K/V pass through ``spec`` before they are stored.
 
-    A key step with ``pre_rope`` true is undone, compressed, then rotated back.
-    Values are never rotated. Returns a zero-arg uninstall function.
+    ``rope`` is forwarded to each compression method. Returns a zero-arg uninstall function.
     """
     from transformers.cache_utils import Cache
 
@@ -40,20 +37,9 @@ def patch_cache_update(spec: KvSpec, rope: RopeTables | None = None) -> Callable
     def update(self, key_states, value_states, layer_idx, *args, **kwargs):
         start = _seq_length(self, layer_idx)
         end = start + key_states.shape[-2]
-        if _keys_want_prerope(spec, layer_idx):
-            if rope is None:
-                raise ValueError("pre_rope key compression requires rope_theta and head_dim")
-            positions = _positions(self, layer_idx, key_states.shape[-2], key_states.device)
-            cos, sin = rope.cos_sin(positions, key_states.dtype)
-            key_states = apply_rope(key_states, cos, sin, inverse=True)
-            key_states, value_states = compress_kv(
-                key_states, value_states, layer_idx, spec, seq_start=start
-            )
-            key_states = apply_rope(key_states, cos, sin, inverse=False)
-        else:
-            key_states, value_states = compress_kv(
-                key_states, value_states, layer_idx, spec, seq_start=start
-            )
+        key_states, value_states = compress_kv(
+            key_states, value_states, layer_idx, spec, seq_start=start, rope=rope
+        )
         keys, values = saved(self, key_states, value_states, layer_idx, *args, **kwargs)
         _close_filled_key_groups(keys, layer_idx, spec, start, end)
         return keys, values
@@ -101,22 +87,10 @@ def _key_quantize_step(spec: KvSpec, layer_idx: int) -> PipelineStep | None:
     return None
 
 
-def _keys_want_prerope(spec: KvSpec, layer_idx: int) -> bool:
-    for step in spec.pipeline:
-        if step.kwargs.get("pre_rope") and _enabled(step.k_layers, layer_idx):
-            return True
-    return False
-
-
 def _enabled(selection: LayerSelection, layer_idx: int) -> bool:
     if selection == "all":
         return True
     return layer_idx in selection
-
-
-def _positions(cache, layer_idx: int, length: int, device) -> torch.Tensor:
-    start = _seq_length(cache, layer_idx)
-    return torch.arange(start, start + length, device=device)
 
 
 def _seq_length(cache, layer_idx: int) -> int:

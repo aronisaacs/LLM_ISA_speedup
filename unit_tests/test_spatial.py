@@ -1,4 +1,4 @@
-"""Chunk rewrites and inverse RoPE. No model load."""
+"""Chunk rewrites and a RoPE round trip. No model load."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ class SpatialRewriteTests(unittest.TestCase):
         self.assertTrue(torch.equal(out[0, 0, :, 8:], source[0, 0, :, 8:]))
 
 
-class PreRopeHookTests(unittest.TestCase):
+class RopeRoundTripTests(unittest.TestCase):
     def test_inverse_then_forward_restores_keys(self):
         rope = RopeTables(rope_theta=500000.0, head_dim=16)
         keys = torch.randn(1, 2, 6, 16)
@@ -57,40 +57,21 @@ class PreRopeHookTests(unittest.TestCase):
         restored = apply_rope(rotated, cos, sin, inverse=True)
         self.assertTrue(torch.allclose(restored, keys, atol=1e-5))
 
-    def test_pre_rope_hook_compresses_in_the_unrotated_space(self):
+
+class SpatialCacheTests(unittest.TestCase):
+    def test_cache_update_pools_keys_as_stored(self):
         from transformers.cache_utils import Cache, DynamicCache
 
         rope = RopeTables(rope_theta=10000.0, head_dim=4)
-        spec = parse_kv_spec(spatial_pool(k_layers="all", v_layers=[], chunk=4, pre_rope=True))
-        raw = torch.ones(1, 1, 4, 4)
-        raw[0, 0, 0] = 5
-        positions = torch.arange(4)
-        cos, sin = rope.cos_sin(positions, raw.dtype)
-        rotated = apply_rope(raw, cos, sin, inverse=False)
+        spec = parse_kv_spec(spatial_pool(k_layers="all", v_layers=[], chunk=4))
+        stored_keys = torch.arange(16, dtype=torch.float32).reshape(1, 1, 4, 4)
         uninstall = patch_cache_update(spec, rope)
         try:
             cache = DynamicCache()
-            stored, values = Cache.update(cache, rotated, rotated.clone(), 0)
+            stored, _values = Cache.update(cache, stored_keys.clone(), stored_keys.clone(), 0)
         finally:
             uninstall()
-        pooled = apply_pool(raw, layer_idx=0, target="k", chunk=4)
-        expected = apply_rope(pooled, cos, sin, inverse=False)
-        self.assertTrue(torch.allclose(stored, expected, atol=1e-5))
-        self.assertTrue(torch.allclose(values, rotated, atol=1e-5))
-
-    def test_post_rope_flag_skips_the_inverse(self):
-        from transformers.cache_utils import Cache, DynamicCache
-
-        rope = RopeTables(rope_theta=10000.0, head_dim=4)
-        spec = parse_kv_spec(spatial_pool(k_layers="all", v_layers=[], chunk=4, pre_rope=False))
-        rotated = torch.arange(16, dtype=torch.float32).reshape(1, 1, 4, 4)
-        uninstall = patch_cache_update(spec, rope)
-        try:
-            cache = DynamicCache()
-            stored, _values = Cache.update(cache, rotated.clone(), rotated.clone(), 0)
-        finally:
-            uninstall()
-        expected = apply_pool(rotated, layer_idx=0, target="k", chunk=4)
+        expected = apply_pool(stored_keys, layer_idx=0, target="k", chunk=4)
         self.assertTrue(torch.allclose(stored, expected, atol=1e-5))
 
 

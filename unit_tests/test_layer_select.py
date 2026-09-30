@@ -61,7 +61,7 @@ class SweepExpanderTests(unittest.TestCase):
     def test_on_off_method_has_one_rung_and_no_prune_percent(self):
         configs = expand_singleton_configs(
             n_layers=2,
-            method_kv=spatial_pool(pre_rope=True),
+            method_kv=spatial_pool(),
             method_tag="spatial_pool",
             results_dir="results/sweep",
             name_prefix="m",
