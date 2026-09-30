@@ -379,6 +379,48 @@ class VectorCompressPairTests(unittest.TestCase):
         self.assertTrue(torch.equal(cleared_key, torch.zeros_like(key)))
         self.assertTrue(torch.equal(cleared_value, torch.zeros_like(key)))
 
+    def test_pair_mask_profile_counts_dropped_pairs_once(self):
+        from compression_topics.vector.algorithms.vector_compress_pair import (
+            apply as pair_apply,
+            disable_pair_mask_profile,
+            enable_pair_mask_profile,
+            random_pair_mask_runs,
+            take_pair_mask_profile,
+        )
+
+        # Half is 4. Pairs 0 and 1 are the weak ones, so the mask is one run of two.
+        # The stored key repeats that pattern in each half and would count two runs.
+        key = torch.tensor([0.1, 0.1, 3.0, 3.0, 0.1, 0.1, 3.0, 3.0]).reshape(1, 1, 1, 8)
+        enable_pair_mask_profile()
+        try:
+            out = pair_apply(key, layer_idx=0, target="k", prune_pct=50)
+            stats = take_pair_mask_profile()
+        finally:
+            disable_pair_mask_profile()
+        self.assertTrue(torch.equal(out.reshape(8), torch.tensor([0.0, 0.0, 3.0, 3.0, 0.0, 0.0, 3.0, 3.0])))
+        self.assertEqual(stats["runs"], 1)
+        self.assertEqual(stats["vectors"], 1)
+        self.assertEqual(stats["mask_length"], 4)
+        self.assertEqual(stats["mean"], 1.0)
+        self.assertEqual(
+            [random_pair_mask_runs(64, pct) for pct in (10, 20, 30, 40, 50, 60)],
+            [5.53125, 9.9375, 13.65625, 15.625, 16.5, 16.03125],
+        )
+
+    def test_pair_mask_profile_stays_off_until_enabled(self):
+        from compression_topics.vector.algorithms.vector_compress_pair import (
+            apply as pair_apply,
+            disable_pair_mask_profile,
+            take_pair_mask_profile,
+        )
+
+        key = torch.tensor([0.1, 0.1, 3.0, 3.0, 0.1, 0.1, 3.0, 3.0]).reshape(1, 1, 1, 8)
+        try:
+            pair_apply(key, layer_idx=0, target="k", prune_pct=50)
+            self.assertEqual(take_pair_mask_profile()["vectors"], 0)
+        finally:
+            disable_pair_mask_profile()
+
     def test_odd_feature_count_is_rejected_for_keys_only(self):
         odd = torch.tensor([1.0, 0.2, 3.0]).reshape(1, 1, 1, 3)
         keys = parse_kv_spec(
