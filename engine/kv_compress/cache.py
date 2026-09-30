@@ -3,8 +3,9 @@
 Llama/Qwen call update after RoPE and use the returned tensors for attention,
 so this is the shared injection point. Key quantize also closes sequence groups
 that filled on this update, including tokens stored by earlier steps, and writes
-them back into the cache attention is about to read. patch_cache_update returns
-uninstall().
+them back into the cache attention is about to read. Adjacent-pair pooling does
+the same for keys and values when a chunk finishes a pair that an earlier step
+left open. patch_cache_update returns uninstall().
 """
 
 from __future__ import annotations
@@ -42,6 +43,7 @@ def patch_cache_update(spec: KvSpec, rope: RopeTables | None = None) -> Callable
         )
         keys, values = saved(self, key_states, value_states, layer_idx, *args, **kwargs)
         _close_filled_key_groups(keys, layer_idx, spec, start, end)
+        _close_filled_pairs(keys, values, layer_idx, spec, start, end, rope)
         return keys, values
 
     Cache.update = update
@@ -78,6 +80,52 @@ def _close_filled_key_groups(keys, layer_idx: int, spec: KvSpec, start: int, end
         start=open_start,
         end=closed,
     )
+
+
+def _close_filled_pairs(keys, values, layer_idx: int, spec: KvSpec, start: int, end: int, rope) -> None:
+    """Pool token pairs that this append finished. An open tail stays exact.
+
+    A chunk that started on an even position already pooled its own full pairs.
+    A chunk that started on an odd position left the previous token exact until
+    here. Keys and values share the window. Each is rewritten only when this
+    layer is selected for that tensor. ``pair_pool`` is full pooling with no
+    RoPE alignment. A shorter tensor has dropped its prefix.
+    """
+    if start % 2 == 0:
+        return
+    from compression_topics.spatial.algorithms.residual_pool import write_closed_pairs
+
+    open_start = (start // 2) * 2
+    closed = (end // 2) * 2
+    if closed <= open_start:
+        return
+    for step in spec.pipeline:
+        if step.method not in {"residual_pool", "pair_pool"}:
+            continue
+        if step.method == "pair_pool":
+            prune_pct = 100
+            align = False
+        else:
+            prune_pct = int(step.kwargs.get("prune_pct", 25))
+            align = bool(step.kwargs.get("rope", False))
+        if _enabled(step.k_layers, layer_idx) and keys.shape[-2] >= end:
+            write_closed_pairs(
+                keys,
+                prune_pct=prune_pct,
+                rope=align,
+                rope_tables=rope,
+                start=open_start,
+                end=closed,
+            )
+        if _enabled(step.v_layers, layer_idx) and values.shape[-2] >= end:
+            write_closed_pairs(
+                values,
+                prune_pct=prune_pct,
+                rope=False,
+                rope_tables=None,
+                start=open_start,
+                end=closed,
+            )
 
 
 def _key_quantize_step(spec: KvSpec, layer_idx: int) -> PipelineStep | None:

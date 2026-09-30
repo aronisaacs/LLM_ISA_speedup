@@ -45,6 +45,29 @@ def vector_compress_pair(k_layers="all", v_layers="all", prune_pct=50):
     return _step("vector_compress_pair", k_layers, v_layers, prune_pct=int(prune_pct))
 
 
+def residual_pool(k_layers="all", v_layers="all", prune_pct=25, rope=False):
+    """Pool adjacent tokens and keep a residual on the largest |delta| features.
+
+    ``prune_pct`` zeros that percent of the residual. 100 is pure pooling.
+    ``rope`` aligns each key pair by one RoPE step before the mean and delta.
+    Values ignore it.
+    """
+    if not isinstance(rope, bool):
+        raise ValueError("residual_pool rope must be a bool")
+    return _step(
+        "residual_pool",
+        k_layers,
+        v_layers,
+        prune_pct=int(prune_pct),
+        rope=rope,
+    )
+
+
+def pair_pool(k_layers="all", v_layers="all"):
+    """Replace each adjacent token pair with its mean. No residual."""
+    return _step("pair_pool", k_layers, v_layers)
+
+
 def spatial_pool(k_layers="all", v_layers="all", chunk=8):
     """Replace each closed chunk with its mean."""
     return _spatial("spatial_pool", k_layers, v_layers, chunk)

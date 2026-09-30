@@ -25,13 +25,14 @@ def compress_kv(
 
     ``seq_start`` is how many tokens this layer already stored. Key quantize
     uses it so a chunk that begins inside an open group is left exact.
-    ``rope`` is forwarded to every method. Methods that do not use it ignore it.
+    RoPE tables are forwarded as ``rope_tables``. A step may keep its own
+    ``rope`` bool, and that flag is not replaced by the tables.
     """
     for step in spec.pipeline:
         method = get_method(step.method)
         kwargs = dict(step.kwargs)
         kwargs["seq_start"] = seq_start
-        kwargs["rope"] = rope
+        kwargs["rope_tables"] = rope
         if _layer_enabled(step.k_layers, layer_idx):
             key_states = method(key_states, layer_idx=layer_idx, target="k", **kwargs)
         if _layer_enabled(step.v_layers, layer_idx):

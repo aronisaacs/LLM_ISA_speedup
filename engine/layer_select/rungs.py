@@ -19,6 +19,10 @@ class Rung:
 
 PRUNE = (Rung(25, 0.25), Rung(50, 0.50), Rung(75, 0.75))
 _ON_POOL = (Rung(100, 7 / 8),)
+# Each pair always keeps one mean. The residual keeps the other (100 - prune_pct)%.
+# Fraction removed is prune_pct / 200. At 100 this is pure pooling, half the bytes.
+RESIDUAL = (Rung(25, 25 / 200), Rung(50, 50 / 200), Rung(75, 75 / 200), Rung(100, 100 / 200))
+_PAIR_POOL = (Rung(100, 0.5),)
 # Mildest code first. 4 bits removes 12/16 of a slot; 1 bit removes 15/16.
 QJL = (Rung(4, 12 / 16), Rung(3, 13 / 16), Rung(2, 14 / 16), Rung(1, 15 / 16))
 # int8 removes half a slot. int4 removes three quarters. Milder code first.
@@ -30,6 +34,8 @@ RUNGS = {
     "checksparse_l1": PRUNE,
     "sparsify_nm": PRUNE,
     "spatial_pool": _ON_POOL,
+    "residual_pool": RESIDUAL,
+    "pair_pool": _PAIR_POOL,
     "qjl": QJL,
     "quantize": QUANT,
 }
