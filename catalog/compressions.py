@@ -36,7 +36,12 @@ def vector_compress(k_layers="all", v_layers="all", threshold=0.0, prune_pct=Non
 
 
 def vector_compress_pair(k_layers="all", v_layers="all", prune_pct=50):
-    """Zero the weakest adjacent pairs. Pair magnitude is a² + b²."""
+    """Prune keys by RoPE-pair magnitude and values by per-scalar magnitude.
+
+    A key pairs feature ``i`` with feature ``i + head_dim // 2``. Pair magnitude
+    is ``a² + b²``. ``prune_pct`` zeros the weakest that percent of pairs.
+    Values use the same per-scalar prune as ``vector_compress``.
+    """
     return _step("vector_compress_pair", k_layers, v_layers, prune_pct=int(prune_pct))
 
 

@@ -89,7 +89,7 @@ def kv_brief(spec) -> str:
         elif method == "vector_compress":
             parts.append(f"vector |x|<{step.get('threshold', '?')}")
         elif method == "vector_compress_pair":
-            parts.append(f"vector pairs prune={step.get('prune_pct', '?')}%")
+            parts.append(f"vector rope-pairs prune={step.get('prune_pct', '?')}%")
         elif method == "spatial_pool":
             parts.append(f"spatial_pool chunk={step.get('chunk', '?')}")
         elif method == "qjl":
