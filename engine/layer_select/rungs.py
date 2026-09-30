@@ -19,7 +19,6 @@ class Rung:
 
 PRUNE = (Rung(25, 0.25), Rung(50, 0.50), Rung(75, 0.75))
 _ON_POOL = (Rung(100, 7 / 8),)
-_ON_TWO_VECTORS = (Rung(100, 6 / 8),)
 # Mildest code first. 4 bits removes 12/16 of a slot; 1 bit removes 15/16.
 QJL = (Rung(4, 12 / 16), Rung(3, 13 / 16), Rung(2, 14 / 16), Rung(1, 15 / 16))
 # int8 removes half a slot. int4 removes three quarters. Milder code first.
@@ -31,9 +30,6 @@ RUNGS = {
     "checksparse_l1": PRUNE,
     "sparsify_nm": PRUNE,
     "spatial_pool": _ON_POOL,
-    "spatial_top1": _ON_TWO_VECTORS,
-    "spatial_tile": _ON_TWO_VECTORS,
-    "spatial_feature": _ON_TWO_VECTORS,
     "qjl": QJL,
     "quantize": QUANT,
 }

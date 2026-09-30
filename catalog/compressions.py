@@ -45,21 +45,6 @@ def spatial_pool(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
     return _spatial("spatial_pool", k_layers, v_layers, chunk, pre_rope)
 
 
-def spatial_top1(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
-    """Keep the token farthest from the chunk mean; the rest become the mean."""
-    return _spatial("spatial_top1", k_layers, v_layers, chunk, pre_rope)
-
-
-def spatial_tile(k_layers="all", v_layers="all", chunk=8, tile=8, pre_rope=True):
-    """Per tile, keep the token whose tile is farthest from the mean tile."""
-    return _spatial("spatial_tile", k_layers, v_layers, chunk, pre_rope, tile=tile)
-
-
-def spatial_feature(k_layers="all", v_layers="all", chunk=8, pre_rope=True):
-    """Per feature, keep the token with the largest absolute deviation from the mean."""
-    return _spatial("spatial_feature", k_layers, v_layers, chunk, pre_rope)
-
-
 def quantize(k_layers="all", v_layers="all", bits=8, group=32):
     """Symmetric int8 or int4, one absmax scale per group of 32. Post-RoPE.
 
