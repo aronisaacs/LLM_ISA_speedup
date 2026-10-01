@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import engine.multi_run as multi_run
@@ -53,6 +54,13 @@ class WorkerCommandTests(unittest.TestCase):
         self.assertIn("4", command)
         self.assertIn("--skip-existing", command)
         self.assertIn("study.json", command)
+        self.assertNotIn("--results-root", command)
+        self.assertNotIn("--dry-run", command)
+
+    def test_command_keeps_results_root_and_dry_run(self):
+        command = multi_run.worker_command("study.json", 0, 2, False, Path("/tmp/smoke"), True)
+        self.assertEqual(command[command.index("--results-root") + 1], "/tmp/smoke")
+        self.assertIn("--dry-run", command)
 
 
 if __name__ == "__main__":

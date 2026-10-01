@@ -7,6 +7,10 @@ CUDA_VISIBLE_DEVICES to choose which GPUs take part. One GPU, MPS, or CPU
 runs in this process.
 
 python engine/multi_run.py --run study.json
+
+--results-root DIR writes results.json under DIR instead of the repo root
+(also the skip-existing lookup and the log). --dry-run evaluates but records
+nothing.
 """
 
 from __future__ import annotations
@@ -38,8 +42,8 @@ from engine.kv_compress import install, parse_kv_spec
 
 
 def main() -> None:
-    mirror_terminal(_ROOT)
     args = _parse_args()
+    mirror_terminal(args.results_root or _ROOT)
     if args.worker is None:
         devices = visible_cuda_devices()
         if len(devices) > 1:
@@ -66,7 +70,14 @@ def configurations_for_worker(configurations, worker: int, workers: int):
     ]
 
 
-def worker_command(run: str, worker: int, workers: int, skip_existing: bool) -> list[str]:
+def worker_command(
+    run: str,
+    worker: int,
+    workers: int,
+    skip_existing: bool,
+    results_root: Path | None = None,
+    dry_run: bool = False,
+) -> list[str]:
     command = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -79,6 +90,10 @@ def worker_command(run: str, worker: int, workers: int, skip_existing: bool) -> 
     ]
     if skip_existing:
         command.append("--skip-existing")
+    if results_root is not None:
+        command += ["--results-root", str(results_root)]
+    if dry_run:
+        command.append("--dry-run")
     return command
 
 
@@ -93,6 +108,18 @@ def _parse_args():
         "--skip-existing",
         action="store_true",
         help="Skip a configuration whose output JSON already has task scores",
+    )
+    parser.add_argument(
+        "--results-root",
+        type=lambda text: Path(text).resolve(),
+        default=None,
+        metavar="PATH",
+        help="Directory whose results.json receives the rows (default: repo root)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Evaluate but write nothing to results.json",
     )
     parser.add_argument("--worker", type=int, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--workers", type=int, default=None, help=argparse.SUPPRESS)
@@ -110,7 +137,9 @@ def _spawn_workers(args, devices: list[str]) -> None:
     for worker, device in enumerate(devices):
         env = os.environ.copy()
         env["CUDA_VISIBLE_DEVICES"] = device
-        command = worker_command(args.run, worker, len(devices), args.skip_existing)
+        command = worker_command(
+            args.run, worker, len(devices), args.skip_existing, args.results_root, args.dry_run
+        )
         processes.append((device, subprocess.Popen(command, env=env)))
     failed = []
     for device, process in processes:
@@ -134,6 +163,10 @@ def _run_configurations(args) -> None:
         say(f"run  {_run_label(args.run)}  {total} configuration{'s' if total != 1 else ''}")
     else:
         say(f"{label}  {len(mine)} of {total} configurations")
+    if args.dry_run:
+        _say(label, "dry-run  nothing recorded")
+    elif args.results_root is not None:
+        _say(label, f"results  {args.results_root / 'results.json'}")
 
     lm = None
     loaded_model_key = None
@@ -144,7 +177,9 @@ def _run_configurations(args) -> None:
         reject_deprecated_kv_keys(base, configuration)
         name = configuration.get("name", "configuration")
         kv_spec = parse_kv_spec(merge(base, configuration, "kv", None))
-        cached = reuse_cached_result(base, configuration, kv_spec, None, skip_unkeyed=args.skip_existing)
+        cached = reuse_cached_result(
+            base, configuration, kv_spec, None, skip_unkeyed=args.skip_existing, root=args.results_root
+        )
         if cached is not None:
             _say(label, f"[{index}/{total}]  {cached}  {name}")
             continue
@@ -162,8 +197,8 @@ def _run_configurations(args) -> None:
             results = evaluate(lm, base, configuration, kv_spec, device, model_args)
         finally:
             uninstall()
-        if getattr(lm, "rank", 0) == 0:
-            _record(results, simulation_identity(base, configuration, kv_spec))
+        if getattr(lm, "rank", 0) == 0 and not args.dry_run:
+            _record(results, simulation_identity(base, configuration, kv_spec), args.results_root)
 
         finished += 1
         elapsed = time.monotonic() - started
@@ -176,7 +211,7 @@ def _run_configurations(args) -> None:
         )
 
 
-def _record(results: dict, identity: dict) -> None:
+def _record(results: dict, identity: dict, root: Path | None = None) -> None:
     short = shorten_result({**results, "simulation": identity})
     samples = None
     counted = short.get("n-samples") or {}
@@ -188,7 +223,14 @@ def _record(results: dict, identity: dict) -> None:
         if "kv_budget" in metadata:
             budget = metadata["kv_budget"]
             compression = metadata["kv_compression"]
-    record_simulation(identity, short.get("results") or {}, samples=samples, budget=budget, compression=compression)
+    record_simulation(
+        identity,
+        short.get("results") or {},
+        samples=samples,
+        budget=budget,
+        compression=compression,
+        root=root,
+    )
 
 
 def _run_label(run: str) -> str:

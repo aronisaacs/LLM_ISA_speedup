@@ -8,10 +8,14 @@ import unittest
 from pathlib import Path
 
 from catalog.compressions import CHECKSPARSE_L1_50, DENSE, SPARSIFY_48, vector_compress
-from catalog.tasks import ARC_EASY_256, GSM8K_32, WIKITEXT_FULL
+from catalog.tasks import WIKITEXT_FULL
 from engine.eval_runner.device import apply_device, available_device
 from engine.eval_runner.load_run import grid, load_run
 from engine.kv_compress.spec import parse_kv_spec
+
+# Placeholder tasks for grid() shape tests. Never evaluated.
+ARC_EASY_TINY = {"tasks": ["arc_easy"], "limit": 256}
+GSM8K_TINY = {"tasks": ["gsm8k"], "limit": 32, "gen_kwargs": {"max_gen_toks": 128}}
 
 
 class LoadRunTests(unittest.TestCase):
@@ -34,7 +38,7 @@ class LoadRunTests(unittest.TestCase):
         configurations = grid(
             results="results",
             methods=(("dense", DENSE), ("sparsify48", SPARSIFY_48)),
-            tasks=(ARC_EASY_256, GSM8K_32),
+            tasks=(ARC_EASY_TINY, GSM8K_TINY),
             model_tag="llama32_1b",
         )
         names = [item["name"] for item in configurations]

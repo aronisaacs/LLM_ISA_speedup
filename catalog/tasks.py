@@ -4,17 +4,6 @@ Keys such as name_task / file are for run output names, not passed to lm-eval
 unless the run copies them into a configuration (make_configuration strips them).
 """
 
-ARC_EASY_256 = {
-    "tasks": ["arc_easy"],
-    "limit": 256,
-}
-
-GSM8K_32 = {
-    "tasks": ["gsm8k"],
-    "limit": 32,
-    "gen_kwargs": {"max_gen_toks": 128},
-}
-
 CEVAL_VALID_5SHOT = {
     "name_task": "ceval",
     "file": "ceval",
