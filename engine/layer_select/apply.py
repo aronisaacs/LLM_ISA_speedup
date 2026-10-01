@@ -104,11 +104,6 @@ def _set_level(step: dict, pct: int) -> None:
     if method in {"qjl", "quantize"}:
         step["bits"] = int(pct)
         return
-    if method == "sparsify_nm":
-        n = int(step.get("n") or 8)
-        keep = int(round(n * (1 - pct / 100.0)))
-        step["m"] = min(max(keep, 0), n)
-        return
     if method in {"vector_compress", "vector_compress_pair", "checksparse_l1", "residual_pool"}:
         step["prune_pct"] = int(pct)
         if method == "vector_compress":
@@ -122,10 +117,6 @@ def _level_from_step(step: dict) -> int | None:
         return int(step["bits"])
     if step.get("prune_pct") is not None:
         return int(step["prune_pct"])
-    if step.get("method") == "sparsify_nm":
-        n = int(step["n"])
-        m = int(step["m"])
-        return int(round(100 * (n - m) / n))
     return None
 
 

@@ -18,9 +18,9 @@ def _step(method: str, k_layers, v_layers, **kwargs) -> dict[str, Any]:
     return {"pipeline": [payload]}
 
 
-def sparsify_nm(k_layers="all", v_layers="all", n=8, m=4):
-    """Keep m largest-magnitude values in each tile of n (default 4:8)."""
-    return _step("sparsify_nm", k_layers, v_layers, n=n, m=m)
+def sparsify_nm(k_layers="all", v_layers="all"):
+    """Keep the 4 largest-magnitude values in each tile of 8. The ratio is fixed."""
+    return _step("sparsify_nm", k_layers, v_layers)
 
 
 def checksparse_l1(k_layers="all", v_layers="all", tile=8, prune_pct=50):
@@ -91,5 +91,5 @@ def qjl(k_layers="all", v_layers="all", bits=4):
     return _step("qjl", k_layers, v_layers, bits=int(bits))
 
 
-SPARSIFY_48 = sparsify_nm("all", "all", n=8, m=4)
+SPARSIFY_48 = sparsify_nm("all", "all")
 CHECKSPARSE_L1_50 = checksparse_l1("all", "all", tile=8, prune_pct=50)

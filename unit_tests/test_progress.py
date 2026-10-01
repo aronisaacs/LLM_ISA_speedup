@@ -18,7 +18,7 @@ class ProgressTests(unittest.TestCase):
         dense = SimpleNamespace(to_dict=lambda: {"pipeline": []})
         sparse = SimpleNamespace(
             to_dict=lambda: {
-                "pipeline": [{"method": "sparsify_nm", "n": 8, "m": 4, "k_layers": "all", "v_layers": "all"}]
+                "pipeline": [{"method": "sparsify_nm", "k_layers": "all", "v_layers": "all"}]
             }
         )
         checksparse = SimpleNamespace(
@@ -34,7 +34,7 @@ class ProgressTests(unittest.TestCase):
             }
         )
         self.assertEqual(kv_brief(dense), "dense")
-        self.assertEqual(kv_brief(sparse), "sparsify 8:4")
+        self.assertEqual(kv_brief(sparse), "sparsify 4:8")
         self.assertEqual(kv_brief(checksparse), "checksparse L1 tile=8 prune=50%")
         self.assertEqual(kv_brief(vector), "vector |x|<0.25")
 

@@ -23,6 +23,8 @@ _ON_POOL = (Rung(100, 7 / 8),)
 # Fraction removed is prune_pct / 200. At 100 this is pure pooling, half the bytes.
 RESIDUAL = (Rung(25, 25 / 200), Rung(50, 50 / 200), Rung(75, 75 / 200), Rung(100, 100 / 200))
 _PAIR_POOL = (Rung(100, 0.5),)
+# 4:8 sparsify is on or off for a slot. It drops half the slot.
+_ON_SPARSIFY = (Rung(50, 0.5),)
 # Mildest code first. 4 bits removes 12/16 of a slot; 1 bit removes 15/16.
 QJL = (Rung(4, 12 / 16), Rung(3, 13 / 16), Rung(2, 14 / 16), Rung(1, 15 / 16))
 # int8 removes half a slot. int4 removes three quarters. Milder code first.
@@ -32,7 +34,7 @@ RUNGS = {
     "vector_compress": PRUNE,
     "vector_compress_pair": PRUNE,
     "checksparse_l1": PRUNE,
-    "sparsify_nm": PRUNE,
+    "sparsify_nm": _ON_SPARSIFY,
     "spatial_pool": _ON_POOL,
     "residual_pool": RESIDUAL,
     "pair_pool": _PAIR_POOL,

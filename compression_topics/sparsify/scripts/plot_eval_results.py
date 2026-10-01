@@ -2,7 +2,7 @@
 """Turn multi_run.py result JSONs into a dense-vs-compression accuracy chart.
 
 Reads scores from results.json, labels each configuration from its kv.pipeline
-(dense vs sparsify n:m, etc.), and writes an SVG bar chart plus a text table.
+(dense vs sparsify 4:8, etc.), and writes an SVG bar chart plus a text table.
 """
 
 from __future__ import annotations
@@ -76,7 +76,7 @@ def _condition_label(kv: dict) -> str:
     for step in pipeline:
         method = step.get("method", "?")
         if method == "sparsify_nm":
-            parts.append(f"sparsify {step.get('n', '?')}:{step.get('m', '?')}")
+            parts.append("sparsify 4:8")
         else:
             parts.append(str(method))
     return " + ".join(parts) if parts else "dense"

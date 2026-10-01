@@ -126,8 +126,6 @@ class SparsifyNmTests(unittest.TestCase):
                 "pipeline": [
                     {
                         "method": "sparsify_nm",
-                        "n": 8,
-                        "m": 4,
                         "k_layers": "all",
                         "v_layers": "all",
                     }
@@ -159,14 +157,20 @@ class SparsifyNmTests(unittest.TestCase):
             dropped[kept] = False
             self.assertTrue(torch.all(tile[dropped] == 0))
 
+    def test_ratio_is_not_configurable(self):
+        spec = parse_kv_spec(
+            {"pipeline": [{"method": "sparsify_nm", "m": 6, "k_layers": "all", "v_layers": "all"}]}
+        )
+        key = torch.arange(8, dtype=torch.float32).reshape(1, 1, 1, 8)
+        with self.assertRaisesRegex(ValueError, "fixed at 4:8"):
+            compress_kv(key, key, layer_idx=0, spec=spec)
+
     def test_skips_layers_not_selected(self):
         spec = parse_kv_spec(
             {
                 "pipeline": [
                     {
                         "method": "sparsify_nm",
-                        "n": 8,
-                        "m": 4,
                         "k_layers": [1],
                         "v_layers": [],
                     }
@@ -190,8 +194,6 @@ class SparsifyNmTests(unittest.TestCase):
                 "pipeline": [
                     {
                         "method": "sparsify_nm",
-                        "n": 8,
-                        "m": 4,
                         "k_layers": "all",
                         "v_layers": "all",
                     }

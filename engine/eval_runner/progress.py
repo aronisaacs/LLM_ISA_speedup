@@ -83,7 +83,7 @@ def kv_brief(spec) -> str:
     for step in pipeline:
         method = step.get("method", "?")
         if method == "sparsify_nm":
-            parts.append(f"sparsify {step.get('n', '?')}:{step.get('m', '?')}")
+            parts.append("sparsify 4:8")
         elif method == "checksparse_l1":
             parts.append(f"checksparse L1 tile={step.get('tile', '?')} prune={step.get('prune_pct', '?')}%")
         elif method == "vector_compress":
