@@ -70,7 +70,7 @@ def pair_pool(k_layers="all", v_layers="all"):
 
 def spatial_pool(k_layers="all", v_layers="all", chunk=8):
     """Replace each closed chunk with its mean."""
-    return _spatial("spatial_pool", k_layers, v_layers, chunk)
+    return _step("spatial_pool", k_layers, v_layers, chunk=chunk)
 
 
 def quantize(k_layers="all", v_layers="all", bits=8, group=32):
@@ -89,10 +89,6 @@ def qjl(k_layers="all", v_layers="all", bits=4):
     The sweep climber overwrites ``bits`` per slot, walking 4, then 3, then 2, then 1.
     """
     return _step("qjl", k_layers, v_layers, bits=int(bits))
-
-
-def _spatial(method, k_layers, v_layers, chunk, **kwargs):
-    return _step(method, k_layers, v_layers, chunk=chunk, **kwargs)
 
 
 SPARSIFY_48 = sparsify_nm("all", "all", n=8, m=4)

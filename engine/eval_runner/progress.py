@@ -87,7 +87,10 @@ def kv_brief(spec) -> str:
         elif method == "checksparse_l1":
             parts.append(f"checksparse L1 tile={step.get('tile', '?')} prune={step.get('prune_pct', '?')}%")
         elif method == "vector_compress":
-            parts.append(f"vector |x|<{step.get('threshold', '?')}")
+            if step.get("prune_pct") is not None:
+                parts.append(f"vector prune={step.get('prune_pct')}%")
+            else:
+                parts.append(f"vector |x|<{step.get('threshold', '?')}")
         elif method == "vector_compress_pair":
             parts.append(f"vector rope-pairs prune={step.get('prune_pct', '?')}%")
         elif method == "residual_pool":
