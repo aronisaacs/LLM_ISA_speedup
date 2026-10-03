@@ -86,6 +86,8 @@ def kv_brief(spec) -> str:
             parts.append("sparsify 4:8")
         elif method == "checksparse_l1":
             parts.append(f"checksparse L1 tile={step.get('tile', '?')} prune={step.get('prune_pct', '?')}%")
+        elif method == "checksparse_row":
+            parts.append(f"checksparse row tile={step.get('tile', '?')} prune={step.get('prune_pct', '?')}%")
         elif method == "vector_compress":
             if step.get("prune_pct") is not None:
                 parts.append(f"vector prune={step.get('prune_pct')}%")

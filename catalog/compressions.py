@@ -28,6 +28,11 @@ def checksparse_l1(k_layers="all", v_layers="all", tile=8, prune_pct=50):
     return _step("checksparse_l1", k_layers, v_layers, tile=tile, prune_pct=prune_pct)
 
 
+def checksparse_row(k_layers="all", v_layers="all", tile=8, prune_pct=50):
+    """Zero the weakest L1 tiles across all KV heads of each token (Mustafa's checksparse)."""
+    return _step("checksparse_row", k_layers, v_layers, tile=tile, prune_pct=prune_pct)
+
+
 def vector_compress(k_layers="all", v_layers="all", threshold=0.0, prune_pct=None):
     """Zero weak scalars. ``prune_pct`` drops that percent; otherwise ``|x| < threshold``."""
     if prune_pct is not None:

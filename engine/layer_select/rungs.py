@@ -34,6 +34,7 @@ RUNGS = {
     "vector_compress": PRUNE,
     "vector_compress_pair": PRUNE,
     "checksparse_l1": PRUNE,
+    "checksparse_row": PRUNE,
     "sparsify_nm": _ON_SPARSIFY,
     "spatial_pool": _ON_POOL,
     "residual_pool": RESIDUAL,
