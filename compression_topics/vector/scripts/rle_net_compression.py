@@ -96,7 +96,24 @@ def run_compression(pipeline: list[dict], method: str, table: dict, n_layers: in
                 rle += m
                 mask += bitmask_bits(method, target)
     total = 2 * n_layers * HEAD_DIM * VALUE_BITS
-    return {
+    out = {}
+    if method == "vector_compress_pair":
+        # RLE's best case: every compressed slot costs what a paired key slot at that
+        # layer and level costs. Value slots only add metadata on top of this.
+        keys_removed = keys_rle = keys_mask = 0.0
+        for step in pipeline:
+            level = int(step["prune_pct"])
+            for target in ("k", "v"):
+                for layer in step.get(f"{target}_layers") or []:
+                    r, m = slot_net_bits(method, "k", int(layer), level, table)
+                    keys_removed += r
+                    keys_rle += m
+                    keys_mask += bitmask_bits(method, "k")
+        out = {
+            "net_all_keys": (keys_removed - keys_rle) / total,
+            "net_bitmask_all_keys": (keys_removed - keys_mask) / total,
+        }
+    return out | {
         "nominal": removed / total,
         "rle_overhead": rle / total,
         "net": (removed - rle) / total,
