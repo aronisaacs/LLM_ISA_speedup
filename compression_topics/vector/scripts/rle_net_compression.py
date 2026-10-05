@@ -12,7 +12,9 @@ each per-scalar and RoPE-paired GSM8K row in results.json:
 
 Per-scalar slots and RoPE-paired V slots count groups over the 128 values;
 RoPE-paired K slots count groups over the 64 pairs (one RLE list for both
-values of a pair). Uncompressed slots cost nothing.
+values of a pair). Uncompressed slots cost nothing. The same walk also gives the net compression
+with a bitmask instead of RLE: 128 bits per compressed vector, or 64 bits for
+RoPE-paired keys (one bit per pair).
 
   python compression_topics/vector/scripts/rle_net_compression.py
 """
@@ -78,8 +80,13 @@ def slot_net_bits(method: str, target: str, layer: int, level: int, table: dict)
     return VALUE_BITS * zeroed_values, RLE_BITS * groups
 
 
+def bitmask_bits(method: str, target: str) -> int:
+    """Bitmask cost per compressed vector: one bit per value, or per pair for RoPE-paired keys."""
+    return HEAD_DIM // 2 if method == "vector_compress_pair" and target == "k" else HEAD_DIM
+
+
 def run_compression(pipeline: list[dict], method: str, table: dict, n_layers: int = 32) -> dict:
-    removed = rle = 0.0
+    removed = rle = mask = 0.0
     for step in pipeline:
         level = int(step["prune_pct"])
         for target in ("k", "v"):
@@ -87,8 +94,15 @@ def run_compression(pipeline: list[dict], method: str, table: dict, n_layers: in
                 r, m = slot_net_bits(method, target, int(layer), level, table)
                 removed += r
                 rle += m
+                mask += bitmask_bits(method, target)
     total = 2 * n_layers * HEAD_DIM * VALUE_BITS
-    return {"nominal": removed / total, "rle_overhead": rle / total, "net": (removed - rle) / total}
+    return {
+        "nominal": removed / total,
+        "rle_overhead": rle / total,
+        "net": (removed - rle) / total,
+        "bitmask_overhead": mask / total,
+        "net_bitmask": (removed - mask) / total,
+    }
 
 
 def gsm8k_rows(results_path: Path) -> list[dict]:
@@ -154,7 +168,7 @@ def main() -> None:
     for r in out:
         print(
             f"{r['method']:22s} budget {r['budget']:.2f}  nominal {r['nominal']:.3f}  "
-            f"RLE {r['rle_overhead']:.3f}  net {r['net']:.3f}  acc {r['accuracy']:.3f}",
+            f"RLE {r['rle_overhead']:.3f}  net {r['net']:.3f}  bitmask net {r['net_bitmask']:.3f}  acc {r['accuracy']:.3f}",
             flush=True,
         )
     print(f"wrote  {NET_OUT}", flush=True)
