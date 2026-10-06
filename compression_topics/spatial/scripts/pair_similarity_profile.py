@@ -69,6 +69,10 @@ class Histograms:
         self.cos += torch.histc(cos.float().cpu(), bins=COS_BINS, min=-1.0, max=1.0).double()
         self.rel += torch.histc(rel.float().clamp(max=REL_MAX).cpu(), bins=REL_BINS, min=0.0, max=REL_MAX).double()
 
+    def raw(self) -> dict:
+        """Full counts: rel over [0, REL_MAX] and cos over [-1, 1], in equal-width bins."""
+        return {"n": self.n, "rel": [int(v) for v in self.rel.tolist()], "cos": [int(v) for v in self.cos.tolist()]}
+
     def summary(self) -> dict:
         if self.n == 0:
             return {"n": 0}
@@ -270,6 +274,13 @@ class Profiler:
                 key = (layer_idx, kind, phase, threshold)
                 self.tiers[key] = self.tiers.get(key, torch.zeros_like(counts)) + counts
 
+    def histogram_dump(self) -> dict:
+        """Full rel and cos histograms per (kind, phase, k, layer): the pair distribution before (k=0) and after residuals."""
+        out: dict = {"rel_max": REL_MAX, "rel_bins": REL_BINS, "cos_bins": COS_BINS, "ks": list(self.ks), "hist": {}}
+        for (layer_idx, kind, phase, k), histograms in sorted(self.hist.items()):
+            out["hist"].setdefault(kind, {}).setdefault(phase, {}).setdefault(str(k), {})[str(layer_idx)] = histograms.raw()
+        return out
+
     def kneeded_dump(self) -> dict:
         """Pair counts by needed k per (kind, phase, layer), for every threshold of TAU_GRID."""
         out: dict = {"taus": list(TAU_GRID), "head_dim": self.head_dim, "counts": {}}
@@ -446,6 +457,7 @@ def main() -> None:
         "tier_thresholds": list(TIER_THRESHOLDS),
     }
     (args.out / "profile.json").write_text(json.dumps({"meta": meta, "summary": summary}, indent=1))
+    (args.out / "profile_hist.json").write_text(json.dumps(profiler.histogram_dump(), separators=(",", ":")))
     (args.out / "profile_kneeded.json").write_text(json.dumps(profiler.kneeded_dump(), separators=(",", ":")))
     (args.out / "profile.md").write_text(markdown_tables(summary))
     print(markdown_tables(summary))

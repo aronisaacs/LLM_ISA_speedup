@@ -72,6 +72,8 @@ def test_profile_runs_on_a_tiny_llama_with_prefill_and_decode():
     # Generated tokens sit at positions 9..18 and 12..21; the 9-start gives 5 pairs of (10,11)..(17,18) -> 4.
     assert summary["v"]["decode"]["0"]["0"]["n"] > 0
     assert psp.markdown_tables(summary, ks=(0, 2))
+    hist = profiler.histogram_dump()["hist"]["v"]["prefill"]["0"]["0"]
+    assert hist["n"] == (4 + 6) * 2 and sum(hist["rel"]) <= hist["n"] and len(hist["cos"]) == psp.COS_BINS
     dump = profiler.kneeded_dump()
     assert dump["head_dim"] == 8 and len(dump["taus"]) == 50
     row = dump["counts"]["v"]["prefill"]["0"]
