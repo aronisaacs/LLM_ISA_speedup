@@ -72,6 +72,11 @@ def test_profile_runs_on_a_tiny_llama_with_prefill_and_decode():
     # Generated tokens sit at positions 9..18 and 12..21; the 9-start gives 5 pairs of (10,11)..(17,18) -> 4.
     assert summary["v"]["decode"]["0"]["0"]["n"] > 0
     assert psp.markdown_tables(summary, ks=(0, 2))
+    dump = profiler.kneeded_dump()
+    assert dump["head_dim"] == 8 and len(dump["taus"]) == 50
+    row = dump["counts"]["v"]["prefill"]["0"]
+    assert len(row) == 50 and len(row[0]) == 9
+    assert sum(row[0]) == (4 + 6) * 2
 
 
 def test_tier_counts_pick_the_smallest_residual_within_the_threshold():
@@ -88,3 +93,38 @@ def test_tier_summary_bytes_against_dense():
     # Every pair merged with k=8: (16 * 128 + 128 + 16 * 8) / (32 * 128).
     full = psp.tier_summary(torch.tensor([0.0, 4.0, 0.0]), (0, 8), 128)
     assert abs(full["bytes_fraction_of_dense"] - (16 * 128 + 128 + 128) / (32 * 128)) < 1e-9
+
+
+def test_k_needed_counts_match_the_per_k_metrics():
+    torch.manual_seed(1)
+    a = torch.randn(200, 16)
+    b = a + 0.3 * torch.randn(200, 16)
+    b[:50, 5] += 4.0  # a few pairs with one big outlier difference
+    taus = (0.1, 0.3, 0.6)
+    counts = psp.k_needed_counts(a, b, taus)
+    assert counts.shape == (3, 17)
+    assert (counts.sum(dim=1) == 200).all()
+    for row, tau in enumerate(taus):
+        expected = torch.zeros(17, dtype=torch.float64)
+        for k in range(17):
+            _, rel = psp.pair_metrics(a, b, k)
+            if k == 0:
+                done = rel <= tau
+                need = torch.where(done, torch.zeros(200), torch.full((200,), 99.0))
+            else:
+                need = torch.where((need == 99.0) & (rel <= tau), torch.full((200,), float(k)), need)
+        for k in range(17):
+            expected[k] = float((need == k).sum())
+        assert torch.allclose(counts[row], expected), (tau, counts[row], expected)
+
+
+def test_bytes_from_kneeded_agree_with_the_tier_tables():
+    torch.manual_seed(2)
+    a = torch.randn(300, 16)
+    b = a + 0.4 * torch.randn(300, 16)
+    ks = (0, 4, 8)
+    rels = torch.stack([psp.pair_metrics(a, b, k)[1] for k in ks])
+    old = psp.tier_summary(psp.tier_counts(rels, 0.3), ks, 16)["bytes_fraction_of_dense"]
+    row = psp.k_needed_counts(a, b, (0.3,))[0]
+    new, _ = psp.bytes_from_kneeded(row, ks, 16)
+    assert abs(old - new) < 1e-9

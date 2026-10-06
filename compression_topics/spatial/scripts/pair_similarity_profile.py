@@ -15,6 +15,10 @@ an exact residual). k = 0 is the plain pair.
 
 Keys are measured twice: as stored (RoPE applied) and with RoPE undone.
 
+The full-curve dump (profile_kneeded.json) keeps, for every threshold on a fine grid, how many
+pairs need each residual size k = 0..head_dim to get within it. Any threshold and any set of
+allowed residual sizes can be evaluated from it afterwards (see ``bytes_from_kneeded``).
+
 Per pair, the smallest k whose rel is within a threshold is the residual that pair would
 need. The tier tables show how many pairs need each k, how many cannot be merged, and the
 bytes left against a dense cache.
@@ -47,6 +51,7 @@ REL_BINS = 400  # rel in [0, 4]
 COS_BINS = 400  # cos in [-1, 1]
 REL_MAX = 4.0
 TIER_THRESHOLDS = (0.1, 0.2, 0.3)  # rel a merged pair must reach, with the smallest residual that does
+TAU_GRID = tuple(round(0.02 * i, 2) for i in range(1, 51))  # 0.02 .. 1.0, for the full-curve dump
 KINDS = ("k_rope", "k_plain", "v")
 PHASES = ("prefill", "decode")
 
@@ -152,6 +157,47 @@ def tier_summary(counts: torch.Tensor, ks: tuple[int, ...], head_dim: int) -> di
     }
 
 
+def k_needed_counts(first: torch.Tensor, second: torch.Tensor, taus: tuple[float, ...] = TAU_GRID) -> torch.Tensor:
+    """For each threshold, how many pairs need each residual size k = 0..head_dim.
+
+    Setting aside the k largest |d| entries leaves the difference energy total - (sum of the k
+    biggest d^2), so rel_k = sqrt(that) / |m| falls as k grows and the smallest k within a
+    threshold is found by one search per pair. Returns float64 [len(taus), head_dim + 1].
+    """
+    first = first.float()
+    second = second.float()
+    mean = (first + second) / 2
+    energy = ((first - second) / 2).pow(2).sort(dim=-1, descending=True).values
+    total = energy.sum(dim=-1, keepdim=True)
+    rest = torch.cat([total, total - energy.cumsum(dim=-1)], dim=-1).clamp_min(0)  # [pairs, head_dim + 1]
+    limit = (torch.tensor(taus, device=mean.device).unsqueeze(0) * mean.norm(dim=-1, keepdim=True)).pow(2)  # [pairs, taus]
+    # rest is non-increasing along k, so the smallest k within the limit is the count of k whose rest exceeds it.
+    needed = torch.searchsorted((-rest).contiguous(), (-limit).contiguous(), right=False)  # [pairs, taus]
+    needed = needed.clamp(max=rest.shape[-1] - 1)
+    counts = torch.zeros(len(taus), rest.shape[-1], dtype=torch.float64, device=needed.device)
+    counts.scatter_add_(1, needed.t().contiguous(), torch.ones(needed.t().shape, dtype=torch.float64, device=needed.device))
+    return counts.cpu()
+
+
+def bytes_from_kneeded(counts_row: torch.Tensor, tiers: tuple[int, ...], head_dim: int) -> tuple[float, float]:
+    """Bytes against dense and share left unmerged, for one threshold row of the dump.
+
+    A pair uses the smallest allowed tier that is at least its needed k; none allowed means it
+    stays exact. Costs match ``tier_summary``.
+    """
+    total = float(counts_row.sum())
+    bits = 0.0
+    unmerged = 0.0
+    previous = -1
+    for k in sorted(tiers):
+        group = float(counts_row[previous + 1 : k + 1].sum())
+        bits += group * (16 * head_dim + (head_dim + 16 * k if k > 0 else 0))
+        previous = k
+    unmerged = float(counts_row[previous + 1 :].sum())
+    bits += unmerged * 32 * head_dim
+    return bits / (total * 32 * head_dim), unmerged / total
+
+
 def aligned_pairs(states: torch.Tensor, start: int) -> tuple[torch.Tensor, torch.Tensor] | None:
     """Split [1, heads, seq, dim] states at absolute positions start.. into pairs (2i, 2i+1).
 
@@ -179,6 +225,8 @@ class Profiler:
         # Pairs per tier at each rel threshold: index i is ks[i], the last entry is "left exact".
         self.tiers: dict[tuple[int, str, str, float], torch.Tensor] = {}
         self.head_dim: int | None = None
+        # Pairs by the smallest k that reaches each threshold of TAU_GRID: [len(TAU_GRID), head_dim + 1].
+        self.kneeded: dict[tuple[int, str, str], torch.Tensor] = {}
         self._generated: dict[int, list[tuple[int, torch.Tensor, torch.Tensor]]] = {}
 
     def observe(self, layer_idx: int, keys: torch.Tensor, values: torch.Tensor, start: int) -> None:
@@ -214,10 +262,22 @@ class Profiler:
                 cos, rel = pair_metrics(pairs[0], pairs[1], k)
                 self.hist.setdefault((layer_idx, kind, phase, k), Histograms()).add(cos, rel)
                 rels.append(rel)
+            counts = k_needed_counts(pairs[0], pairs[1])
+            key = (layer_idx, kind, phase)
+            self.kneeded[key] = self.kneeded.get(key, torch.zeros_like(counts)) + counts
             for threshold in TIER_THRESHOLDS:
                 counts = tier_counts(torch.stack(rels), threshold)
                 key = (layer_idx, kind, phase, threshold)
                 self.tiers[key] = self.tiers.get(key, torch.zeros_like(counts)) + counts
+
+    def kneeded_dump(self) -> dict:
+        """Pair counts by needed k per (kind, phase, layer), for every threshold of TAU_GRID."""
+        out: dict = {"taus": list(TAU_GRID), "head_dim": self.head_dim, "counts": {}}
+        for (layer_idx, kind, phase), counts in sorted(self.kneeded.items()):
+            out["counts"].setdefault(kind, {}).setdefault(phase, {})[str(layer_idx)] = [
+                [int(v) for v in row] for row in counts.tolist()
+            ]
+        return out
 
     def summary(self) -> dict:
         out: dict = {}
@@ -386,6 +446,7 @@ def main() -> None:
         "tier_thresholds": list(TIER_THRESHOLDS),
     }
     (args.out / "profile.json").write_text(json.dumps({"meta": meta, "summary": summary}, indent=1))
+    (args.out / "profile_kneeded.json").write_text(json.dumps(profiler.kneeded_dump(), separators=(",", ":")))
     (args.out / "profile.md").write_text(markdown_tables(summary))
     print(markdown_tables(summary))
     print(f"wrote {args.out}/profile.json and profile.md")
