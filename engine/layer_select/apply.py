@@ -6,6 +6,7 @@ from collections import defaultdict
 from copy import deepcopy
 
 from catalog.compressions import DENSE
+from engine.layer_select.rungs import MERGE_ONLY
 from engine.layer_select.slots import Slot
 
 
@@ -104,10 +105,18 @@ def _set_level(step: dict, pct: int) -> None:
     if method in {"qjl", "quantize"}:
         step["bits"] = int(pct)
         return
+    if method == "pair_quant":
+        step["bits"] = _pair_quant_bits(int(pct))
+        return
     if method in {"vector_compress", "vector_compress_pair", "checksparse_l1", "checksparse_row", "residual_pool"}:
         step["prune_pct"] = int(pct)
         if method == "vector_compress":
             step.pop("threshold", None)
+
+
+def _pair_quant_bits(level: int) -> int:
+    """Residual bits for a pair_quant level. The merge-only level stores none."""
+    return 0 if level == MERGE_ONLY else level
 
 
 def _level_from_step(step: dict) -> int | None:
@@ -115,6 +124,8 @@ def _level_from_step(step: dict) -> int | None:
         return None
     if step.get("method") in {"qjl", "quantize"} and step.get("bits") is not None:
         return int(step["bits"])
+    if step.get("method") == "pair_quant" and step.get("bits") is not None:
+        return MERGE_ONLY if int(step["bits"]) == 0 else int(step["bits"])
     if step.get("prune_pct") is not None:
         return int(step["prune_pct"])
     return None

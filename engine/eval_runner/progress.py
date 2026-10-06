@@ -100,6 +100,8 @@ def kv_brief(spec) -> str:
             parts.append(f"residual pool prune={step.get('prune_pct', '?')}% {rope}")
         elif method == "pair_pool":
             parts.append("pair pool")
+        elif method == "pair_quant":
+            parts.append(f"pair quant residual bits={step.get('bits', '?')} group={step.get('group', '?')}")
         elif method == "spatial_pool":
             parts.append(f"spatial_pool chunk={step.get('chunk', '?')}")
         elif method == "qjl":
