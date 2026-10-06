@@ -27,6 +27,12 @@ The sample dump (profile_samples.npz) keeps individual pairs: a uniform random s
 (kind, phase, layer) with the pair's whole rel curve rel_k for k = 0..head_dim (half precision),
 and its question index, KV head, token position, |m| and cosine.
 
+With --dump-kv DIR the exact K, V and (for Llama) query states of every question are saved as
+one safetensors file per question, so any other statistic can be computed later with no model:
+keys and values [layers, kv_heads, positions, head_dim], queries [layers, heads, positions,
+head_dim], and the token ids; prompt length is in the file metadata and meta.json holds the
+model, seed, chosen questions and RoPE settings. Keys and queries are as stored (RoPE applied).
+
 Per pair, the smallest k whose rel is within a threshold is the residual that pair would
 need. The tier tables show how many pairs need each k, how many cannot be merged, and the
 bytes left against a dense cache.
@@ -414,8 +420,48 @@ class Profiler:
         return out
 
 
+class KvDumper:
+    """Collects the K/V (and queries) of one sequence per layer, then writes them out."""
+
+    def __init__(self, directory: Path) -> None:
+        self.directory = directory
+        directory.mkdir(parents=True, exist_ok=True)
+        self.prompt_lengths: list[int] = []
+        self.pending_query: torch.Tensor | None = None
+        self._reset()
+
+    def _reset(self) -> None:
+        self.layers: dict[int, dict[str, list[torch.Tensor]]] = {}
+
+    def record(self, layer_idx: int, keys: torch.Tensor, values: torch.Tensor) -> None:
+        slot = self.layers.setdefault(layer_idx, {"k": [], "v": [], "q": []})
+        slot["k"].append(keys.detach().cpu())
+        slot["v"].append(values.detach().cpu())
+        if self.pending_query is not None:
+            slot["q"].append(self.pending_query.detach().cpu())
+            self.pending_query = None
+
+    def save(self, question: int, ids: torch.Tensor) -> Path:
+        from safetensors.torch import save_file
+
+        order = sorted(self.layers)
+        tensors = {
+            "keys": torch.stack([torch.cat(self.layers[i]["k"], dim=-2)[0] for i in order]).contiguous(),
+            "values": torch.stack([torch.cat(self.layers[i]["v"], dim=-2)[0] for i in order]).contiguous(),
+            "input_ids": ids.cpu().long().contiguous(),
+        }
+        if all(self.layers[i]["q"] for i in order):
+            tensors["queries"] = torch.stack([torch.cat(self.layers[i]["q"], dim=-2)[0] for i in order]).contiguous()
+        path = self.directory / f"question_{question:04d}.safetensors"
+        save_file(tensors, str(path), metadata={"prompt_len": str(int(ids.shape[-1])), "question": str(question)})
+        self.prompt_lengths.append(int(ids.shape[-1]))
+        self._reset()
+        return path
+
+
 def run_profile(
-    model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope: RopeTables | None, ks=KS, generate_kwargs=None, sample_pairs: int = 2000
+    model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope: RopeTables | None, ks=KS, generate_kwargs=None, sample_pairs: int = 2000,
+    dump_dir: Path | None = None,
 ) -> Profiler:
     """Generate greedily for each prompt (1-D token ids) while a hook scores every cache update."""
     from transformers.cache_utils import Cache
@@ -424,13 +470,33 @@ def run_profile(
         raise ValueError("ks must start with 0: the movement dump buckets pairs by their rel before any residual")
     profiler = Profiler(rope, ks, sample_pairs)
     original = Cache.update
+    dumper = KvDumper(dump_dir) if dump_dir is not None else None
+    llama = None
+    original_rotary = None
+    if dumper is not None:
+        try:
+            import transformers.models.llama.modeling_llama as llama
+
+            original_rotary = llama.apply_rotary_pos_emb
+        except (ImportError, AttributeError):
+            llama = None  # no query capture for this model family
 
     def update(self, key_states, value_states, layer_idx, *args, **kwargs):
         length = _stored_length(self, layer_idx)
         profiler.observe(layer_idx, key_states, value_states, length)
+        if dumper is not None:
+            dumper.record(layer_idx, key_states, value_states)
         return original(self, key_states, value_states, layer_idx, *args, **kwargs)
 
+    def rotary(query, key, *args, **kwargs):
+        # Runs right before the layer's cache update, which attributes the query to its layer.
+        query_embed, key_embed = original_rotary(query, key, *args, **kwargs)
+        dumper.pending_query = query_embed
+        return query_embed, key_embed
+
     Cache.update = update
+    if llama is not None:
+        llama.apply_rotary_pos_emb = rotary
     try:
         for number, ids in enumerate(prompts):
             profiler.question = number
@@ -444,8 +510,12 @@ def run_profile(
                     **(generate_kwargs or {}),
                 )
             profiler.finish_sequence()
+            if dumper is not None:
+                dumper.save(number, ids)
     finally:
         Cache.update = original
+        if llama is not None:
+            llama.apply_rotary_pos_emb = original_rotary
     return profiler
 
 
@@ -474,7 +544,7 @@ def rope_tables(model) -> RopeTables | None:
     )
 
 
-def gsm8k_prompts(tokenizer, count: int, shots: int = 5, seed: int = 0) -> list[torch.Tensor]:
+def gsm8k_prompts(tokenizer, count: int, shots: int = 5, seed: int = 0) -> tuple[list[torch.Tensor], list[int]]:
     """Few-shot GSM8K prompts in the lm-eval layout, on ``count`` test questions drawn at random."""
     from datasets import load_dataset
 
@@ -487,7 +557,7 @@ def gsm8k_prompts(tokenizer, count: int, shots: int = 5, seed: int = 0) -> list[
     for i in chosen:
         text = shot_text + f"Question: {test[i]['question']}\nAnswer:"
         prompts.append(torch.tensor(tokenizer(text)["input_ids"]))
-    return prompts
+    return prompts, chosen
 
 
 def markdown_tables(summary: dict, *, rel_threshold: str = "0.3", ks=KS) -> str:
@@ -542,6 +612,7 @@ def main() -> None:
     parser.add_argument("--shots", type=int, default=5)
     parser.add_argument("--seed", type=int, default=0, help="seed for choosing the GSM8K test questions")
     parser.add_argument("--max-new-tokens", type=int, default=256)
+    parser.add_argument("--dump-kv", type=Path, default=None, help="directory to save every question's exact K, V and queries (large)")
     parser.add_argument("--sample-pairs", type=int, default=2000, help="random pairs kept per (kind, phase, layer) with their full curve; 0 to skip")
     parser.add_argument("--device", default=None, help="cuda, mps or cpu; default is the best one available")
     parser.add_argument("--dtype", default=None, help="bfloat16, float16 or float32; default bfloat16 (float32 on cpu)")
@@ -555,16 +626,41 @@ def main() -> None:
     dtype = getattr(torch, args.dtype) if args.dtype else (torch.float32 if device == "cpu" else torch.bfloat16)
     model = AutoModelForCausalLM.from_pretrained(args.model, dtype=dtype).to(device)
     model.eval()
-    prompts = gsm8k_prompts(tokenizer, args.questions, args.shots, args.seed)
+    prompts, chosen = gsm8k_prompts(tokenizer, args.questions, args.shots, args.seed)
+    rope = rope_tables(model)
     profiler = run_profile(
         model,
         prompts,
         max_new_tokens=args.max_new_tokens,
-        rope=rope_tables(model),
+        rope=rope,
+        dump_dir=args.dump_kv,
         generate_kwargs={"stop_strings": ["Question:"], "tokenizer": tokenizer},
         sample_pairs=args.sample_pairs,
     )
     summary = profiler.summary()
+    if args.dump_kv is not None:
+        (args.dump_kv / "meta.json").write_text(
+            json.dumps(
+                {
+                    "model": args.model,
+                    "seed": args.seed,
+                    "shots": args.shots,
+                    "max_new_tokens": args.max_new_tokens,
+                    "gsm8k_test_indices": chosen,
+                    "dtype": str(dtype),
+                    "rope": None
+                    if rope is None
+                    else {
+                        "rope_theta": rope.rope_theta,
+                        "head_dim": rope.head_dim,
+                        "inv_freq": list(rope.inv_freq) if rope.inv_freq else None,
+                        "attention_scaling": rope.attention_scaling,
+                    },
+                    "layout": "keys/values [layers, kv_heads, positions, head_dim]; queries [layers, heads, positions, head_dim]; RoPE applied",
+                },
+                indent=1,
+            )
+        )
     args.out.mkdir(parents=True, exist_ok=True)
     meta = {
         "model": args.model,

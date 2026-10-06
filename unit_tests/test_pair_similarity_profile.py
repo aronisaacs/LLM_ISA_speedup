@@ -182,3 +182,45 @@ def test_reservoir_keeps_a_bounded_sample_with_metadata():
     assert reservoir.curves.shape == (10, 9) and reservoir.meta.shape == (10, 5)
     assert set(reservoir.meta[:, 0].tolist()) <= {0.0, 1.0, 2.0}
     assert (reservoir.meta[:, 1] <= 1).all() and (reservoir.meta[:, 2] % 2 == 0).all()
+
+
+def test_dump_kv_writes_the_exact_stored_states(tmp_path):
+    from safetensors.torch import safe_open
+    from transformers import LlamaConfig, LlamaForCausalLM
+
+    torch.manual_seed(0)
+    config = LlamaConfig(
+        vocab_size=64, hidden_size=32, intermediate_size=64, num_hidden_layers=2,
+        num_attention_heads=4, num_key_value_heads=2, max_position_embeddings=128,
+    )
+    model = LlamaForCausalLM(config).eval()
+    ids = torch.randint(0, 64, (9,))
+    psp.run_profile(
+        model, [ids], max_new_tokens=6, rope=psp.rope_tables(model), ks=(0, 2),
+        generate_kwargs={"min_new_tokens": 6}, sample_pairs=0, dump_dir=tmp_path,
+    )
+    with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:
+        keys, values, queries = f.get_tensor("keys"), f.get_tensor("values"), f.get_tensor("queries")
+        assert f.metadata()["prompt_len"] == "9"
+        assert f.get_tensor("input_ids").tolist() == ids.tolist()
+    # 9 prompt tokens plus 6 generated; the last generated token is never fed back.
+    assert keys.shape == (2, 2, 14, 8) and values.shape == keys.shape
+    assert queries.shape == (2, 4, 14, 8)
+    # The stored keys are the post-RoPE keys the model attended with: rerun and compare layer 0.
+    captured = {}
+    from transformers.cache_utils import Cache
+
+    original = Cache.update
+
+    def spy(self, key_states, value_states, layer_idx, *a, **kw):
+        if layer_idx == 0:
+            captured.setdefault("k", []).append(key_states.detach())
+        return original(self, key_states, value_states, layer_idx, *a, **kw)
+
+    Cache.update = spy
+    try:
+        model.generate(input_ids=ids.unsqueeze(0), attention_mask=torch.ones(1, 9, dtype=torch.long),
+                       max_new_tokens=6, min_new_tokens=6, do_sample=False)
+    finally:
+        Cache.update = original
+    assert torch.allclose(torch.cat(captured["k"], dim=-2)[0], keys[0], atol=1e-6)
