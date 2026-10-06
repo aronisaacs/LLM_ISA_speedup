@@ -89,7 +89,7 @@ def _close_filled_pairs(keys, values, layer_idx: int, spec: KvSpec, start: int, 
     A chunk that started on an odd position left the previous token exact until
     here. Keys and values share the window. Each is rewritten only when this
     layer is selected for that tensor. ``pair_pool`` is full pooling with no
-    RoPE alignment. ``pair_quant`` pools with a quantized residual. A shorter
+    RoPE alignment. ``pair_quant`` pools with a quantized residual. ``pair_gate`` merges only pairs that pass a similarity test. A shorter
     tensor has dropped its prefix.
     """
     if start % 2 == 0:
@@ -103,6 +103,9 @@ def _close_filled_pairs(keys, values, layer_idx: int, spec: KvSpec, start: int, 
     for step in spec.pipeline:
         if step.method == "pair_quant":
             _close_pair_quant(step, keys, values, layer_idx, open_start, closed, end)
+            continue
+        if step.method == "pair_gate":
+            _close_pair_gate(step, keys, values, layer_idx, open_start, closed, end)
             continue
         if step.method not in {"residual_pool", "pair_pool"}:
             continue
@@ -141,6 +144,17 @@ def _close_pair_quant(step, keys, values, layer_idx: int, open_start: int, close
         pair_quant.write_closed_pairs(keys, bits=bits, group=group, start=open_start, end=closed)
     if _enabled(step.v_layers, layer_idx) and values.shape[-2] >= end:
         pair_quant.write_closed_pairs(values, bits=bits, group=group, start=open_start, end=closed)
+
+
+def _close_pair_gate(step, keys, values, layer_idx: int, open_start: int, closed: int, end: int) -> None:
+    from compression_topics.spatial.algorithms import pair_gate
+
+    tau = float(step.kwargs.get("tau", 0.3))
+    keep_pct = int(step.kwargs.get("keep_pct", 0))
+    if _enabled(step.k_layers, layer_idx) and keys.shape[-2] >= end:
+        pair_gate.write_closed_pairs(keys, tau=tau, keep_pct=keep_pct, target="k", start=open_start, end=closed)
+    if _enabled(step.v_layers, layer_idx) and values.shape[-2] >= end:
+        pair_gate.write_closed_pairs(values, tau=tau, keep_pct=keep_pct, target="v", start=open_start, end=closed)
 
 
 def _key_quantize_step(spec: KvSpec, layer_idx: int) -> PipelineStep | None:
