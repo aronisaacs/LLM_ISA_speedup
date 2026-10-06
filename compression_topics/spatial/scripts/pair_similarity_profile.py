@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -283,8 +284,8 @@ def rope_tables(model) -> RopeTables | None:
     )
 
 
-def gsm8k_prompts(tokenizer, count: int, shots: int = 5) -> list[torch.Tensor]:
-    """Few-shot GSM8K prompts in the lm-eval layout ("Question: ...\\nAnswer: ...")."""
+def gsm8k_prompts(tokenizer, count: int, shots: int = 5, seed: int = 0) -> list[torch.Tensor]:
+    """Few-shot GSM8K prompts in the lm-eval layout, on ``count`` test questions drawn at random."""
     from datasets import load_dataset
 
     data = load_dataset("openai/gsm8k", "main")
@@ -292,7 +293,8 @@ def gsm8k_prompts(tokenizer, count: int, shots: int = 5) -> list[torch.Tensor]:
     test = data["test"]
     shot_text = "".join(f"Question: {train[i]['question']}\nAnswer: {train[i]['answer']}\n\n" for i in range(shots))
     prompts = []
-    for i in range(count):
+    chosen = random.Random(seed).sample(range(len(test)), count)
+    for i in chosen:
         text = shot_text + f"Question: {test[i]['question']}\nAnswer:"
         prompts.append(torch.tensor(tokenizer(text)["input_ids"]))
     return prompts
@@ -348,6 +350,7 @@ def main() -> None:
     parser.add_argument("--model", default=PRETRAINED)
     parser.add_argument("--questions", type=int, default=30)
     parser.add_argument("--shots", type=int, default=5)
+    parser.add_argument("--seed", type=int, default=0, help="seed for choosing the GSM8K test questions")
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--device", default=None, help="cuda, mps or cpu; default is the best one available")
     parser.add_argument("--dtype", default=None, help="bfloat16, float16 or float32; default bfloat16 (float32 on cpu)")
@@ -361,7 +364,7 @@ def main() -> None:
     dtype = getattr(torch, args.dtype) if args.dtype else (torch.float32 if device == "cpu" else torch.bfloat16)
     model = AutoModelForCausalLM.from_pretrained(args.model, dtype=dtype).to(device)
     model.eval()
-    prompts = gsm8k_prompts(tokenizer, args.questions, args.shots)
+    prompts = gsm8k_prompts(tokenizer, args.questions, args.shots, args.seed)
     profiler = run_profile(
         model,
         prompts,
@@ -375,6 +378,7 @@ def main() -> None:
         "model": args.model,
         "questions": args.questions,
         "shots": args.shots,
+        "seed": args.seed,
         "max_new_tokens": args.max_new_tokens,
         "ks": list(KS),
         "cos_thresholds": list(COS_THRESHOLDS),
