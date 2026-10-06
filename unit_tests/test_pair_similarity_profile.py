@@ -72,3 +72,19 @@ def test_profile_runs_on_a_tiny_llama_with_prefill_and_decode():
     # Generated tokens sit at positions 9..18 and 12..21; the 9-start gives 5 pairs of (10,11)..(17,18) -> 4.
     assert summary["v"]["decode"]["0"]["0"]["n"] > 0
     assert psp.markdown_tables(summary, ks=(0, 2))
+
+
+def test_tier_counts_pick_the_smallest_residual_within_the_threshold():
+    # ks = (0, 8, 16); three pairs: fine at k=0, fine only at k=16, never fine.
+    rels = torch.tensor([[0.05, 0.9, 0.9], [0.04, 0.5, 0.9], [0.03, 0.1, 0.9]])
+    counts = psp.tier_counts(rels, 0.2)
+    assert counts.tolist() == [1.0, 0.0, 1.0, 1.0]
+
+
+def test_tier_summary_bytes_against_dense():
+    # Half the pairs merge with no residual, half stay exact: (16 + 32) / 2 / 32 = 0.75.
+    summary = psp.tier_summary(torch.tensor([1.0, 0.0, 1.0]), (0, 8), 128)
+    assert abs(summary["bytes_fraction_of_dense"] - 0.75) < 1e-9
+    # Every pair merged with k=8: (16 * 128 + 128 + 16 * 8) / (32 * 128).
+    full = psp.tier_summary(torch.tensor([0.0, 4.0, 0.0]), (0, 8), 128)
+    assert abs(full["bytes_fraction_of_dense"] - (16 * 128 + 128 + 128) / (32 * 128)) < 1e-9

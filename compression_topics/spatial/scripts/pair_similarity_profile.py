@@ -15,6 +15,10 @@ an exact residual). k = 0 is the plain pair.
 
 Keys are measured twice: as stored (RoPE applied) and with RoPE undone.
 
+Per pair, the smallest k whose rel is within a threshold is the residual that pair would
+need. The tier tables show how many pairs need each k, how many cannot be merged, and the
+bytes left against a dense cache.
+
   python compression_topics/spatial/scripts/pair_similarity_profile.py --questions 30
 """
 
@@ -41,6 +45,7 @@ REL_THRESHOLDS = (0.1, 0.2, 0.3, 0.5, 0.7, 1.0)
 REL_BINS = 400  # rel in [0, 4]
 COS_BINS = 400  # cos in [-1, 1]
 REL_MAX = 4.0
+TIER_THRESHOLDS = (0.1, 0.2, 0.3)  # rel a merged pair must reach, with the smallest residual that does
 KINDS = ("k_rope", "k_plain", "v")
 PHASES = ("prefill", "decode")
 
@@ -109,6 +114,43 @@ def pair_metrics(first: torch.Tensor, second: torch.Tensor, k: int) -> tuple[tor
     return cos, rel
 
 
+def tier_counts(rels: torch.Tensor, threshold: float) -> torch.Tensor:
+    """For each pair, the smallest residual size whose rel is within ``threshold``.
+
+    ``rels`` is [len(ks), pairs], ordered by increasing k. Returns pair counts per k, plus a last
+    entry for pairs no listed k brings within the threshold (those stay exact, unmerged).
+    """
+    ok = rels <= threshold
+    any_ok = ok.any(dim=0)
+    first = ok.float().argmax(dim=0)
+    counts = torch.zeros(rels.shape[0] + 1, dtype=torch.float64)
+    counts[:-1] = torch.bincount(first[any_ok].cpu(), minlength=rels.shape[0]).double()
+    counts[-1] = float((~any_ok).sum())
+    return counts
+
+
+def tier_summary(counts: torch.Tensor, ks: tuple[int, ...], head_dim: int) -> dict:
+    """Share of pairs per tier and the bytes left against a dense cache.
+
+    A merged pair stores the mean (16 bits per feature), and when k > 0 also a one-bit-per-feature
+    mask and k kept differences at 16 bits. An unmerged pair stays at 2 x 16 bits per feature.
+    Per-pair flags are not counted.
+    """
+    total = float(counts.sum())
+    shares = (counts / total).tolist()
+    dense = 32 * head_dim
+    bits = 0.0
+    for k, share in zip(ks, shares[:-1]):
+        bits += share * (16 * head_dim + (head_dim + 16 * k if k > 0 else 0))
+    bits += shares[-1] * dense
+    return {
+        "pairs": int(total),
+        "share_by_k": {str(k): share for k, share in zip(ks, shares[:-1])},
+        "share_unmerged": shares[-1],
+        "bytes_fraction_of_dense": bits / dense,
+    }
+
+
 def aligned_pairs(states: torch.Tensor, start: int) -> tuple[torch.Tensor, torch.Tensor] | None:
     """Split [1, heads, seq, dim] states at absolute positions start.. into pairs (2i, 2i+1).
 
@@ -133,6 +175,9 @@ class Profiler:
         self.rope = rope
         self.ks = ks
         self.hist: dict[tuple[int, str, str, int], Histograms] = {}
+        # Pairs per tier at each rel threshold: index i is ks[i], the last entry is "left exact".
+        self.tiers: dict[tuple[int, str, str, float], torch.Tensor] = {}
+        self.head_dim: int | None = None
         self._generated: dict[int, list[tuple[int, torch.Tensor, torch.Tensor]]] = {}
 
     def observe(self, layer_idx: int, keys: torch.Tensor, values: torch.Tensor, start: int) -> None:
@@ -162,14 +207,24 @@ class Profiler:
             pairs = aligned_pairs(states, start)
             if pairs is None:
                 continue
+            self.head_dim = states.shape[-1]
+            rels = []
             for k in self.ks:
                 cos, rel = pair_metrics(pairs[0], pairs[1], k)
                 self.hist.setdefault((layer_idx, kind, phase, k), Histograms()).add(cos, rel)
+                rels.append(rel)
+            for threshold in TIER_THRESHOLDS:
+                counts = tier_counts(torch.stack(rels), threshold)
+                key = (layer_idx, kind, phase, threshold)
+                self.tiers[key] = self.tiers.get(key, torch.zeros_like(counts)) + counts
 
     def summary(self) -> dict:
         out: dict = {}
         for (layer_idx, kind, phase, k), histograms in sorted(self.hist.items()):
             out.setdefault(kind, {}).setdefault(phase, {}).setdefault(str(k), {})[str(layer_idx)] = histograms.summary()
+        for (layer_idx, kind, phase, threshold), counts in sorted(self.tiers.items()):
+            tiers = out.setdefault(kind, {}).setdefault(phase, {}).setdefault("tiers", {}).setdefault(str(threshold), {})
+            tiers[str(layer_idx)] = tier_summary(counts, self.ks, self.head_dim or 0)
         return out
 
 
@@ -264,6 +319,27 @@ def markdown_tables(summary: dict, *, rel_threshold: str = "0.3", ks=KS) -> str:
                 pairs = by_k[str(ks[0])][str(layer)]["n"]
                 lines.append(f"| {layer} | " + " | ".join(cells) + f" | {pairs} |")
             lines.append("")
+    for kind in KINDS:
+        for phase in PHASES:
+            tiers = summary.get(kind, {}).get(phase, {}).get("tiers")
+            if not tiers:
+                continue
+            for threshold, by_layer in tiers.items():
+                lines.append(
+                    f"### {kind}, {phase}: merge a pair if some k brings |d|/|m| <= {threshold} "
+                    "(smallest such k is stored)"
+                )
+                lines.append("")
+                lines.append("| layer | " + " | ".join(f"k={k}" for k in ks) + " | unmerged | bytes vs dense |")
+                lines.append("|---|" + "---|" * (len(ks) + 2))
+                for layer in sorted(by_layer, key=int):
+                    entry = by_layer[layer]
+                    cells = [f"{entry['share_by_k'][str(k)]:.2f}" for k in ks]
+                    lines.append(
+                        f"| {layer} | " + " | ".join(cells)
+                        + f" | {entry['share_unmerged']:.2f} | {entry['bytes_fraction_of_dense']:.2f} |"
+                    )
+                lines.append("")
     return "\n".join(lines)
 
 
@@ -273,13 +349,17 @@ def main() -> None:
     parser.add_argument("--questions", type=int, default=30)
     parser.add_argument("--shots", type=int, default=5)
     parser.add_argument("--max-new-tokens", type=int, default=256)
+    parser.add_argument("--device", default=None, help="cuda, mps or cpu; default is the best one available")
+    parser.add_argument("--dtype", default=None, help="bfloat16, float16 or float32; default bfloat16 (float32 on cpu)")
     parser.add_argument("--out", type=Path, default=FIGURES)
     args = parser.parse_args()
 
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForCausalLM.from_pretrained(args.model, dtype=torch.bfloat16, device_map="cuda")
+    device = args.device or ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+    dtype = getattr(torch, args.dtype) if args.dtype else (torch.float32 if device == "cpu" else torch.bfloat16)
+    model = AutoModelForCausalLM.from_pretrained(args.model, dtype=dtype).to(device)
     model.eval()
     prompts = gsm8k_prompts(tokenizer, args.questions, args.shots)
     profiler = run_profile(
@@ -299,6 +379,7 @@ def main() -> None:
         "ks": list(KS),
         "cos_thresholds": list(COS_THRESHOLDS),
         "rel_thresholds": list(REL_THRESHOLDS),
+        "tier_thresholds": list(TIER_THRESHOLDS),
     }
     (args.out / "profile.json").write_text(json.dumps({"meta": meta, "summary": summary}, indent=1))
     (args.out / "profile.md").write_text(markdown_tables(summary))
