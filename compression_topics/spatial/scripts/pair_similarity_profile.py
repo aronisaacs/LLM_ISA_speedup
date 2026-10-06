@@ -19,6 +19,10 @@ The full-curve dump (profile_kneeded.json) keeps, for every threshold on a fine 
 pairs need each residual size k = 0..head_dim to get within it. Any threshold and any set of
 allowed residual sizes can be evaluated from it afterwards (see ``bytes_from_kneeded``).
 
+The movement dump (profile_moves.json) groups pairs into buckets of their rel before any residual
+(k = 0) and, per bucket and per k, keeps the pair count and the sums of rel before, rel after and
+rel after squared. The average movement of a bucket is mean(before) - mean(after).
+
 Per pair, the smallest k whose rel is within a threshold is the residual that pair would
 need. The tier tables show how many pairs need each k, how many cannot be merged, and the
 bytes left against a dense cache.
@@ -52,6 +56,7 @@ COS_BINS = 400  # cos in [-1, 1]
 REL_MAX = 4.0
 TIER_THRESHOLDS = (0.1, 0.2, 0.3)  # rel a merged pair must reach, with the smallest residual that does
 TAU_GRID = tuple(round(0.02 * i, 2) for i in range(1, 51))  # 0.02 .. 1.0, for the full-curve dump
+BUCKET_EDGES = tuple(round(0.05 * i, 2) for i in range(1, 21))  # buckets of rel before residuals; the last is >= 1.0
 KINDS = ("k_rope", "k_plain", "v")
 PHASES = ("prefill", "decode")
 
@@ -161,6 +166,25 @@ def tier_summary(counts: torch.Tensor, ks: tuple[int, ...], head_dim: int) -> di
     }
 
 
+def movement_sums(rels: torch.Tensor, edges: tuple[float, ...] = BUCKET_EDGES) -> torch.Tensor:
+    """Bucket pairs by rel before residuals and sum rel before and after for each k.
+
+    ``rels`` is [len(ks), pairs] with row 0 the k = 0 values. Returns float64
+    [len(ks), len(edges) + 1, 4]: pairs, sum before, sum after, sum after squared.
+    """
+    before = rels[0].float()
+    bucket = torch.bucketize(before, torch.tensor(edges, device=before.device), right=True)
+    out = torch.zeros(rels.shape[0], len(edges) + 1, 4, dtype=torch.float64, device=before.device)
+    ones = torch.ones_like(before, dtype=torch.float64)
+    for row in range(rels.shape[0]):
+        after = rels[row].double()
+        out[row, :, 0].index_add_(0, bucket, ones)
+        out[row, :, 1].index_add_(0, bucket, before.double())
+        out[row, :, 2].index_add_(0, bucket, after)
+        out[row, :, 3].index_add_(0, bucket, after * after)
+    return out.cpu()
+
+
 def k_needed_counts(first: torch.Tensor, second: torch.Tensor, taus: tuple[float, ...] = TAU_GRID) -> torch.Tensor:
     """For each threshold, how many pairs need each residual size k = 0..head_dim.
 
@@ -231,6 +255,8 @@ class Profiler:
         self.head_dim: int | None = None
         # Pairs by the smallest k that reaches each threshold of TAU_GRID: [len(TAU_GRID), head_dim + 1].
         self.kneeded: dict[tuple[int, str, str], torch.Tensor] = {}
+        # Per bucket of rel before: [len(ks), buckets, 4] = pairs, sum before, sum after, sum after squared.
+        self.moves: dict[tuple[int, str, str], torch.Tensor] = {}
         self._generated: dict[int, list[tuple[int, torch.Tensor, torch.Tensor]]] = {}
 
     def observe(self, layer_idx: int, keys: torch.Tensor, values: torch.Tensor, start: int) -> None:
@@ -266,6 +292,8 @@ class Profiler:
                 cos, rel = pair_metrics(pairs[0], pairs[1], k)
                 self.hist.setdefault((layer_idx, kind, phase, k), Histograms()).add(cos, rel)
                 rels.append(rel)
+            moved = movement_sums(torch.stack(rels))
+            self.moves[(layer_idx, kind, phase)] = self.moves.get((layer_idx, kind, phase), torch.zeros_like(moved)) + moved
             counts = k_needed_counts(pairs[0], pairs[1])
             key = (layer_idx, kind, phase)
             self.kneeded[key] = self.kneeded.get(key, torch.zeros_like(counts)) + counts
@@ -279,6 +307,15 @@ class Profiler:
         out: dict = {"rel_max": REL_MAX, "rel_bins": REL_BINS, "cos_bins": COS_BINS, "ks": list(self.ks), "hist": {}}
         for (layer_idx, kind, phase, k), histograms in sorted(self.hist.items()):
             out["hist"].setdefault(kind, {}).setdefault(phase, {}).setdefault(str(k), {})[str(layer_idx)] = histograms.raw()
+        return out
+
+    def moves_dump(self) -> dict:
+        """Per (kind, phase, layer): [k][bucket] = [pairs, sum rel before, sum rel after, sum rel after squared]."""
+        out: dict = {"bucket_edges": list(BUCKET_EDGES), "ks": list(self.ks), "moves": {}}
+        for (layer_idx, kind, phase), sums in sorted(self.moves.items()):
+            out["moves"].setdefault(kind, {}).setdefault(phase, {})[str(layer_idx)] = [
+                [[round(v, 6) for v in cell] for cell in row] for row in sums.tolist()
+            ]
         return out
 
     def kneeded_dump(self) -> dict:
@@ -304,6 +341,8 @@ def run_profile(model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope
     """Generate greedily for each prompt (1-D token ids) while a hook scores every cache update."""
     from transformers.cache_utils import Cache
 
+    if not ks or ks[0] != 0:
+        raise ValueError("ks must start with 0: the movement dump buckets pairs by their rel before any residual")
     profiler = Profiler(rope, ks)
     original = Cache.update
 
@@ -457,6 +496,7 @@ def main() -> None:
         "tier_thresholds": list(TIER_THRESHOLDS),
     }
     (args.out / "profile.json").write_text(json.dumps({"meta": meta, "summary": summary}, indent=1))
+    (args.out / "profile_moves.json").write_text(json.dumps(profiler.moves_dump(), separators=(",", ":")))
     (args.out / "profile_hist.json").write_text(json.dumps(profiler.histogram_dump(), separators=(",", ":")))
     (args.out / "profile_kneeded.json").write_text(json.dumps(profiler.kneeded_dump(), separators=(",", ":")))
     (args.out / "profile.md").write_text(markdown_tables(summary))

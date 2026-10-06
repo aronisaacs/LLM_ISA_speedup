@@ -74,6 +74,9 @@ def test_profile_runs_on_a_tiny_llama_with_prefill_and_decode():
     assert psp.markdown_tables(summary, ks=(0, 2))
     hist = profiler.histogram_dump()["hist"]["v"]["prefill"]["0"]["0"]
     assert hist["n"] == (4 + 6) * 2 and sum(hist["rel"]) <= hist["n"] and len(hist["cos"]) == psp.COS_BINS
+    moves = profiler.moves_dump()["moves"]["v"]["prefill"]["0"]
+    assert len(moves) == 2 and len(moves[0]) == len(psp.BUCKET_EDGES) + 1
+    assert sum(cell[0] for cell in moves[0]) == (4 + 6) * 2
     dump = profiler.kneeded_dump()
     assert dump["head_dim"] == 8 and len(dump["taus"]) == 50
     row = dump["counts"]["v"]["prefill"]["0"]
@@ -130,3 +133,24 @@ def test_bytes_from_kneeded_agree_with_the_tier_tables():
     row = psp.k_needed_counts(a, b, (0.3,))[0]
     new, _ = psp.bytes_from_kneeded(row, ks, 16)
     assert abs(old - new) < 1e-9
+
+
+def test_movement_sums_bucket_by_rel_before():
+    torch.manual_seed(3)
+    a = torch.randn(400, 16)
+    b = a + 0.5 * torch.randn(400, 16)
+    ks = (0, 4)
+    rels = torch.stack([psp.pair_metrics(a, b, k)[1] for k in ks])
+    sums = psp.movement_sums(rels)
+    assert sums.shape == (2, len(psp.BUCKET_EDGES) + 1, 4)
+    assert (sums[:, :, 0].sum(dim=1) == 400).all()
+    # k = 0 moves nothing: sum before equals sum after.
+    assert torch.allclose(sums[0, :, 1], sums[0, :, 2])
+    # Residuals only lower rel, so the average after never exceeds the average before.
+    assert (sums[1, :, 2] <= sums[1, :, 1] + 1e-9).all()
+    # Check one bucket against a direct computation.
+    edges = torch.tensor((0.0,) + psp.BUCKET_EDGES + (1e9,))
+    low, high = edges[3].item(), edges[4].item()
+    mask = (rels[0] >= low) & (rels[0] < high)
+    assert abs(sums[1, 3, 0].item() - mask.sum().item()) < 1e-9
+    assert abs(sums[1, 3, 2].item() - rels[1][mask].sum().item()) < 1e-3
