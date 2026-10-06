@@ -23,6 +23,10 @@ The movement dump (profile_moves.json) groups pairs into buckets of their rel be
 (k = 0) and, per bucket and per k, keeps the pair count and the sums of rel before, rel after and
 rel after squared. The average movement of a bucket is mean(before) - mean(after).
 
+The sample dump (profile_samples.npz) keeps individual pairs: a uniform random sample per
+(kind, phase, layer) with the pair's whole rel curve rel_k for k = 0..head_dim (half precision),
+and its question index, KV head, token position, |m| and cosine.
+
 Per pair, the smallest k whose rel is within a threshold is the residual that pair would
 need. The tier tables show how many pairs need each k, how many cannot be merged, and the
 bytes left against a dense cache.
@@ -166,6 +170,52 @@ def tier_summary(counts: torch.Tensor, ks: tuple[int, ...], head_dim: int) -> di
     }
 
 
+def rel_curves(first: torch.Tensor, second: torch.Tensor) -> torch.Tensor:
+    """rel_k for every k = 0..head_dim, per pair: [pairs, head_dim + 1]."""
+    first = first.float()
+    second = second.float()
+    mean = (first + second) / 2
+    energy = ((first - second) / 2).pow(2).sort(dim=-1, descending=True).values
+    return rest_energy(energy).sqrt() / mean.norm(dim=-1, keepdim=True).clamp_min(1e-8)
+
+
+class Reservoir:
+    """Uniform random sample of pairs, kept by the largest random keys seen so far."""
+
+    META = ("question", "head", "position", "norm_m", "cos")
+
+    def __init__(self, size: int) -> None:
+        self.size = size
+        self.keys = torch.empty(0)
+        self.curves = torch.empty(0, 0, dtype=torch.float16)
+        self.meta = torch.empty(0, len(self.META))
+
+    def add(self, first: torch.Tensor, second: torch.Tensor, head: torch.Tensor, position: torch.Tensor, question: int) -> None:
+        count = first.shape[0]
+        keys = torch.rand(count)
+        top = keys.topk(min(self.size, count)).indices
+        first, second = first[top.to(first.device)], second[top.to(second.device)]
+        mean = (first.float() + second.float()) / 2
+        meta = torch.stack(
+            [
+                torch.full((len(top),), float(question)),
+                head[top].float().cpu(),
+                position[top].float().cpu(),
+                mean.norm(dim=-1).cpu(),
+                torch.nn.functional.cosine_similarity(first.float(), second.float(), dim=-1, eps=1e-8).cpu(),
+            ],
+            dim=1,
+        )
+        curves = rel_curves(first, second).half().cpu()
+        keys = keys[top]
+        if self.keys.numel():
+            keys = torch.cat([self.keys, keys])
+            curves = torch.cat([self.curves, curves])
+            meta = torch.cat([self.meta, meta])
+        keep = keys.topk(min(self.size, keys.numel())).indices
+        self.keys, self.curves, self.meta = keys[keep], curves[keep], meta[keep]
+
+
 def movement_sums(rels: torch.Tensor, edges: tuple[float, ...] = BUCKET_EDGES) -> torch.Tensor:
     """Bucket pairs by rel before residuals and sum rel before and after for each k.
 
@@ -185,6 +235,16 @@ def movement_sums(rels: torch.Tensor, edges: tuple[float, ...] = BUCKET_EDGES) -
     return out.cpu()
 
 
+def rest_energy(sorted_energy: torch.Tensor) -> torch.Tensor:
+    """Difference energy left after setting aside the k biggest entries, for k = 0..dim.
+
+    ``sorted_energy`` is d^2 in descending order along the last axis. Summing the remaining terms
+    directly (not total minus the removed ones) keeps small values free of cancellation error.
+    """
+    tail = sorted_energy.flip(-1).cumsum(dim=-1).flip(-1)
+    return torch.cat([tail, torch.zeros_like(tail[..., :1])], dim=-1)
+
+
 def k_needed_counts(first: torch.Tensor, second: torch.Tensor, taus: tuple[float, ...] = TAU_GRID) -> torch.Tensor:
     """For each threshold, how many pairs need each residual size k = 0..head_dim.
 
@@ -196,8 +256,7 @@ def k_needed_counts(first: torch.Tensor, second: torch.Tensor, taus: tuple[float
     second = second.float()
     mean = (first + second) / 2
     energy = ((first - second) / 2).pow(2).sort(dim=-1, descending=True).values
-    total = energy.sum(dim=-1, keepdim=True)
-    rest = torch.cat([total, total - energy.cumsum(dim=-1)], dim=-1).clamp_min(0)  # [pairs, head_dim + 1]
+    rest = rest_energy(energy)  # [pairs, head_dim + 1]
     limit = (torch.tensor(taus, device=mean.device).unsqueeze(0) * mean.norm(dim=-1, keepdim=True)).pow(2)  # [pairs, taus]
     # rest is non-increasing along k, so the smallest k within the limit is the count of k whose rest exceeds it.
     needed = torch.searchsorted((-rest).contiguous(), (-limit).contiguous(), right=False)  # [pairs, taus]
@@ -246,9 +305,12 @@ def aligned_pairs(states: torch.Tensor, start: int) -> tuple[torch.Tensor, torch
 class Profiler:
     """Collects per-layer histograms from Cache.update calls."""
 
-    def __init__(self, rope: RopeTables | None, ks: tuple[int, ...] = KS) -> None:
+    def __init__(self, rope: RopeTables | None, ks: tuple[int, ...] = KS, sample_pairs: int = 2000) -> None:
         self.rope = rope
         self.ks = ks
+        self.sample_pairs = sample_pairs
+        self.question = 0
+        self.reservoirs: dict[tuple[int, str, str], Reservoir] = {}
         self.hist: dict[tuple[int, str, str, int], Histograms] = {}
         # Pairs per tier at each rel threshold: index i is ks[i], the last entry is "left exact".
         self.tiers: dict[tuple[int, str, str, float], torch.Tensor] = {}
@@ -287,6 +349,13 @@ class Profiler:
             if pairs is None:
                 continue
             self.head_dim = states.shape[-1]
+            if self.sample_pairs > 0:
+                per_head = pairs[0].shape[0] // states.shape[1]
+                index = torch.arange(pairs[0].shape[0])
+                head = index // per_head
+                position = start + (start % 2) + 2 * (index % per_head)
+                reservoir = self.reservoirs.setdefault((layer_idx, kind, phase), Reservoir(self.sample_pairs))
+                reservoir.add(pairs[0], pairs[1], head, position, self.question)
             rels = []
             for k in self.ks:
                 cos, rel = pair_metrics(pairs[0], pairs[1], k)
@@ -301,6 +370,14 @@ class Profiler:
                 counts = tier_counts(torch.stack(rels), threshold)
                 key = (layer_idx, kind, phase, threshold)
                 self.tiers[key] = self.tiers.get(key, torch.zeros_like(counts)) + counts
+
+    def sample_arrays(self) -> dict:
+        """Arrays for numpy.savez: '<kind>/<phase>/<layer>/curve' and '.../meta' per cell."""
+        out = {}
+        for (layer_idx, kind, phase), reservoir in sorted(self.reservoirs.items()):
+            out[f"{kind}/{phase}/{layer_idx}/curve"] = reservoir.curves.numpy()
+            out[f"{kind}/{phase}/{layer_idx}/meta"] = reservoir.meta.numpy()
+        return out
 
     def histogram_dump(self) -> dict:
         """Full rel and cos histograms per (kind, phase, k, layer): the pair distribution before (k=0) and after residuals."""
@@ -337,13 +414,15 @@ class Profiler:
         return out
 
 
-def run_profile(model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope: RopeTables | None, ks=KS, generate_kwargs=None) -> Profiler:
+def run_profile(
+    model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope: RopeTables | None, ks=KS, generate_kwargs=None, sample_pairs: int = 2000
+) -> Profiler:
     """Generate greedily for each prompt (1-D token ids) while a hook scores every cache update."""
     from transformers.cache_utils import Cache
 
     if not ks or ks[0] != 0:
         raise ValueError("ks must start with 0: the movement dump buckets pairs by their rel before any residual")
-    profiler = Profiler(rope, ks)
+    profiler = Profiler(rope, ks, sample_pairs)
     original = Cache.update
 
     def update(self, key_states, value_states, layer_idx, *args, **kwargs):
@@ -353,7 +432,8 @@ def run_profile(model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope
 
     Cache.update = update
     try:
-        for ids in prompts:
+        for number, ids in enumerate(prompts):
+            profiler.question = number
             batch = ids.unsqueeze(0).to(model.device)
             with torch.no_grad():
                 model.generate(
@@ -462,6 +542,7 @@ def main() -> None:
     parser.add_argument("--shots", type=int, default=5)
     parser.add_argument("--seed", type=int, default=0, help="seed for choosing the GSM8K test questions")
     parser.add_argument("--max-new-tokens", type=int, default=256)
+    parser.add_argument("--sample-pairs", type=int, default=2000, help="random pairs kept per (kind, phase, layer) with their full curve; 0 to skip")
     parser.add_argument("--device", default=None, help="cuda, mps or cpu; default is the best one available")
     parser.add_argument("--dtype", default=None, help="bfloat16, float16 or float32; default bfloat16 (float32 on cpu)")
     parser.add_argument("--out", type=Path, default=FIGURES)
@@ -481,6 +562,7 @@ def main() -> None:
         max_new_tokens=args.max_new_tokens,
         rope=rope_tables(model),
         generate_kwargs={"stop_strings": ["Question:"], "tokenizer": tokenizer},
+        sample_pairs=args.sample_pairs,
     )
     summary = profiler.summary()
     args.out.mkdir(parents=True, exist_ok=True)
@@ -496,6 +578,10 @@ def main() -> None:
         "tier_thresholds": list(TIER_THRESHOLDS),
     }
     (args.out / "profile.json").write_text(json.dumps({"meta": meta, "summary": summary}, indent=1))
+    if args.sample_pairs > 0:
+        import numpy
+
+        numpy.savez_compressed(args.out / "profile_samples.npz", **profiler.sample_arrays())
     (args.out / "profile_moves.json").write_text(json.dumps(profiler.moves_dump(), separators=(",", ":")))
     (args.out / "profile_hist.json").write_text(json.dumps(profiler.histogram_dump(), separators=(",", ":")))
     (args.out / "profile_kneeded.json").write_text(json.dumps(profiler.kneeded_dump(), separators=(",", ":")))

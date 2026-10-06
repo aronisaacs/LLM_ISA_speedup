@@ -77,6 +77,9 @@ def test_profile_runs_on_a_tiny_llama_with_prefill_and_decode():
     moves = profiler.moves_dump()["moves"]["v"]["prefill"]["0"]
     assert len(moves) == 2 and len(moves[0]) == len(psp.BUCKET_EDGES) + 1
     assert sum(cell[0] for cell in moves[0]) == (4 + 6) * 2
+    arrays = profiler.sample_arrays()
+    assert arrays["v/prefill/0/curve"].shape[1] == 9 and arrays["v/prefill/0/meta"].shape[1] == 5
+    assert arrays["v/prefill/0/curve"].shape[0] <= 2000
     dump = profiler.kneeded_dump()
     assert dump["head_dim"] == 8 and len(dump["taus"]) == 50
     row = dump["counts"]["v"]["prefill"]["0"]
@@ -154,3 +157,28 @@ def test_movement_sums_bucket_by_rel_before():
     mask = (rels[0] >= low) & (rels[0] < high)
     assert abs(sums[1, 3, 0].item() - mask.sum().item()) < 1e-9
     assert abs(sums[1, 3, 2].item() - rels[1][mask].sum().item()) < 1e-3
+
+
+def test_rel_curves_match_pair_metrics_and_end_at_zero():
+    torch.manual_seed(4)
+    a = torch.randn(20, 12)
+    b = a + 0.5 * torch.randn(20, 12)
+    curves = psp.rel_curves(a, b)
+    assert curves.shape == (20, 13)
+    for k in (0, 3, 12):
+        assert torch.allclose(curves[:, k], psp.pair_metrics(a, b, k)[1], atol=1e-4)
+    assert (curves[:, :-1] >= curves[:, 1:] - 1e-6).all()
+
+
+def test_reservoir_keeps_a_bounded_sample_with_metadata():
+    torch.manual_seed(5)
+    reservoir = psp.Reservoir(10)
+    for question in range(3):
+        a = torch.randn(40, 8)
+        b = a + 0.2 * torch.randn(40, 8)
+        head = torch.arange(40) // 20
+        position = 2 * (torch.arange(40) % 20)
+        reservoir.add(a, b, head, position, question)
+    assert reservoir.curves.shape == (10, 9) and reservoir.meta.shape == (10, 5)
+    assert set(reservoir.meta[:, 0].tolist()) <= {0.0, 1.0, 2.0}
+    assert (reservoir.meta[:, 1] <= 1).all() and (reservoir.meta[:, 2] % 2 == 0).all()
