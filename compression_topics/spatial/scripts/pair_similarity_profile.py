@@ -228,9 +228,10 @@ def movement_sums(rels: torch.Tensor, edges: tuple[float, ...] = BUCKET_EDGES) -
     ``rels`` is [len(ks), pairs] with row 0 the k = 0 values. Returns float64
     [len(ks), len(edges) + 1, 4]: pairs, sum before, sum after, sum after squared.
     """
-    before = rels[0].float()
-    bucket = torch.bucketize(before, torch.tensor(edges, device=before.device), right=True)
-    out = torch.zeros(rels.shape[0], len(edges) + 1, 4, dtype=torch.float64, device=before.device)
+    rels = rels.float().cpu()  # float64 sums run on the CPU: Apple's GPU backend has no float64
+    before = rels[0]
+    bucket = torch.bucketize(before, torch.tensor(edges), right=True)
+    out = torch.zeros(rels.shape[0], len(edges) + 1, 4, dtype=torch.float64)
     ones = torch.ones_like(before, dtype=torch.float64)
     for row in range(rels.shape[0]):
         after = rels[row].double()
@@ -238,7 +239,7 @@ def movement_sums(rels: torch.Tensor, edges: tuple[float, ...] = BUCKET_EDGES) -
         out[row, :, 1].index_add_(0, bucket, before.double())
         out[row, :, 2].index_add_(0, bucket, after)
         out[row, :, 3].index_add_(0, bucket, after * after)
-    return out.cpu()
+    return out
 
 
 def rest_energy(sorted_energy: torch.Tensor) -> torch.Tensor:
@@ -266,10 +267,10 @@ def k_needed_counts(first: torch.Tensor, second: torch.Tensor, taus: tuple[float
     limit = (torch.tensor(taus, device=mean.device).unsqueeze(0) * mean.norm(dim=-1, keepdim=True)).pow(2)  # [pairs, taus]
     # rest is non-increasing along k, so the smallest k within the limit is the count of k whose rest exceeds it.
     needed = torch.searchsorted((-rest).contiguous(), (-limit).contiguous(), right=False)  # [pairs, taus]
-    needed = needed.clamp(max=rest.shape[-1] - 1)
-    counts = torch.zeros(len(taus), rest.shape[-1], dtype=torch.float64, device=needed.device)
-    counts.scatter_add_(1, needed.t().contiguous(), torch.ones(needed.t().shape, dtype=torch.float64, device=needed.device))
-    return counts.cpu()
+    needed = needed.clamp(max=rest.shape[-1] - 1).cpu()  # float64 counts on the CPU: Apple's GPU backend has no float64
+    counts = torch.zeros(len(taus), rest.shape[-1], dtype=torch.float64)
+    counts.scatter_add_(1, needed.t().contiguous(), torch.ones(needed.t().shape, dtype=torch.float64))
+    return counts
 
 
 def bytes_from_kneeded(counts_row: torch.Tensor, tiers: tuple[int, ...], head_dim: int) -> tuple[float, float]:
