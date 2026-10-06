@@ -23,6 +23,39 @@ Long work goes through `job`, which is tmux. `tlist` lists sessions. `tat <job>`
 
 First-time env setup is in `env/environment.dgx.yml`.
 
+### DGX with slurm
+
+The node has 8 GPUs and one partition, `prod`, with no time limit and no account. It is shared, so ask for only the cards a study needs. Slurm sets `CUDA_VISIBLE_DEVICES` to the granted cards, and `engine/multi_run.py` starts one worker on each. About 32 CPUs per GPU is a fair share.
+
+```bash
+cd /data/users/aroni/projects/LLM_ISA_speedup
+git pull
+mkdir -p logs
+
+cat > logs/study.sbatch <<'EOF'
+#!/bin/bash
+#SBATCH --job-name=study
+#SBATCH --partition=prod
+#SBATCH --gres=gpu:3
+#SBATCH --cpus-per-task=96
+#SBATCH --mem=300000
+#SBATCH --time=UNLIMITED
+#SBATCH --output=logs/study_%j.out
+source /opt/conda/etc/profile.d/conda.sh
+conda activate llm_isa_dgx
+cd /data/users/aroni/projects/LLM_ISA_speedup
+export HF_HUB_CACHE=$HOME/models/huggingface
+export HF_DATASETS_CACHE=$HOME/datasets/huggingface
+echo "GPUs: $CUDA_VISIBLE_DEVICES"
+python -u compression_topics/spatial/scripts/pair_quant_study.py
+EOF
+
+sbatch logs/study.sbatch
+```
+
+Change `--gres=gpu:N`, the CPU count, and the last line for another study. `squeue -u $USER` shows `PD` (pending, reason in the last column) or `R` (running). `tail -f logs/study_<jobid>.out` follows the log, and the first line lists the granted GPUs. `scancel <jobid>` stops the job. A rerun skips runs already in `results.json`, so submitting again resumes.
+
+
 A shell for an experiment script looks like this. `git log -1` must be the commit that contains that script. If `tlist` already shows the session name, `tkill` it first. The `python -u` line is that script, not a generic runner.
 
 ```bash
