@@ -89,7 +89,8 @@ def _close_filled_pairs(keys, values, layer_idx: int, spec: KvSpec, start: int, 
     A chunk that started on an odd position left the previous token exact until
     here. Keys and values share the window. Each is rewritten only when this
     layer is selected for that tensor. ``pair_pool`` is full pooling with no
-    RoPE alignment. A shorter tensor has dropped its prefix.
+    RoPE alignment. ``pair_quant`` pools with a quantized residual. A shorter
+    tensor has dropped its prefix.
     """
     if start % 2 == 0:
         return
@@ -100,6 +101,9 @@ def _close_filled_pairs(keys, values, layer_idx: int, spec: KvSpec, start: int, 
     if closed <= open_start:
         return
     for step in spec.pipeline:
+        if step.method == "pair_quant":
+            _close_pair_quant(step, keys, values, layer_idx, open_start, closed, end)
+            continue
         if step.method not in {"residual_pool", "pair_pool"}:
             continue
         if step.method == "pair_pool":
@@ -126,6 +130,17 @@ def _close_filled_pairs(keys, values, layer_idx: int, spec: KvSpec, start: int, 
                 start=open_start,
                 end=closed,
             )
+
+
+def _close_pair_quant(step, keys, values, layer_idx: int, open_start: int, closed: int, end: int) -> None:
+    from compression_topics.spatial.algorithms import pair_quant
+
+    bits = int(step.kwargs.get("bits", 8))
+    group = int(step.kwargs.get("group", 32))
+    if _enabled(step.k_layers, layer_idx) and keys.shape[-2] >= end:
+        pair_quant.write_closed_pairs(keys, bits=bits, group=group, start=open_start, end=closed)
+    if _enabled(step.v_layers, layer_idx) and values.shape[-2] >= end:
+        pair_quant.write_closed_pairs(values, bits=bits, group=group, start=open_start, end=closed)
 
 
 def _key_quantize_step(spec: KvSpec, layer_idx: int) -> PipelineStep | None:

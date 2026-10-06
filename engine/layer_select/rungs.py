@@ -30,6 +30,20 @@ QJL = (Rung(4, 12 / 16), Rung(3, 13 / 16), Rung(2, 14 / 16), Rung(1, 15 / 16))
 # int8 removes half a slot. int4 removes three quarters. Milder code first.
 QUANT = (Rung(8, 0.5), Rung(4, 0.75))
 
+# pair_quant keeps each pair's mean at full width and a residual of 8, 4, 2 or 1 bits.
+# A pair stores 16 + bits bits per feature pair instead of 32, so a slot loses
+# (16 - bits) / 32 of its bytes, ignoring group scales as QUANT does. Pure
+# merging (0 bits, no residual) removes half. It is level 100, because level 0
+# already means "uncompressed" in an assignment. No residual width exceeds 8.
+MERGE_ONLY = 100
+PAIR_QUANT = (
+    Rung(8, 8 / 32),
+    Rung(4, 12 / 32),
+    Rung(2, 14 / 32),
+    Rung(1, 15 / 32),
+    Rung(MERGE_ONLY, 16 / 32),
+)
+
 RUNGS = {
     "vector_compress": PRUNE,
     "vector_compress_pair": PRUNE,
@@ -39,6 +53,7 @@ RUNGS = {
     "spatial_pool": _ON_POOL,
     "residual_pool": RESIDUAL,
     "pair_pool": _PAIR_POOL,
+    "pair_quant": PAIR_QUANT,
     "qjl": QJL,
     "quantize": QUANT,
 }

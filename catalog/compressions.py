@@ -73,6 +73,16 @@ def pair_pool(k_layers="all", v_layers="all"):
     return _step("pair_pool", k_layers, v_layers)
 
 
+def pair_quant(k_layers="all", v_layers="all", bits=8, group=32):
+    """Pool adjacent tokens and keep the residual as ``bits``-bit integers.
+
+    ``bits`` is 8, 4, 2, 1, or 0. 0 stores no residual, which is ``pair_pool``.
+    One scale per ``group`` features. The sweep climber walks 8, 4, 2, 1, then
+    merge-only, which is level 100 in a sweep because 0 already means dense.
+    """
+    return _step("pair_quant", k_layers, v_layers, bits=int(bits), group=int(group))
+
+
 def spatial_pool(k_layers="all", v_layers="all", chunk=8):
     """Replace each closed chunk with its mean."""
     return _step("spatial_pool", k_layers, v_layers, chunk=chunk)
