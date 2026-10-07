@@ -19,8 +19,10 @@ def rank_fill(
     budget: float,
     dense_ppl: float | None = None,
     rungs=PRUNE,
+    targets: tuple[str, ...] = ("k", "v"),
 ) -> dict[Slot, int]:
-    slots = all_slots(n_layers)
+    """Climb rungs until the mean compression of the ``targets`` slots reaches ``budget``."""
+    slots = all_slots(n_layers, targets)
     table = score_table(rows)
     if dense_ppl is None:
         dense_ppl = _infer_dense_ppl(rows)
