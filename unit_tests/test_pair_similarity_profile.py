@@ -259,3 +259,21 @@ def test_token_norms_match_the_dumped_states(tmp_path):
     norms = profiler.norm_arrays()
     assert torch.allclose(torch.from_numpy(norms["question_0000/k"]), keys.float().norm(dim=-1), atol=1e-5)
     assert torch.allclose(torch.from_numpy(norms["question_0000/v"]), values.float().norm(dim=-1), atol=1e-5)
+
+
+def test_prefill_only_run_scores_the_whole_chunk_and_no_decode():
+    from transformers import LlamaConfig, LlamaForCausalLM
+
+    torch.manual_seed(0)
+    config = LlamaConfig(
+        vocab_size=64, hidden_size=32, intermediate_size=64, num_hidden_layers=2,
+        num_attention_heads=4, num_key_value_heads=2, max_position_embeddings=128,
+    )
+    model = LlamaForCausalLM(config).eval()
+    chunks = [torch.randint(0, 64, (16,)), torch.randint(0, 64, (16,))]
+    profiler = psp.run_profile(model, chunks, max_new_tokens=0, rope=psp.rope_tables(model), fractions=("0", "1/4"), sample_pairs=0)
+    summary = profiler.summary()
+    assert set(summary["v"]) == {"prefill"}
+    assert summary["v"]["prefill"]["0"]["0"]["n"] == 2 * 8 * 2  # 2 chunks, 8 pairs, 2 KV heads
+    norms = profiler.norm_arrays()
+    assert norms["question_0001/k"].shape == (2, 2, 16) and int(norms["question_0001/prompt_len"]) == 16

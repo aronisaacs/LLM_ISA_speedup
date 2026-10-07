@@ -6,6 +6,11 @@ exact K/V a normal run stores, and every aligned pair (positions 2i, 2i+1) is
 compared per KV head. Pairs from the prompt are the prefill phase. Pairs made
 only of generated tokens are the decode phase.
 
+The text is WikiText-2 by default (--dataset wikitext): the test split is cut into
+--seq-len token chunks and --samples of them are drawn at random. That is one forward
+pass per chunk, so prefill only and fast. --dataset gsm8k runs 5-shot GSM8K questions
+with greedy generation instead, which gives prefill and decode.
+
 For each pair, with m = (a + b) / 2 and d = (a - b) / 2:
   cos    cosine similarity of a and b
   rel    ||d||_2 / ||m||_2, the L2 size of the difference against the shared part
@@ -43,7 +48,8 @@ Per pair, the smallest k whose rel is within a threshold is the residual that pa
 need. The tier tables show how many pairs need each k, how many cannot be merged, and the
 bytes left against a dense cache.
 
-  python compression_topics/spatial/scripts/pair_similarity_profile.py --questions 30
+  python compression_topics/spatial/scripts/pair_similarity_profile.py --samples 30
+  python compression_topics/spatial/scripts/pair_similarity_profile.py --dataset gsm8k --samples 30
 """
 
 from __future__ import annotations
@@ -559,13 +565,17 @@ def run_profile(
             profiler.question = number
             batch = ids.unsqueeze(0).to(model.device)
             with torch.no_grad():
-                model.generate(
-                    input_ids=batch,
-                    attention_mask=torch.ones_like(batch),
-                    max_new_tokens=max_new_tokens,
-                    do_sample=False,
-                    **(generate_kwargs or {}),
-                )
+                if max_new_tokens == 0:
+                    # Prefill only: one forward pass fills the cache through Cache.update.
+                    model(input_ids=batch, attention_mask=torch.ones_like(batch), use_cache=True)
+                else:
+                    model.generate(
+                        input_ids=batch,
+                        attention_mask=torch.ones_like(batch),
+                        max_new_tokens=max_new_tokens,
+                        do_sample=False,
+                        **(generate_kwargs or {}),
+                    )
             profiler.finish_sequence()
             if dumper is not None:
                 dumper.save(number, ids)
@@ -599,6 +609,26 @@ def rope_tables(model) -> RopeTables | None:
         inv_freq=None if inv_freq is None else tuple(float(v) for v in inv_freq.detach().float().cpu().tolist()),
         attention_scaling=float(scaling) if isinstance(scaling, (int, float)) else 1.0,
     )
+
+
+def wikitext_chunks(tokenizer, count: int, seq_len: int = 2048, seed: int = 0) -> tuple[list[torch.Tensor], list[int]]:
+    """``count`` random chunks of the WikiText-2 test split, each BOS plus ``seq_len - 1`` text tokens.
+
+    The test pages (the document-level set lm-eval scores) are joined and tokenized once, then cut
+    into back-to-back chunks. Returns the chunks and their indices in that cut.
+    """
+    from datasets import load_dataset
+
+    pages = load_dataset("EleutherAI/wikitext_document_level", "wikitext-2-raw-v1", split="test")["page"]
+    tokens = tokenizer("\n\n".join(pages), add_special_tokens=False, verbose=False)["input_ids"]
+    body = seq_len - 1
+    available = len(tokens) // body
+    if count > available:
+        raise ValueError(f"WikiText-2 test has {available} chunks of {seq_len} tokens, asked for {count}")
+    chosen = sorted(random.Random(seed).sample(range(available), count))
+    bos = [tokenizer.bos_token_id] if tokenizer.bos_token_id is not None else []
+    chunks = [torch.tensor(bos + tokens[i * body : (i + 1) * body]) for i in chosen]
+    return chunks, chosen
 
 
 def gsm8k_prompts(tokenizer, count: int, shots: int = 5, seed: int = 0) -> tuple[list[torch.Tensor], list[int]]:
@@ -665,10 +695,12 @@ def markdown_tables(summary: dict, *, rel_threshold: str = "0.3", fractions=FRAC
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", default=PRETRAINED)
-    parser.add_argument("--questions", type=int, default=30)
-    parser.add_argument("--shots", type=int, default=5)
-    parser.add_argument("--seed", type=int, default=0, help="seed for choosing the GSM8K test questions")
-    parser.add_argument("--max-new-tokens", type=int, default=256)
+    parser.add_argument("--dataset", choices=("wikitext", "gsm8k"), default="wikitext", help="wikitext: prefill only, one forward pass per chunk; gsm8k: prefill and decode")
+    parser.add_argument("--samples", "--questions", dest="samples", type=int, default=30, help="WikiText chunks or GSM8K questions, drawn at random")
+    parser.add_argument("--seq-len", type=int, default=2048, help="tokens per WikiText chunk")
+    parser.add_argument("--shots", type=int, default=5, help="GSM8K only")
+    parser.add_argument("--seed", type=int, default=0, help="seed for choosing the chunks or questions")
+    parser.add_argument("--max-new-tokens", type=int, default=256, help="GSM8K only; WikiText never generates")
     parser.add_argument("--dump-kv", type=Path, default=None, help="directory to save every question's exact K, V and queries (large)")
     parser.add_argument("--sample-pairs", type=int, default=2000, help="random pairs kept per (kind, phase, layer) with their full curve; 0 to skip")
     parser.add_argument("--device", default=None, help="cuda, mps or cpu; default is the best one available")
@@ -683,27 +715,36 @@ def main() -> None:
     dtype = getattr(torch, args.dtype) if args.dtype else (torch.float32 if device == "cpu" else torch.bfloat16)
     model = AutoModelForCausalLM.from_pretrained(args.model, dtype=dtype).to(device)
     model.eval()
-    prompts, chosen = gsm8k_prompts(tokenizer, args.questions, args.shots, args.seed)
+    if args.dataset == "wikitext":
+        prompts, chosen = wikitext_chunks(tokenizer, args.samples, args.seq_len, args.seed)
+        max_new_tokens, generate_kwargs = 0, None
+    else:
+        prompts, chosen = gsm8k_prompts(tokenizer, args.samples, args.shots, args.seed)
+        max_new_tokens, generate_kwargs = args.max_new_tokens, {"stop_strings": ["Question:"], "tokenizer": tokenizer}
     rope = rope_tables(model)
     profiler = run_profile(
         model,
         prompts,
-        max_new_tokens=args.max_new_tokens,
+        max_new_tokens=max_new_tokens,
         rope=rope,
         dump_dir=args.dump_kv,
-        generate_kwargs={"stop_strings": ["Question:"], "tokenizer": tokenizer},
+        generate_kwargs=generate_kwargs,
         sample_pairs=args.sample_pairs,
     )
+    source = {
+        "dataset": args.dataset,
+        "samples": args.samples,
+        "seed": args.seed,
+        "chosen": chosen,  # WikiText chunk indices of --seq-len tokens, or GSM8K test indices
+        **({"seq_len": args.seq_len} if args.dataset == "wikitext" else {"shots": args.shots, "max_new_tokens": max_new_tokens}),
+    }
     summary = profiler.summary()
     if args.dump_kv is not None:
         (args.dump_kv / "meta.json").write_text(
             json.dumps(
                 {
                     "model": args.model,
-                    "seed": args.seed,
-                    "shots": args.shots,
-                    "max_new_tokens": args.max_new_tokens,
-                    "gsm8k_test_indices": chosen,
+                    **source,
                     "dtype": str(dtype),
                     "rope": None
                     if rope is None
@@ -721,10 +762,7 @@ def main() -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     meta = {
         "model": args.model,
-        "questions": args.questions,
-        "shots": args.shots,
-        "seed": args.seed,
-        "max_new_tokens": args.max_new_tokens,
+        **source,
         "fractions": list(FRACTIONS),
         "ks": list(profiler.ks),
         "head_dim": profiler.head_dim,
@@ -734,12 +772,10 @@ def main() -> None:
         "tier_thresholds": list(TIER_THRESHOLDS),
     }
     (args.out / "profile.json").write_text(json.dumps({"meta": meta, "summary": summary}, indent=1))
-    if args.sample_pairs > 0:
-        import numpy
-
-        numpy.savez_compressed(args.out / "profile_samples.npz", **profiler.sample_arrays())
     import numpy
 
+    if args.sample_pairs > 0:
+        numpy.savez_compressed(args.out / "profile_samples.npz", **profiler.sample_arrays())
     numpy.savez_compressed(args.out / "profile_norms.npz", **profiler.norm_arrays())
     (args.out / "profile_moves.json").write_text(json.dumps(profiler.moves_dump(), separators=(",", ":")))
     (args.out / "profile_hist.json").write_text(json.dumps(profiler.histogram_dump(), separators=(",", ":")))
