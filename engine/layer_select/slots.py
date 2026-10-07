@@ -24,16 +24,13 @@ class Slot:
         return cls(int(payload["layer"]), payload["target"])
 
 
-def all_slots(n_layers: int, targets: tuple[Target, ...] = ("k", "v")) -> tuple[Slot, ...]:
-    """Every key and every value, one slot per tensor; ``targets`` limits it to keys or values."""
+def all_slots(n_layers: int) -> tuple[Slot, ...]:
+    """Every key and every value, one slot per tensor."""
     _check_n_layers(n_layers)
-    if not targets or any(target not in ("k", "v") for target in targets):
-        raise ValueError("targets must be a non-empty subset of ('k', 'v')")
     slots = []
     for index in range(n_layers):
-        for target in ("k", "v"):
-            if target in targets:
-                slots.append(Slot(index, target))
+        slots.append(Slot(index, "k"))
+        slots.append(Slot(index, "v"))
     return tuple(slots)
 
 

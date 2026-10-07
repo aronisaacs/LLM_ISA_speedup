@@ -21,14 +21,14 @@ TASKS = (CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT)
 FIGURES = "figures"
 
 
-def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS, targets=("k", "v")):
-    """One rank-fill payload per budget. ``compression`` is the realized mean over the ``targets`` slots."""
+def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS):
+    """One rank-fill payload per budget. ``compression`` is the realized mean."""
     template = method_template(method_kv)
     rungs = rungs_for(template["pipeline"][0]["method"])
-    n_slots = len(all_slots(n_layers, targets))
+    n_slots = len(all_slots(n_layers))
     payloads = []
     for budget in budgets:
-        assignment = rank_fill(rows, n_layers, budget, dense_ppl=dense_ppl, rungs=rungs, targets=targets)
+        assignment = rank_fill(rows, n_layers, budget, dense_ppl=dense_ppl, rungs=rungs)
         payloads.append(
             {
                 "tag": _budget_tag(budget),

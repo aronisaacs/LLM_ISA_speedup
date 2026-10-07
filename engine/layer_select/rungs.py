@@ -44,13 +44,6 @@ PAIR_QUANT = (
     Rung(MERGE_ONLY, 16 / 32),
 )
 
-# pair_rank merges the given percent of a layer's pairs, most similar first. A merged pair
-# stores one mean, so it removes half of that pair. pair_rank_residual also keeps the 25% of
-# features with the largest difference (32 of Llama 3.1's 128) plus a one-bit mask, so a merged
-# pair keeps (17 * 128 + 16 * 32) / (32 * 128) = 0.65625 of its bytes and removes 0.34375.
-PAIR_RANK = tuple(Rung(pct, pct / 100 * 0.5) for pct in (25, 50, 75, 100))
-PAIR_RANK_RESIDUAL = tuple(Rung(pct, pct / 100 * (1 - (17 * 128 + 16 * 32) / (32 * 128))) for pct in (25, 50, 75, 100))
-
 RUNGS = {
     "vector_compress": PRUNE,
     "vector_compress_pair": PRUNE,
@@ -61,8 +54,6 @@ RUNGS = {
     "residual_pool": RESIDUAL,
     "pair_pool": _PAIR_POOL,
     "pair_quant": PAIR_QUANT,
-    "pair_rank": PAIR_RANK,
-    "pair_rank_residual": PAIR_RANK_RESIDUAL,
     "qjl": QJL,
     "quantize": QUANT,
 }

@@ -19,10 +19,8 @@ def rank_fill(
     budget: float,
     dense_ppl: float | None = None,
     rungs=PRUNE,
-    targets=("k", "v"),
 ) -> dict[Slot, int]:
-    """Climb rungs until the mean removed fraction over the ``targets`` slots reaches ``budget``."""
-    slots = all_slots(n_layers, targets)
+    slots = all_slots(n_layers)
     table = score_table(rows)
     if dense_ppl is None:
         dense_ppl = _infer_dense_ppl(rows)

@@ -19,7 +19,6 @@ def expand_singleton_configs(
     results_dir: str,
     name_prefix: str,
     extra: dict[str, Any] | None = None,
-    targets: tuple[str, ...] = ("k", "v"),
 ) -> list[dict]:
     """Dense first, then one configuration per (slot, rung).
 
@@ -36,7 +35,7 @@ def expand_singleton_configs(
             extra=extra,
         )
     ]
-    for slot in all_slots(n_layers, targets):
+    for slot in all_slots(n_layers):
         for rung in rungs:
             pct = rung.level
             configurations.append(
