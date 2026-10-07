@@ -1,3 +1,5 @@
+from fractions import Fraction
+
 import torch
 
 from compression_topics.spatial.scripts import pair_similarity_profile as psp
@@ -60,7 +62,7 @@ def test_profile_runs_on_a_tiny_llama_with_prefill_and_decode():
     model = LlamaForCausalLM(config).eval()
     prompts = [torch.randint(0, 64, (9,)), torch.randint(0, 64, (12,))]
     profiler = psp.run_profile(
-        model, prompts, max_new_tokens=10, rope=psp.rope_tables(model), ks=(0, 2),
+        model, prompts, max_new_tokens=10, rope=psp.rope_tables(model), fractions=(Fraction(0), Fraction(1, 8)),
         generate_kwargs={"min_new_tokens": 10},
     )
     summary = profiler.summary()
@@ -71,14 +73,16 @@ def test_profile_runs_on_a_tiny_llama_with_prefill_and_decode():
     assert summary["v"]["prefill"]["0"]["0"]["n"] == (4 + 6) * 2
     # Generated tokens sit at positions 9..18 and 12..21; the 9-start gives 5 pairs of (10,11)..(17,18) -> 4.
     assert summary["v"]["decode"]["0"]["0"]["n"] > 0
-    assert psp.markdown_tables(summary, ks=(0, 2))
+    assert psp.markdown_tables(summary, fractions=(Fraction(0), Fraction(1, 8)))
     hist = profiler.histogram_dump()["hist"]["v"]["prefill"]["0"]["0"]
     assert hist["n"] == (4 + 6) * 2 and sum(hist["rel"]) <= hist["n"] and len(hist["cos"]) == psp.COS_BINS
+    norms = profiler.norms_dump()["norms"]["v"]["prefill"]["0"]
+    assert norms["count"] == (4 + 6) * 2 * 2 and norms["max"] >= norms["rms"] >= norms["mean"] > 0
     moves = profiler.moves_dump()["moves"]["v"]["prefill"]["0"]
     assert len(moves) == 2 and len(moves[0]) == len(psp.BUCKET_EDGES) + 1
     assert sum(cell[0] for cell in moves[0]) == (4 + 6) * 2
     arrays = profiler.sample_arrays()
-    assert arrays["v/prefill/0/curve"].shape[1] == 9 and arrays["v/prefill/0/meta"].shape[1] == 5
+    assert arrays["v/prefill/0/curve"].shape[1] == 9 and arrays["v/prefill/0/meta"].shape[1] == len(psp.Reservoir.META)
     assert arrays["v/prefill/0/curve"].shape[0] <= 2000
     dump = profiler.kneeded_dump()
     assert dump["head_dim"] == 8 and len(dump["taus"]) == 50
@@ -179,7 +183,7 @@ def test_reservoir_keeps_a_bounded_sample_with_metadata():
         head = torch.arange(40) // 20
         position = 2 * (torch.arange(40) % 20)
         reservoir.add(a, b, head, position, question)
-    assert reservoir.curves.shape == (10, 9) and reservoir.meta.shape == (10, 5)
+    assert reservoir.curves.shape == (10, 9) and reservoir.meta.shape == (10, len(psp.Reservoir.META))
     assert set(reservoir.meta[:, 0].tolist()) <= {0.0, 1.0, 2.0}
     assert (reservoir.meta[:, 1] <= 1).all() and (reservoir.meta[:, 2] % 2 == 0).all()
 
@@ -196,7 +200,7 @@ def test_dump_kv_writes_the_exact_stored_states(tmp_path):
     model = LlamaForCausalLM(config).eval()
     ids = torch.randint(0, 64, (9,))
     psp.run_profile(
-        model, [ids], max_new_tokens=6, rope=psp.rope_tables(model), ks=(0, 2),
+        model, [ids], max_new_tokens=6, rope=psp.rope_tables(model), fractions=(Fraction(0), Fraction(1, 8)),
         generate_kwargs={"min_new_tokens": 6}, sample_pairs=0, dump_dir=tmp_path,
     )
     with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:
@@ -224,3 +228,27 @@ def test_dump_kv_writes_the_exact_stored_states(tmp_path):
     finally:
         Cache.update = original
     assert torch.allclose(torch.cat(captured["k"], dim=-2)[0], keys[0], atol=1e-6)
+
+
+def test_reservoir_and_norm_dump_record_token_norms():
+    torch.manual_seed(6)
+    a = torch.randn(30, 8)
+    b = a + 0.3 * torch.randn(30, 8)
+    reservoir = psp.Reservoir(30)
+    reservoir.add(a, b, torch.zeros(30), torch.arange(30) * 2, 0)
+    meta = dict(zip(psp.Reservoir.META, reservoir.meta.T))
+    order = meta["position"].long() // 2
+    assert torch.allclose(meta["norm_first"], a.norm(dim=-1)[order], atol=1e-5)
+    assert torch.allclose(meta["norm_second"], b.norm(dim=-1)[order], atol=1e-5)
+    assert torch.allclose(meta["norm_d"], ((a - b) / 2).norm(dim=-1)[order], atol=1e-5)
+
+
+def test_fractions_resolve_to_whole_feature_counts():
+    assert psp.resolve_ks((Fraction(0), Fraction(1, 8), Fraction(1, 2)), 128) == (0, 16, 64)
+    assert psp.fraction_label(16, 128) == "1/8" and psp.fraction_label(0, 128) == "0"
+    try:
+        psp.resolve_ks((Fraction(1, 3),), 128)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("1/3 of 128 is not a whole number")

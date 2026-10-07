@@ -9,9 +9,10 @@ only of generated tokens are the decode phase.
 For each pair, with m = (a + b) / 2 and d = (a - b) / 2:
   cos    cosine of a and b
   rel    |d| / |m|, the size of the difference against the shared part
-and the same two numbers again after the k features with the largest |d| are
-set aside (a and b both take the value m there, as if those entries were kept in
-an exact residual). k = 0 is the plain pair.
+Both use the L2 norm. The same two numbers are repeated after the biggest share of
+the vector's features by |d| (0, 1/16, 1/8, 1/4, 1/2 of head_dim) is set aside (a and b
+both take the value m there, as if those entries were kept in an exact residual). Keeping
+the largest |d| entries removes the most L2 error for a given count. Share 0 is the plain pair.
 
 Keys are measured twice: as stored (RoPE applied) and with RoPE undone.
 
@@ -25,7 +26,9 @@ rel after squared. The average movement of a bucket is mean(before) - mean(after
 
 The sample dump (profile_samples.npz) keeps individual pairs: a uniform random sample per
 (kind, phase, layer) with the pair's whole rel curve rel_k for k = 0..head_dim (half precision),
-and its question index, KV head, token position, |m| and cosine.
+and its question index, KV head, token position, the L2 norms of both tokens, of m and of d, and cosine.
+
+The norm dump (profile_norms.json) keeps count, mean, rms and max of the token norms per (kind, phase, layer).
 
 With --dump-kv DIR the exact K, V and (for Llama) query states of every question are saved as
 one safetensors file per question, so any other statistic can be computed later with no model:
@@ -46,6 +49,7 @@ import argparse
 import json
 import random
 import sys
+from fractions import Fraction
 from pathlib import Path
 
 import torch
@@ -58,7 +62,7 @@ from engine.kv_compress.rope import RopeTables, apply_rope  # noqa: E402
 
 FIGURES = Path(__file__).resolve().parents[1] / "figures" / "pair_similarity"
 PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"
-KS = (0, 8, 16, 32)
+FRACTIONS = (Fraction(0), Fraction(1, 16), Fraction(1, 8), Fraction(1, 4), Fraction(1, 2))  # share of the vector kept exactly
 COS_THRESHOLDS = (0.5, 0.75, 0.9, 0.95, 0.99)
 REL_THRESHOLDS = (0.1, 0.2, 0.3, 0.5, 0.7, 1.0)
 REL_BINS = 400  # rel in [0, 4]
@@ -154,6 +158,22 @@ def tier_counts(rels: torch.Tensor, threshold: float) -> torch.Tensor:
     return counts
 
 
+def fraction_label(k: int, head_dim: int) -> str:
+    """The share of the vector kept exactly as text: '0', '1/16', '1/8' ..."""
+    return str(Fraction(k, head_dim))
+
+
+def resolve_ks(fractions: tuple[Fraction, ...], head_dim: int) -> tuple[int, ...]:
+    """Features kept for each fraction of the vector; each must be a whole number of features."""
+    ks = []
+    for fraction in fractions:
+        k = fraction * head_dim
+        if k.denominator != 1:
+            raise ValueError(f"{fraction} of {head_dim} features is not a whole number")
+        ks.append(int(k))
+    return tuple(ks)
+
+
 def tier_summary(counts: torch.Tensor, ks: tuple[int, ...], head_dim: int) -> dict:
     """Share of pairs per tier and the bytes left against a dense cache.
 
@@ -170,7 +190,7 @@ def tier_summary(counts: torch.Tensor, ks: tuple[int, ...], head_dim: int) -> di
     bits += shares[-1] * dense
     return {
         "pairs": int(total),
-        "share_by_k": {str(k): share for k, share in zip(ks, shares[:-1])},
+        "share_by_fraction": {fraction_label(k, head_dim): share for k, share in zip(ks, shares[:-1])},
         "share_unmerged": shares[-1],
         "bytes_fraction_of_dense": bits / dense,
     }
@@ -188,7 +208,7 @@ def rel_curves(first: torch.Tensor, second: torch.Tensor) -> torch.Tensor:
 class Reservoir:
     """Uniform random sample of pairs, kept by the largest random keys seen so far."""
 
-    META = ("question", "head", "position", "norm_m", "cos")
+    META = ("question", "head", "position", "norm_m", "norm_first", "norm_second", "norm_d", "cos")
 
     def __init__(self, size: int) -> None:
         self.size = size
@@ -208,6 +228,9 @@ class Reservoir:
                 head[top].float().cpu(),
                 position[top].float().cpu(),
                 mean.norm(dim=-1).cpu(),
+                first.float().norm(dim=-1).cpu(),
+                second.float().norm(dim=-1).cpu(),
+                ((first.float() - second.float()) / 2).norm(dim=-1).cpu(),
                 torch.nn.functional.cosine_similarity(first.float(), second.float(), dim=-1, eps=1e-8).cpu(),
             ],
             dim=1,
@@ -312,9 +335,10 @@ def aligned_pairs(states: torch.Tensor, start: int) -> tuple[torch.Tensor, torch
 class Profiler:
     """Collects per-layer histograms from Cache.update calls."""
 
-    def __init__(self, rope: RopeTables | None, ks: tuple[int, ...] = KS, sample_pairs: int = 2000) -> None:
+    def __init__(self, rope: RopeTables | None, fractions: tuple[Fraction, ...] = FRACTIONS, sample_pairs: int = 2000) -> None:
         self.rope = rope
-        self.ks = ks
+        self.fractions = fractions
+        self.ks: tuple[int, ...] = ()  # features kept for each fraction, known once head_dim is
         self.sample_pairs = sample_pairs
         self.question = 0
         self.reservoirs: dict[tuple[int, str, str], Reservoir] = {}
@@ -326,6 +350,8 @@ class Profiler:
         self.kneeded: dict[tuple[int, str, str], torch.Tensor] = {}
         # Per bucket of rel before: [len(ks), buckets, 4] = pairs, sum before, sum after, sum after squared.
         self.moves: dict[tuple[int, str, str], torch.Tensor] = {}
+        # Per (layer, kind, phase): token L2 norms of both members of every pair, as [count, sum, sum of squares, max].
+        self.norms: dict[tuple[int, str, str], list[float]] = {}
         self._generated: dict[int, list[tuple[int, torch.Tensor, torch.Tensor]]] = {}
 
     def observe(self, layer_idx: int, keys: torch.Tensor, values: torch.Tensor, start: int) -> None:
@@ -356,6 +382,13 @@ class Profiler:
             if pairs is None:
                 continue
             self.head_dim = states.shape[-1]
+            self.ks = resolve_ks(self.fractions, self.head_dim)
+            norms = torch.cat([pairs[0].float().norm(dim=-1), pairs[1].float().norm(dim=-1)]).double().cpu()
+            cell = self.norms.setdefault((layer_idx, kind, phase), [0.0, 0.0, 0.0, 0.0])
+            cell[0] += float(norms.numel())
+            cell[1] += float(norms.sum())
+            cell[2] += float(norms.pow(2).sum())
+            cell[3] = max(cell[3], float(norms.max()))
             if self.sample_pairs > 0:
                 per_head = pairs[0].shape[0] // states.shape[1]
                 index = torch.arange(pairs[0].shape[0])
@@ -388,18 +421,36 @@ class Profiler:
 
     def histogram_dump(self) -> dict:
         """Full rel and cos histograms per (kind, phase, k, layer): the pair distribution before (k=0) and after residuals."""
-        out: dict = {"rel_max": REL_MAX, "rel_bins": REL_BINS, "cos_bins": COS_BINS, "ks": list(self.ks), "hist": {}}
+        out: dict = {"rel_max": REL_MAX, "rel_bins": REL_BINS, "cos_bins": COS_BINS, "fractions": self.labels(), "hist": {}}
         for (layer_idx, kind, phase, k), histograms in sorted(self.hist.items()):
-            out["hist"].setdefault(kind, {}).setdefault(phase, {}).setdefault(str(k), {})[str(layer_idx)] = histograms.raw()
+            out["hist"].setdefault(kind, {}).setdefault(phase, {}).setdefault(self.label(k), {})[str(layer_idx)] = histograms.raw()
         return out
 
     def moves_dump(self) -> dict:
-        """Per (kind, phase, layer): [k][bucket] = [pairs, sum rel before, sum rel after, sum rel after squared]."""
-        out: dict = {"bucket_edges": list(BUCKET_EDGES), "ks": list(self.ks), "moves": {}}
+        """Per (kind, phase, layer): [fraction][bucket] = [pairs, sum rel before, sum rel after, sum rel after squared]."""
+        out: dict = {"bucket_edges": list(BUCKET_EDGES), "fractions": self.labels(), "moves": {}}
         for (layer_idx, kind, phase), sums in sorted(self.moves.items()):
             out["moves"].setdefault(kind, {}).setdefault(phase, {})[str(layer_idx)] = [
                 [[round(v, 6) for v in cell] for cell in row] for row in sums.tolist()
             ]
+        return out
+
+    def label(self, k: int) -> str:
+        return fraction_label(k, self.head_dim or 1)
+
+    def labels(self) -> list[str]:
+        return [self.label(k) for k in self.ks]
+
+    def norms_dump(self) -> dict:
+        """Token norm statistics per (kind, phase, layer): count, mean, root mean square and max over every pair member."""
+        out: dict = {"head_dim": self.head_dim, "norms": {}}
+        for (layer_idx, kind, phase), (count, total, squares, largest) in sorted(self.norms.items()):
+            out["norms"].setdefault(kind, {}).setdefault(phase, {})[str(layer_idx)] = {
+                "count": int(count),
+                "mean": total / count,
+                "rms": (squares / count) ** 0.5,
+                "max": largest,
+            }
         return out
 
     def kneeded_dump(self) -> dict:
@@ -414,7 +465,7 @@ class Profiler:
     def summary(self) -> dict:
         out: dict = {}
         for (layer_idx, kind, phase, k), histograms in sorted(self.hist.items()):
-            out.setdefault(kind, {}).setdefault(phase, {}).setdefault(str(k), {})[str(layer_idx)] = histograms.summary()
+            out.setdefault(kind, {}).setdefault(phase, {}).setdefault(self.label(k), {})[str(layer_idx)] = histograms.summary()
         for (layer_idx, kind, phase, threshold), counts in sorted(self.tiers.items()):
             tiers = out.setdefault(kind, {}).setdefault(phase, {}).setdefault("tiers", {}).setdefault(str(threshold), {})
             tiers[str(layer_idx)] = tier_summary(counts, self.ks, self.head_dim or 0)
@@ -461,15 +512,15 @@ class KvDumper:
 
 
 def run_profile(
-    model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope: RopeTables | None, ks=KS, generate_kwargs=None, sample_pairs: int = 2000,
+    model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope: RopeTables | None, fractions=FRACTIONS, generate_kwargs=None, sample_pairs: int = 2000,
     dump_dir: Path | None = None,
 ) -> Profiler:
     """Generate greedily for each prompt (1-D token ids) while a hook scores every cache update."""
     from transformers.cache_utils import Cache
 
-    if not ks or ks[0] != 0:
-        raise ValueError("ks must start with 0: the movement dump buckets pairs by their rel before any residual")
-    profiler = Profiler(rope, ks, sample_pairs)
+    if not fractions or fractions[0] != 0:
+        raise ValueError("fractions must start with 0: the movement dump buckets pairs by their rel before any residual")
+    profiler = Profiler(rope, fractions, sample_pairs)
     original = Cache.update
     dumper = KvDumper(dump_dir) if dump_dir is not None else None
     llama = None
@@ -561,25 +612,26 @@ def gsm8k_prompts(tokenizer, count: int, shots: int = 5, seed: int = 0) -> tuple
     return prompts, chosen
 
 
-def markdown_tables(summary: dict, *, rel_threshold: str = "0.3", ks=KS) -> str:
+def markdown_tables(summary: dict, *, rel_threshold: str = "0.3", fractions=FRACTIONS) -> str:
     """Per layer: share of pairs with rel at most the threshold, for each k, per kind and phase."""
+    ks = [str(Fraction(f)) for f in fractions]
     lines = []
     for kind in KINDS:
         for phase in PHASES:
             by_k = summary.get(kind, {}).get(phase)
             if not by_k:
                 continue
-            layers = sorted(int(layer) for layer in by_k[str(ks[0])])
+            layers = sorted(int(layer) for layer in by_k[ks[0]])
             lines.append(f"### {kind}, {phase}: share of pairs with |d|/|m| <= {rel_threshold}")
             lines.append("")
-            lines.append("| layer | " + " | ".join(f"k={k}" for k in ks) + " | pairs |")
+            lines.append("| layer | " + " | ".join(f"keep {k}" for k in ks) + " | pairs |")
             lines.append("|---|" + "---|" * (len(ks) + 1))
             for layer in layers:
                 cells = []
                 for k in ks:
-                    entry = by_k[str(k)][str(layer)]
+                    entry = by_k[k][str(layer)]
                     cells.append(f"{entry['frac_rel_at_most'][rel_threshold]:.2f}")
-                pairs = by_k[str(ks[0])][str(layer)]["n"]
+                pairs = by_k[ks[0]][str(layer)]["n"]
                 lines.append(f"| {layer} | " + " | ".join(cells) + f" | {pairs} |")
             lines.append("")
     for kind in KINDS:
@@ -589,15 +641,15 @@ def markdown_tables(summary: dict, *, rel_threshold: str = "0.3", ks=KS) -> str:
                 continue
             for threshold, by_layer in tiers.items():
                 lines.append(
-                    f"### {kind}, {phase}: merge a pair if some k brings |d|/|m| <= {threshold} "
-                    "(smallest such k is stored)"
+                    f"### {kind}, {phase}: merge a pair if keeping some share of the vector brings |d|/|m| <= {threshold} "
+                    "(smallest such share is stored)"
                 )
                 lines.append("")
-                lines.append("| layer | " + " | ".join(f"k={k}" for k in ks) + " | unmerged | bytes vs dense |")
+                lines.append("| layer | " + " | ".join(f"keep {k}" for k in ks) + " | unmerged | bytes vs dense |")
                 lines.append("|---|" + "---|" * (len(ks) + 2))
                 for layer in sorted(by_layer, key=int):
                     entry = by_layer[layer]
-                    cells = [f"{entry['share_by_k'][str(k)]:.2f}" for k in ks]
+                    cells = [f"{entry['share_by_fraction'][k]:.2f}" for k in ks]
                     lines.append(
                         f"| {layer} | " + " | ".join(cells)
                         + f" | {entry['share_unmerged']:.2f} | {entry['bytes_fraction_of_dense']:.2f} |"
@@ -669,7 +721,7 @@ def main() -> None:
         "shots": args.shots,
         "seed": args.seed,
         "max_new_tokens": args.max_new_tokens,
-        "ks": list(KS),
+        "fractions": [str(f) for f in FRACTIONS],
         "cos_thresholds": list(COS_THRESHOLDS),
         "rel_thresholds": list(REL_THRESHOLDS),
         "tier_thresholds": list(TIER_THRESHOLDS),
@@ -682,6 +734,7 @@ def main() -> None:
     (args.out / "profile_moves.json").write_text(json.dumps(profiler.moves_dump(), separators=(",", ":")))
     (args.out / "profile_hist.json").write_text(json.dumps(profiler.histogram_dump(), separators=(",", ":")))
     (args.out / "profile_kneeded.json").write_text(json.dumps(profiler.kneeded_dump(), separators=(",", ":")))
+    (args.out / "profile_norms.json").write_text(json.dumps(profiler.norms_dump(), separators=(",", ":")))
     (args.out / "profile.md").write_text(markdown_tables(summary))
     print(markdown_tables(summary))
     print(f"wrote {args.out}/profile.json and profile.md")
