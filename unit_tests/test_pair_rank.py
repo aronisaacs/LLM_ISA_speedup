@@ -199,6 +199,30 @@ class StudyTests(unittest.TestCase):
         self.assertEqual(uniform["kv"]["pipeline"][0]["pct"], 100)
         self.assertEqual(uniform["kv"]["pipeline"][0]["k_layers"], "all")
 
+    def test_summary_reads_c_eval_scores_from_the_index(self):
+        import tempfile
+
+        from engine.eval_runner.index import record_simulation
+
+        def identity(kv):
+            return {"pretrained": pair_rank_study.PRETRAINED, "tasks": ["ceval-valid"], "num_fewshot": 5, "kv": kv}
+
+        def score(value):
+            return {"ceval-valid": {"acc,none": value}}
+
+        greedy = kv_for_assignment(pair_rank(pct=25), {Slot(0, "k"): 50, Slot(1, "k"): 100})
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            record_simulation(identity({"pipeline": []}), score(0.55), root=root)
+            record_simulation(identity(greedy), score(0.53), budget=0.1, compression=0.12, root=root)
+            record_simulation(identity(pair_rank(pct=100)), score(0.40), budget=0.5, compression=0.5, root=root)
+            record_simulation(identity(pair_rank_residual(pct=100)), score(0.30), budget=0.34, compression=0.34, root=root)
+            text = pair_rank_study.summary("merge", root)
+        self.assertIn("dense 0.550", text)
+        self.assertIn("| greedy | 0.10 | 0.120 | 0.530 | -0.020 |", text)
+        self.assertIn("| uniform |  | 0.500 | 0.400 | -0.150 |", text)
+        self.assertNotIn("0.300", text)  # the residual variant's run is not in the merge table
+
 
 if __name__ == "__main__":
     unittest.main()
