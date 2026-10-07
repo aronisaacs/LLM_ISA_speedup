@@ -1,0 +1,414 @@
+{
+  "model": "hf",
+  "batch_size": 1,
+  "model_args": "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16",
+  "configurations": [
+    {
+      "name": "llama31_ceval_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/pair_rank/merge/ceval_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama31_ceval_merge_p10",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              4,
+              5,
+              10,
+              17,
+              20,
+              21,
+              27,
+              29
+            ],
+            "v_layers": [],
+            "pct": 25,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              18,
+              22,
+              24,
+              30
+            ],
+            "v_layers": [],
+            "pct": 50,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              19,
+              26
+            ],
+            "v_layers": [],
+            "pct": 75,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              3
+            ],
+            "v_layers": [],
+            "pct": 100,
+            "rope": false
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/pair_rank/merge/ceval_merge_p10.json",
+      "metadata": {
+        "kv_budget": 0.1,
+        "kv_compression": 0.1015625
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama31_ceval_merge_p20",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              2,
+              10,
+              12,
+              15,
+              17,
+              21,
+              27
+            ],
+            "v_layers": [],
+            "pct": 25,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              4,
+              13,
+              18,
+              22,
+              24,
+              30
+            ],
+            "v_layers": [],
+            "pct": 50,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              8,
+              19,
+              20,
+              25,
+              26,
+              28,
+              29
+            ],
+            "v_layers": [],
+            "pct": 75,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              3,
+              5,
+              7
+            ],
+            "v_layers": [],
+            "pct": 100,
+            "rope": false
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/pair_rank/merge/ceval_merge_p20.json",
+      "metadata": {
+        "kv_budget": 0.2,
+        "kv_compression": 0.203125
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama31_ceval_merge_p30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              1,
+              2,
+              31
+            ],
+            "v_layers": [],
+            "pct": 25,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              4,
+              6,
+              12,
+              15,
+              16,
+              18,
+              22,
+              30
+            ],
+            "v_layers": [],
+            "pct": 50,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              8,
+              9,
+              10,
+              13,
+              17,
+              19,
+              21,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29
+            ],
+            "v_layers": [],
+            "pct": 75,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              3,
+              5,
+              7,
+              20
+            ],
+            "v_layers": [],
+            "pct": 100,
+            "rope": false
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/pair_rank/merge/ceval_merge_p30.json",
+      "metadata": {
+        "kv_budget": 0.3,
+        "kv_compression": 0.30078125
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama31_ceval_merge_p40",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              0,
+              1,
+              14
+            ],
+            "v_layers": [],
+            "pct": 25,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              2
+            ],
+            "v_layers": [],
+            "pct": 50,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              4,
+              8,
+              10,
+              11,
+              12,
+              13,
+              15,
+              16,
+              17,
+              18,
+              25,
+              27,
+              30,
+              31
+            ],
+            "v_layers": [],
+            "pct": 75,
+            "rope": false
+          },
+          {
+            "method": "pair_rank",
+            "k_layers": [
+              3,
+              5,
+              6,
+              7,
+              9,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              26,
+              28,
+              29
+            ],
+            "v_layers": [],
+            "pct": 100,
+            "rope": false
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/pair_rank/merge/ceval_merge_p40.json",
+      "metadata": {
+        "kv_budget": 0.4,
+        "kv_compression": 0.40234375
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama31_ceval_merge_uniform_p25",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "pair_rank",
+            "k_layers": "all",
+            "v_layers": null,
+            "pct": 25,
+            "rope": false
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/pair_rank/merge/ceval_merge_uniform_p25.json",
+      "metadata": {
+        "kv_budget": 0.125,
+        "kv_compression": 0.125
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama31_ceval_merge_uniform_p50",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "pair_rank",
+            "k_layers": "all",
+            "v_layers": null,
+            "pct": 50,
+            "rope": false
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/pair_rank/merge/ceval_merge_uniform_p50.json",
+      "metadata": {
+        "kv_budget": 0.25,
+        "kv_compression": 0.25
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama31_ceval_merge_uniform_p75",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "pair_rank",
+            "k_layers": "all",
+            "v_layers": null,
+            "pct": 75,
+            "rope": false
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/pair_rank/merge/ceval_merge_uniform_p75.json",
+      "metadata": {
+        "kv_budget": 0.375,
+        "kv_compression": 0.375
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama31_ceval_merge_uniform_p100",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "pair_rank",
+            "k_layers": "all",
+            "v_layers": null,
+            "pct": 100,
+            "rope": false
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/pair_rank/merge/ceval_merge_uniform_p100.json",
+      "metadata": {
+        "kv_budget": 0.5,
+        "kv_compression": 0.5
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    }
+  ]
+}
