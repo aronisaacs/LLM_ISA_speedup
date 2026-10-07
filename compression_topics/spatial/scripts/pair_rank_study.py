@@ -39,6 +39,7 @@ from catalog.models import LLAMA31_8B  # noqa: E402
 from catalog.tasks import CEVAL_VALID_5SHOT, WIKITEXT_FULL  # noqa: E402
 from engine.layer_select.budgets import LLAMA31_LAYERS, budget_run, selections_for_budgets  # noqa: E402
 from engine.layer_select.rungs import rungs_for  # noqa: E402
+from engine.eval_runner.index import simulations  # noqa: E402
 from engine.layer_select.scores import load_sweep_scores  # noqa: E402
 from engine.layer_select.sweep import expand_singleton_configs  # noqa: E402
 
@@ -79,7 +80,8 @@ def _run_stage(stage: str, variant: str) -> None:
     elif stage == "tasks":
         _multi_run(json.loads((out / "budgets_run.json").read_text()))
     else:
-        text = summary(variant, out)
+        text = summary(variant)
+        out.mkdir(parents=True, exist_ok=True)
         (out / "summary.md").write_text(text + "\n")
         print(text)
 
@@ -131,35 +133,40 @@ def task_run(variant: str, out: Path, payloads: list[dict]) -> dict:
     return run
 
 
-def summary(variant: str, out: Path) -> str:
-    """C-Eval accuracy against the share of key bytes removed, greedy next to uniform."""
+def summary(variant: str, root: Path | None = None) -> str:
+    """C-Eval accuracy against the share of key bytes removed, greedy next to uniform. Read from results.json."""
+    method = VARIANTS[variant]["method"]
+    dense = None
     rows = []
-    for path in sorted(out.glob("ceval_*.json")):
-        payload = json.loads(path.read_text())
-        score = float(payload["results"]["ceval-valid"][CEVAL_METRIC])
-        metadata = _metadata(payload)
-        tag = path.stem.removeprefix("ceval_")
-        rows.append((metadata.get("kv_compression", 0.0), tag, score))
-    if not rows:
-        return f"no finished C-Eval runs in {out}"
-    dense = next((score for _, tag, score in rows if tag == "dense"), None)
+    for record in simulations(root):
+        identity = record.get("identity") or {}
+        if identity.get("tasks") != ["ceval-valid"] or identity.get("pretrained") != PRETRAINED:
+            continue
+        score = (record.get("scores") or {}).get("ceval-valid", {}).get(CEVAL_METRIC)
+        pipeline = (identity.get("kv") or {}).get("pipeline") or []
+        if score is None:
+            continue
+        if not pipeline:
+            dense = float(score)
+            continue
+        if any(step.get("method") != method for step in pipeline):
+            continue
+        uniform = len(pipeline) == 1 and pipeline[0].get("k_layers") == "all"
+        rows.append((float(record.get("compression", 0.0)), "uniform" if uniform else "greedy", float(score), record.get("budget")))
     lines = [
-        f"C-Eval ({CEVAL_METRIC}), Llama 3.1 8B Instruct, keys only, pair_rank '{variant}'",
+        f"C-Eval ({CEVAL_METRIC}), Llama 3.1 8B Instruct, keys only, pair_rank '{variant}'"
+        + ("" if dense is None else f"; dense {dense:.3f}"),
         "",
-        "| run | key bytes removed | accuracy | vs dense |",
-        "|---|---|---|---|",
+        "| allocation | budget | key bytes removed | accuracy | vs dense |",
+        "|---|---|---|---|---|",
     ]
-    for compression, tag, score in sorted(rows):
-        change = "" if dense is None or tag == "dense" else f"{score - dense:+.3f}"
-        lines.append(f"| {tag} | {compression:.3f} | {score:.3f} | {change} |")
+    if not rows:
+        return "\n".join(lines[:1] + ["", "no finished C-Eval runs in results.json"])
+    for compression, kind, score, budget in sorted(rows, key=lambda row: (row[1], row[0])):
+        change = "" if dense is None else f"{score - dense:+.3f}"
+        shown = "" if budget is None or kind == "uniform" else f"{budget:.2f}"
+        lines.append(f"| {kind} | {shown} | {compression:.3f} | {score:.3f} | {change} |")
     return "\n".join(lines)
-
-
-def _metadata(payload: dict) -> dict:
-    for config in ((payload or {}).get("configs") or {}).values():
-        if isinstance(config, dict) and (config.get("metadata") or {}).get("kv_compression") is not None:
-            return config["metadata"]
-    return {}
 
 
 def _multi_run(run: dict) -> None:

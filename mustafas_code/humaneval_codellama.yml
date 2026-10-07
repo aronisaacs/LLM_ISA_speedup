@@ -1,0 +1,10 @@
+include: humaneval.yaml
+task: humaneval_codellama
+doc_to_text: !function utils.doc_to_text_codellama
+filter_list:
+  - name: "create_test"
+    filter:
+      - function: "custom"
+        filter_fn: !function utils.build_predictions_codellama
+metadata:
+  version: 5.0
