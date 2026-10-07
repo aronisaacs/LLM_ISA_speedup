@@ -204,7 +204,7 @@ def test_dump_kv_writes_the_exact_stored_states(tmp_path):
     ids = torch.randint(0, 64, (9,))
     psp.run_profile(
         model, [ids], max_new_tokens=6, rope=psp.rope_tables(model), fractions=("0", "1/4"),
-        generate_kwargs={"min_new_tokens": 6}, sample_pairs=0, dump_dir=tmp_path,
+        generate_kwargs={"min_new_tokens": 6}, sample_pairs=0, dump_dir=tmp_path, dump_windows=0,
     )
     with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:
         keys, values, queries = f.get_tensor("keys"), f.get_tensor("values"), f.get_tensor("queries")
@@ -252,7 +252,7 @@ def test_token_norms_match_the_dumped_states(tmp_path):
     ids = torch.randint(0, 64, (9,))
     profiler = psp.run_profile(
         model, [ids], max_new_tokens=6, rope=psp.rope_tables(model), fractions=("0", "1/4"),
-        generate_kwargs={"min_new_tokens": 6}, sample_pairs=0, dump_dir=tmp_path,
+        generate_kwargs={"min_new_tokens": 6}, sample_pairs=0, dump_dir=tmp_path, dump_windows=0,
     )
     with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:
         keys, values = f.get_tensor("keys"), f.get_tensor("values")
@@ -277,3 +277,52 @@ def test_prefill_only_run_scores_the_whole_chunk_and_no_decode():
     assert summary["v"]["prefill"]["0"]["0"]["n"] == 2 * 8 * 2  # 2 chunks, 8 pairs, 2 KV heads
     norms = profiler.norm_arrays()
     assert norms["question_0001/k"].shape == (2, 2, 16) and int(norms["question_0001/prompt_len"]) == 16
+
+
+def test_dump_keeps_random_whole_windows_at_the_same_positions_everywhere(tmp_path):
+    from safetensors.torch import safe_open
+    from transformers import LlamaConfig, LlamaForCausalLM
+
+    torch.manual_seed(0)
+    config = LlamaConfig(
+        vocab_size=64, hidden_size=32, intermediate_size=64, num_hidden_layers=2,
+        num_attention_heads=4, num_key_value_heads=2, max_position_embeddings=128,
+    )
+    model = LlamaForCausalLM(config).eval()
+    chunk = torch.randint(0, 64, (40,))
+    for name, windows in (("full", 0), ("sampled", 3)):
+        psp.run_profile(
+            model, [chunk], max_new_tokens=0, rope=psp.rope_tables(model), fractions=("0", "1/4"),
+            sample_pairs=0, dump_dir=tmp_path / name, dump_windows=windows, dump_window=4,
+        )
+    with safe_open(str(tmp_path / "full" / "question_0000.safetensors"), framework="pt") as f:
+        full_k, full_q = f.get_tensor("keys"), f.get_tensor("queries")
+    with safe_open(str(tmp_path / "sampled" / "question_0000.safetensors"), framework="pt") as f:
+        keys, values, queries, positions = (f.get_tensor(n) for n in ("keys", "values", "queries", "positions"))
+        assert f.metadata()["stored_len"] == "40"
+    assert positions.numel() == 12 and keys.shape == (2, 2, 12, 8) and queries.shape == (2, 4, 12, 8)
+    assert values.shape == keys.shape
+    starts = positions.view(3, 4)[:, 0]
+    assert (starts % 4 == 0).all() and (positions.view(3, 4) == starts[:, None] + torch.arange(4)).all()
+    assert torch.equal(keys, full_k[:, :, positions]) and torch.equal(queries, full_q[:, :, positions])
+    # The draw is fixed by the seed and the sequence number.
+    again = psp.KvDumper(tmp_path / "again", 3, 4).kept_positions(40, 0)
+    assert torch.equal(again, positions)
+
+
+def test_dump_can_skip_queries(tmp_path):
+    from safetensors.torch import safe_open
+    from transformers import LlamaConfig, LlamaForCausalLM
+
+    torch.manual_seed(0)
+    config = LlamaConfig(
+        vocab_size=64, hidden_size=32, intermediate_size=64, num_hidden_layers=2,
+        num_attention_heads=4, num_key_value_heads=2, max_position_embeddings=128,
+    )
+    model = LlamaForCausalLM(config).eval()
+    psp.run_profile(
+        model, [torch.randint(0, 64, (16,))], max_new_tokens=0, rope=psp.rope_tables(model), fractions=("0", "1/4"),
+        sample_pairs=0, dump_dir=tmp_path, dump_queries=False,
+    )
+    with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:
+        assert "queries" not in f.keys() and "keys" in f.keys()

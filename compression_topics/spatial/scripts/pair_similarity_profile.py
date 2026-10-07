@@ -38,11 +38,17 @@ The norm dump (profile_norms.npz) keeps the L2 norm of every stored key and valu
 per question, keys and values [layers, kv_heads, positions] and the prompt length. RoPE is a
 rotation, so a key's norm is the same with RoPE applied or undone.
 
-With --dump-kv DIR the exact K, V and (for Llama) query states of every question are saved as
-one safetensors file per question, so any other statistic can be computed later with no model:
-keys and values [layers, kv_heads, positions, head_dim], queries [layers, heads, positions,
-head_dim], and the token ids; prompt length is in the file metadata and meta.json holds the
-model, seed, chosen questions and RoPE settings. Keys and queries are as stored (RoPE applied).
+With --dump-kv DIR the exact K, V and (for Llama) query states are saved as one safetensors
+file per question or chunk, so other statistics can be computed later with no model: keys and
+values [layers, kv_heads, positions, head_dim], queries [layers, heads, positions, head_dim],
+the token ids, and "positions", the token positions kept. To keep the dump small only
+--dump-windows random windows of --dump-window consecutive tokens are kept per sequence
+(default 8 x 16, so 128 of 2048 WikiText tokens); the windows start on multiples of the window
+size, so aligned pairs, triples and quads stay whole, and the same positions are kept in every
+layer and head. --dump-windows 0 keeps whole sequences, --no-dump-queries drops the queries.
+The statistics above always use every token; only the raw dump is sampled. Prompt length is in
+the file metadata, and meta.json holds the model, seeds, chosen samples and RoPE settings.
+Keys and queries are as stored (RoPE applied).
 
 Per pair, the smallest k whose rel is within a threshold is the residual that pair would
 need. The tier tables show how many pairs need each k, how many cannot be merged, and the
@@ -484,10 +490,21 @@ class Profiler:
 
 
 class KvDumper:
-    """Collects the K/V (and queries) of one sequence per layer, then writes them out."""
+    """Collects the K/V (and queries) of one sequence per layer, then writes out random windows of it.
 
-    def __init__(self, directory: Path) -> None:
+    ``windows`` windows of ``window`` consecutive tokens are drawn per sequence, without
+    replacement, from the blocks [0, window), [window, 2 window), ...; 0 keeps every position.
+    The draw is seeded by ``seed`` and the sequence number, so a rerun keeps the same tokens.
+    """
+
+    def __init__(self, directory: Path, windows: int = 8, window: int = 16, seed: int = 0, queries: bool = True) -> None:
+        if window < 2 or window % 2:
+            raise ValueError("window must be even and at least 2, so aligned pairs stay whole")
         self.directory = directory
+        self.windows = windows
+        self.window = window
+        self.seed = seed
+        self.queries = queries
         directory.mkdir(parents=True, exist_ok=True)
         self.prompt_lengths: list[int] = []
         self.pending_query: torch.Tensor | None = None
@@ -500,7 +517,7 @@ class KvDumper:
         slot = self.layers.setdefault(layer_idx, {"k": [], "v": [], "q": []})
         slot["k"].append(keys.detach().cpu())
         slot["v"].append(values.detach().cpu())
-        if self.pending_query is not None:
+        if self.pending_query is not None and self.queries:
             slot["q"].append(self.pending_query.detach().cpu())
             self.pending_query = None
 
@@ -508,23 +525,35 @@ class KvDumper:
         from safetensors.torch import save_file
 
         order = sorted(self.layers)
-        tensors = {
-            "keys": torch.stack([torch.cat(self.layers[i]["k"], dim=-2)[0] for i in order]).contiguous(),
-            "values": torch.stack([torch.cat(self.layers[i]["v"], dim=-2)[0] for i in order]).contiguous(),
-            "input_ids": ids.cpu().long().contiguous(),
+        states = {
+            "keys": torch.stack([torch.cat(self.layers[i]["k"], dim=-2)[0] for i in order]),
+            "values": torch.stack([torch.cat(self.layers[i]["v"], dim=-2)[0] for i in order]),
         }
-        if all(self.layers[i]["q"] for i in order):
-            tensors["queries"] = torch.stack([torch.cat(self.layers[i]["q"], dim=-2)[0] for i in order]).contiguous()
+        if self.queries and all(self.layers[i]["q"] for i in order):
+            states["queries"] = torch.stack([torch.cat(self.layers[i]["q"], dim=-2)[0] for i in order])
+        positions = self.kept_positions(states["keys"].shape[-2], question)
+        tensors = {name: tensor[:, :, positions].contiguous() for name, tensor in states.items()}
+        tensors["positions"] = positions.contiguous()
+        tensors["input_ids"] = ids.cpu().long().contiguous()
         path = self.directory / f"question_{question:04d}.safetensors"
-        save_file(tensors, str(path), metadata={"prompt_len": str(int(ids.shape[-1])), "question": str(question)})
+        metadata = {"prompt_len": str(int(ids.shape[-1])), "question": str(question), "stored_len": str(states["keys"].shape[-2])}
+        save_file(tensors, str(path), metadata=metadata)
         self.prompt_lengths.append(int(ids.shape[-1]))
         self._reset()
         return path
 
+    def kept_positions(self, length: int, question: int) -> torch.Tensor:
+        """Sorted token positions to keep: every position, or ``windows`` random whole blocks."""
+        blocks = length // self.window
+        if self.windows <= 0 or self.windows >= blocks:
+            return torch.arange(length if self.windows <= 0 else blocks * self.window)
+        chosen = sorted(random.Random(self.seed * 1_000_003 + question).sample(range(blocks), self.windows))
+        return torch.cat([torch.arange(b * self.window, (b + 1) * self.window) for b in chosen])
+
 
 def run_profile(
     model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope: RopeTables | None, fractions=FRACTIONS, generate_kwargs=None, sample_pairs: int = 2000,
-    dump_dir: Path | None = None,
+    dump_dir: Path | None = None, dump_windows: int = 8, dump_window: int = 16, dump_seed: int = 0, dump_queries: bool = True,
 ) -> Profiler:
     """Generate greedily for each prompt (1-D token ids) while a hook scores every cache update."""
     from transformers.cache_utils import Cache
@@ -533,10 +562,10 @@ def run_profile(
         raise ValueError('fractions must start with "0": the movement dump buckets pairs by their rel before any residual')
     profiler = Profiler(rope, fractions, sample_pairs)
     original = Cache.update
-    dumper = KvDumper(dump_dir) if dump_dir is not None else None
+    dumper = KvDumper(dump_dir, dump_windows, dump_window, dump_seed, dump_queries) if dump_dir is not None else None
     llama = None
     original_rotary = None
-    if dumper is not None:
+    if dumper is not None and dump_queries:
         try:
             import transformers.models.llama.modeling_llama as llama
 
@@ -701,7 +730,10 @@ def main() -> None:
     parser.add_argument("--shots", type=int, default=5, help="GSM8K only")
     parser.add_argument("--seed", type=int, default=0, help="seed for choosing the chunks or questions")
     parser.add_argument("--max-new-tokens", type=int, default=256, help="GSM8K only; WikiText never generates")
-    parser.add_argument("--dump-kv", type=Path, default=None, help="directory to save every question's exact K, V and queries (large)")
+    parser.add_argument("--dump-kv", type=Path, default=None, help="directory to save exact K, V and queries for sampled windows of every sequence")
+    parser.add_argument("--dump-windows", type=int, default=8, help="random windows kept per sequence in the raw dump; 0 keeps whole sequences")
+    parser.add_argument("--dump-window", type=int, default=16, help="consecutive tokens per dump window (even)")
+    parser.add_argument("--dump-queries", action=argparse.BooleanOptionalAction, default=True, help="also dump queries (about 2/3 of the dump on Llama 3.1 8B)")
     parser.add_argument("--sample-pairs", type=int, default=2000, help="random pairs kept per (kind, phase, layer) with their full curve; 0 to skip")
     parser.add_argument("--device", default=None, help="cuda, mps or cpu; default is the best one available")
     parser.add_argument("--dtype", default=None, help="bfloat16, float16 or float32; default bfloat16 (float32 on cpu)")
@@ -728,6 +760,10 @@ def main() -> None:
         max_new_tokens=max_new_tokens,
         rope=rope,
         dump_dir=args.dump_kv,
+        dump_windows=args.dump_windows,
+        dump_window=args.dump_window,
+        dump_seed=args.seed,
+        dump_queries=args.dump_queries,
         generate_kwargs=generate_kwargs,
         sample_pairs=args.sample_pairs,
     )
@@ -746,6 +782,9 @@ def main() -> None:
                     "model": args.model,
                     **source,
                     "dtype": str(dtype),
+                    "dump_windows": args.dump_windows,
+                    "dump_window": args.dump_window,
+                    "dump_queries": args.dump_queries,
                     "rope": None
                     if rope is None
                     else {
@@ -754,7 +793,7 @@ def main() -> None:
                         "inv_freq": list(rope.inv_freq) if rope.inv_freq else None,
                         "attention_scaling": rope.attention_scaling,
                     },
-                    "layout": "keys/values [layers, kv_heads, positions, head_dim]; queries [layers, heads, positions, head_dim]; RoPE applied",
+                    "layout": "keys/values [layers, kv_heads, kept positions, head_dim]; queries [layers, heads, kept positions, head_dim]; 'positions' lists the kept token positions; RoPE applied",
                 },
                 indent=1,
             )
