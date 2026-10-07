@@ -44,6 +44,7 @@ need. The tier tables show how many pairs need each k, how many cannot be merged
 bytes left against a dense cache.
 
   python compression_topics/spatial/scripts/pair_similarity_profile.py --questions 30
+  python compression_topics/spatial/scripts/pair_similarity_profile.py --dataset wikitext --questions 50 --seq-len 1024  # prefill only
 """
 
 from __future__ import annotations
@@ -617,6 +618,22 @@ def gsm8k_prompts(tokenizer, count: int, shots: int = 5, seed: int = 0) -> tuple
     return prompts, chosen
 
 
+def wikitext_prompts(tokenizer, count: int, seq_len: int = 1024, seed: int = 0) -> tuple[list[torch.Tensor], list[int]]:
+    """``count`` random non-overlapping windows of ``seq_len`` tokens from the WikiText-2 test set (the lm-eval copy).
+
+    Returns the windows and the index of each window in the tokenised test text.
+    """
+    from datasets import load_dataset
+
+    data = load_dataset("EleutherAI/wikitext_document_level", "wikitext-2-raw-v1")["test"]
+    ids = tokenizer("\n\n".join(data["page"]))["input_ids"]
+    windows = len(ids) // seq_len
+    if count > windows:
+        raise ValueError(f"asked for {count} windows of {seq_len} tokens but the test set has {windows}")
+    chosen = sorted(random.Random(seed).sample(range(windows), count))
+    return [torch.tensor(ids[i * seq_len : (i + 1) * seq_len]) for i in chosen], chosen
+
+
 def markdown_tables(summary: dict, *, rel_threshold: str = "0.3", fractions=FRACTIONS) -> str:
     """Per layer: share of pairs with rel at most the threshold, for each residual share, per kind and phase."""
     lines = []
@@ -665,7 +682,9 @@ def markdown_tables(summary: dict, *, rel_threshold: str = "0.3", fractions=FRAC
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", default=PRETRAINED)
-    parser.add_argument("--questions", type=int, default=30)
+    parser.add_argument("--dataset", choices=("gsm8k", "wikitext"), default="gsm8k", help="wikitext is prefill only: one new token, windows of --seq-len tokens")
+    parser.add_argument("--questions", type=int, default=30, help="number of GSM8K questions, or of WikiText windows")
+    parser.add_argument("--seq-len", type=int, default=1024, help="tokens per WikiText window")
     parser.add_argument("--shots", type=int, default=5)
     parser.add_argument("--seed", type=int, default=0, help="seed for choosing the GSM8K test questions")
     parser.add_argument("--max-new-tokens", type=int, default=256)
@@ -673,8 +692,10 @@ def main() -> None:
     parser.add_argument("--sample-pairs", type=int, default=2000, help="random pairs kept per (kind, phase, layer) with their full curve; 0 to skip")
     parser.add_argument("--device", default=None, help="cuda, mps or cpu; default is the best one available")
     parser.add_argument("--dtype", default=None, help="bfloat16, float16 or float32; default bfloat16 (float32 on cpu)")
-    parser.add_argument("--out", type=Path, default=FIGURES)
+    parser.add_argument("--out", type=Path, default=None, help="default: figures/pair_similarity, or figures/pair_similarity/wikitext for --dataset wikitext")
     args = parser.parse_args()
+    if args.out is None:
+        args.out = FIGURES / "wikitext" if args.dataset == "wikitext" else FIGURES
 
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -683,15 +704,20 @@ def main() -> None:
     dtype = getattr(torch, args.dtype) if args.dtype else (torch.float32 if device == "cpu" else torch.bfloat16)
     model = AutoModelForCausalLM.from_pretrained(args.model, dtype=dtype).to(device)
     model.eval()
-    prompts, chosen = gsm8k_prompts(tokenizer, args.questions, args.shots, args.seed)
+    if args.dataset == "wikitext":
+        prompts, chosen = wikitext_prompts(tokenizer, args.questions, args.seq_len, args.seed)
+        max_new_tokens, generate_kwargs = 1, None  # prefill only: no generated pairs, so no decode rows
+    else:
+        prompts, chosen = gsm8k_prompts(tokenizer, args.questions, args.shots, args.seed)
+        max_new_tokens, generate_kwargs = args.max_new_tokens, {"stop_strings": ["Question:"], "tokenizer": tokenizer}
     rope = rope_tables(model)
     profiler = run_profile(
         model,
         prompts,
-        max_new_tokens=args.max_new_tokens,
+        max_new_tokens=max_new_tokens,
         rope=rope,
         dump_dir=args.dump_kv,
-        generate_kwargs={"stop_strings": ["Question:"], "tokenizer": tokenizer},
+        generate_kwargs=generate_kwargs,
         sample_pairs=args.sample_pairs,
     )
     summary = profiler.summary()
@@ -702,8 +728,11 @@ def main() -> None:
                     "model": args.model,
                     "seed": args.seed,
                     "shots": args.shots,
-                    "max_new_tokens": args.max_new_tokens,
-                    "gsm8k_test_indices": chosen,
+                    "max_new_tokens": max_new_tokens,
+                    "dataset": args.dataset,
+                    "seq_len": args.seq_len if args.dataset == "wikitext" else None,
+                    "gsm8k_test_indices": chosen if args.dataset == "gsm8k" else None,
+                    "wikitext_windows": chosen if args.dataset == "wikitext" else None,
                     "dtype": str(dtype),
                     "rope": None
                     if rope is None
@@ -724,7 +753,9 @@ def main() -> None:
         "questions": args.questions,
         "shots": args.shots,
         "seed": args.seed,
-        "max_new_tokens": args.max_new_tokens,
+        "max_new_tokens": max_new_tokens,
+        "dataset": args.dataset,
+        "seq_len": args.seq_len if args.dataset == "wikitext" else None,
         "fractions": list(FRACTIONS),
         "ks": list(profiler.ks),
         "head_dim": profiler.head_dim,

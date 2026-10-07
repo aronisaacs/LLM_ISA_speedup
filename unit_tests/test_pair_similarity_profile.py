@@ -259,3 +259,19 @@ def test_token_norms_match_the_dumped_states(tmp_path):
     norms = profiler.norm_arrays()
     assert torch.allclose(torch.from_numpy(norms["question_0000/k"]), keys.float().norm(dim=-1), atol=1e-5)
     assert torch.allclose(torch.from_numpy(norms["question_0000/v"]), values.float().norm(dim=-1), atol=1e-5)
+
+
+def test_wikitext_prompts_are_disjoint_windows(monkeypatch):
+    import sys
+    import types
+
+    class Tokenizer:
+        def __call__(self, text):
+            return {"input_ids": list(range(len(text.split())))}
+
+    fake = types.SimpleNamespace(load_dataset=lambda *a, **k: {"test": {"page": ["w " * 50, "w " * 50]}})
+    monkeypatch.setitem(sys.modules, "datasets", fake)
+    prompts, chosen = psp.wikitext_prompts(Tokenizer(), 3, 20, seed=1)
+    assert len(prompts) == 3 and all(len(p) == 20 for p in prompts)
+    assert chosen == sorted(set(chosen)) and max(chosen) < 5
+    assert [int(p[0]) for p in prompts] == [20 * i for i in chosen]
