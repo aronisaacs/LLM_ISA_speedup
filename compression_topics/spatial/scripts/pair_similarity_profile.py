@@ -34,9 +34,12 @@ The sample dump (profile_samples.npz) keeps individual pairs: a uniform random s
 (kind, phase, layer) with the pair's whole rel curve rel_k for k = 0..head_dim (half precision),
 and its question index, KV head, token position, ||a||, ||b||, ||m||, ||d|| and cosine.
 
-The norm dump (profile_norms.npz) keeps the L2 norm of every stored key and value vector:
-per question, keys and values [layers, kv_heads, positions] and the prompt length. RoPE is a
-rotation, so a key's norm is the same with RoPE applied or undone.
+The norm dump (profile_norms.npz, float16) keeps the L2 norm of every stored key and value
+vector: per question, keys and values [layers, kv_heads, positions] and the prompt length. It is
+written next to the raw dump when --dump-kv is given (it can pass GitHub's 100 MB file limit),
+else into --out. RoPE is a rotation, so a key's norm is the same with RoPE applied or undone.
+profile_norm_stats.json, always in --out, keeps per (kind, phase, layer) and per KV head the
+count, mean, std and quantiles of those norms.
 
 With --dump-kv DIR the exact K, V and (for Llama) query states are saved as one safetensors
 file per question or chunk, so other statistics can be computed later with no model: keys and
@@ -443,9 +446,43 @@ class Profiler:
         """Arrays for numpy.savez: 'question_NNNN/k', '.../v' as [layers, kv_heads, positions] and '.../prompt_len'."""
         out = {}
         for number, norms in enumerate(self.token_norms):
-            out[f"question_{number:04d}/k"] = norms["k"].numpy()
-            out[f"question_{number:04d}/v"] = norms["v"].numpy()
+            out[f"question_{number:04d}/k"] = norms["k"].half().numpy()
+            out[f"question_{number:04d}/v"] = norms["v"].half().numpy()
             out[f"question_{number:04d}/prompt_len"] = torch.tensor(norms["prompt_len"]).numpy()
+        return out
+
+    def norm_stats(self) -> dict:
+        """Per kind (k, v), phase and layer: norm count, mean, std and quantiles, over all heads and per KV head."""
+        quantiles = (0.01, 0.1, 0.5, 0.9, 0.99)
+
+        def describe(values: torch.Tensor) -> dict:
+            values = values.double()
+            q = torch.quantile(values, torch.tensor(quantiles, dtype=torch.float64)) if values.numel() < 2**24 else None
+            if q is None:  # torch.quantile has an input size limit; sort instead
+                ordered = values.sort().values
+                q = ordered[(torch.tensor(quantiles) * (values.numel() - 1)).long()]
+            return {
+                "n": int(values.numel()), "mean": float(values.mean()), "std": float(values.std()) if values.numel() > 1 else 0.0,
+                "max": float(values.max()), **{f"p{int(round(100 * x))}": float(v) for x, v in zip(quantiles, q.tolist())},
+            }
+
+        out: dict = {"quantiles": list(quantiles), "stats": {}}
+        if not self.token_norms:
+            return out
+        for kind in ("k", "v"):
+            for phase in PHASES:
+                parts = []
+                for norms in self.token_norms:
+                    cut = norms["prompt_len"]
+                    parts.append(norms[kind][:, :, :cut] if phase == "prefill" else norms[kind][:, :, cut:])
+                values = torch.cat(parts, dim=-1)  # [layers, kv_heads, tokens]
+                if values.shape[-1] == 0:
+                    continue
+                for layer in range(values.shape[0]):
+                    out["stats"].setdefault(kind, {}).setdefault(phase, {})[str(layer)] = {
+                        "all": describe(values[layer].flatten()),
+                        "heads": [describe(values[layer, head]) for head in range(values.shape[1])],
+                    }
         return out
 
     def histogram_dump(self) -> dict:
@@ -815,7 +852,8 @@ def main() -> None:
 
     if args.sample_pairs > 0:
         numpy.savez_compressed(args.out / "profile_samples.npz", **profiler.sample_arrays())
-    numpy.savez_compressed(args.out / "profile_norms.npz", **profiler.norm_arrays())
+    numpy.savez_compressed((args.dump_kv or args.out) / "profile_norms.npz", **profiler.norm_arrays())
+    (args.out / "profile_norm_stats.json").write_text(json.dumps(profiler.norm_stats(), separators=(",", ":")))
     (args.out / "profile_moves.json").write_text(json.dumps(profiler.moves_dump(), separators=(",", ":")))
     (args.out / "profile_hist.json").write_text(json.dumps(profiler.histogram_dump(), separators=(",", ":")))
     (args.out / "profile_kneeded.json").write_text(json.dumps(profiler.kneeded_dump(), separators=(",", ":")))

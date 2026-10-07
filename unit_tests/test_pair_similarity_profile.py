@@ -257,8 +257,13 @@ def test_token_norms_match_the_dumped_states(tmp_path):
     with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:
         keys, values = f.get_tensor("keys"), f.get_tensor("values")
     norms = profiler.norm_arrays()
-    assert torch.allclose(torch.from_numpy(norms["question_0000/k"]), keys.float().norm(dim=-1), atol=1e-5)
-    assert torch.allclose(torch.from_numpy(norms["question_0000/v"]), values.float().norm(dim=-1), atol=1e-5)
+    assert torch.allclose(torch.from_numpy(norms["question_0000/k"]).float(), keys.float().norm(dim=-1), rtol=1e-3, atol=1e-4)
+    assert torch.allclose(torch.from_numpy(norms["question_0000/v"]).float(), values.float().norm(dim=-1), rtol=1e-3, atol=1e-4)
+    stats = profiler.norm_stats()["stats"]
+    assert stats["k"]["prefill"]["0"]["all"]["n"] == 2 * 9 and len(stats["k"]["prefill"]["0"]["heads"]) == 2
+    assert stats["v"]["decode"]["1"]["all"]["n"] == 2 * 5
+    mean = keys[0, :, :9].float().norm(dim=-1).mean().item()
+    assert abs(stats["k"]["prefill"]["0"]["all"]["mean"] - mean) < 1e-4
 
 
 def test_prefill_only_run_scores_the_whole_chunk_and_no_decode():
