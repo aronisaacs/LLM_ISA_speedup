@@ -44,7 +44,15 @@ PAIR_QUANT = (
     Rung(MERGE_ONLY, 16 / 32),
 )
 
+# pair_rank merges the most similar pct% of a layer's pairs. A merged pair costs 1/2 of two dense
+# vectors with no residual, and (17 D + 16 D / 4) / (32 D) = 0.65625 with the top 1/4 of the
+# difference kept, so a slot loses pct/100 times 1/2 or times 0.34375.
+PAIR_RANK = tuple(Rung(pct, pct / 100 * 0.5) for pct in (25, 50, 75, 100))
+PAIR_RANK_RESIDUAL = tuple(Rung(pct, pct / 100 * (1 - 0.65625)) for pct in (25, 50, 75, 100))
+
 RUNGS = {
+    "pair_rank": PAIR_RANK,
+    "pair_rank_residual": PAIR_RANK_RESIDUAL,
     "vector_compress": PRUNE,
     "vector_compress_pair": PRUNE,
     "checksparse_l1": PRUNE,

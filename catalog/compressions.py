@@ -93,6 +93,19 @@ def pair_gate(k_layers="all", v_layers="all", tau=0.3, keep_pct=0):
     return _step("pair_gate", k_layers, v_layers, tau=float(tau), keep_pct=int(keep_pct))
 
 
+def pair_rank(k_layers="all", v_layers=None, pct=50, rope=False):
+    """Merge the most similar ``pct`` percent of a layer's token pairs to their mean. No residual.
+
+    Pairs are ranked across all heads of the sequence. The sweep climber walks 25, 50, 75, then 100.
+    """
+    return _step("pair_rank", k_layers, v_layers, pct=int(pct), rope=bool(rope))
+
+
+def pair_rank_residual(k_layers="all", v_layers=None, pct=50, rope=False):
+    """``pair_rank`` that also keeps the top 1/4 of each merged pair's difference exactly."""
+    return _step("pair_rank_residual", k_layers, v_layers, pct=int(pct), rope=bool(rope))
+
+
 def spatial_pool(k_layers="all", v_layers="all", chunk=8):
     """Replace each closed chunk with its mean."""
     return _step("spatial_pool", k_layers, v_layers, chunk=chunk)

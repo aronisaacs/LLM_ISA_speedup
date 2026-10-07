@@ -102,6 +102,9 @@ def kv_brief(spec) -> str:
             parts.append("pair pool")
         elif method == "pair_gate":
             parts.append(f"pair gate tau={step.get('tau', '?')} keep={step.get('keep_pct', '?')}%")
+        elif method in {"pair_rank", "pair_rank_residual"}:
+            residual = " + 1/4 residual" if method == "pair_rank_residual" else ""
+            parts.append(f"pair rank merge top {step.get('pct', '?')}%{residual}")
         elif method == "pair_quant":
             parts.append(f"pair quant residual bits={step.get('bits', '?')} group={step.get('group', '?')}")
         elif method == "spatial_pool":

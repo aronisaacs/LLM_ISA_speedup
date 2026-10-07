@@ -108,6 +108,9 @@ def _set_level(step: dict, pct: int) -> None:
     if method == "pair_quant":
         step["bits"] = _pair_quant_bits(int(pct))
         return
+    if method in {"pair_rank", "pair_rank_residual"}:
+        step["pct"] = int(pct)
+        return
     if method in {"vector_compress", "vector_compress_pair", "checksparse_l1", "checksparse_row", "residual_pool"}:
         step["prune_pct"] = int(pct)
         if method == "vector_compress":
@@ -126,6 +129,8 @@ def _level_from_step(step: dict) -> int | None:
         return int(step["bits"])
     if step.get("method") == "pair_quant" and step.get("bits") is not None:
         return MERGE_ONLY if int(step["bits"]) == 0 else int(step["bits"])
+    if step.get("method") in {"pair_rank", "pair_rank_residual"} and step.get("pct") is not None:
+        return int(step["pct"])
     if step.get("prune_pct") is not None:
         return int(step["prune_pct"])
     return None
