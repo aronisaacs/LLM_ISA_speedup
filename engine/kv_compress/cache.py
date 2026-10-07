@@ -107,6 +107,9 @@ def _close_filled_pairs(keys, values, layer_idx: int, spec: KvSpec, start: int, 
         if step.method == "pair_gate":
             _close_pair_gate(step, keys, values, layer_idx, open_start, closed, end)
             continue
+        if step.method in {"pair_rank", "pair_rank_residual"}:
+            _close_pair_rank(step, keys, values, layer_idx, open_start, closed, end)
+            continue
         if step.method not in {"residual_pool", "pair_pool"}:
             continue
         if step.method == "pair_pool":
@@ -155,6 +158,18 @@ def _close_pair_gate(step, keys, values, layer_idx: int, open_start: int, closed
         pair_gate.write_closed_pairs(keys, tau=tau, keep_pct=keep_pct, target="k", start=open_start, end=closed)
     if _enabled(step.v_layers, layer_idx) and values.shape[-2] >= end:
         pair_gate.write_closed_pairs(values, tau=tau, keep_pct=keep_pct, target="v", start=open_start, end=closed)
+
+
+def _close_pair_rank(step, keys, values, layer_idx: int, open_start: int, closed: int, end: int) -> None:
+    from compression_topics.spatial.algorithms import pair_rank
+
+    merge_pct = int(step.kwargs.get("merge_pct", 50))
+    keep_pct = int(step.kwargs.get("keep_pct", 25 if step.method == "pair_rank_residual" else 0))
+    for target, tensor, selection in (("k", keys, step.k_layers), ("v", values, step.v_layers)):
+        if _enabled(selection, layer_idx) and tensor.shape[-2] >= end:
+            pair_rank.write_closed_pairs(
+                tensor, merge_pct=merge_pct, keep_pct=keep_pct, target=target, layer_idx=layer_idx, start=open_start, end=closed
+            )
 
 
 def _key_quantize_step(spec: KvSpec, layer_idx: int) -> PipelineStep | None:

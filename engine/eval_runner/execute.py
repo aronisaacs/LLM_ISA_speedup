@@ -72,9 +72,10 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
     eval_kwargs = {
         key: merge(base, configuration, key, default) for key, default in _EVAL_DEFAULTS.items()
     }
-    from compression_topics.spatial.algorithms import pair_gate
+    from compression_topics.spatial.algorithms import pair_gate, pair_rank
 
     pair_gate.reset_stats()
+    pair_rank.reset_stats()
     with temporary_environ(env):
         results = simple_evaluate(
             model=lm,
@@ -89,6 +90,9 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
     gate_stats = pair_gate.pop_stats()
     if gate_stats and isinstance(results, dict):
         results["gate_stats"] = gate_stats
+    rank_stats = pair_rank.pop_stats()
+    if rank_stats and isinstance(results, dict):
+        results["rank_stats"] = rank_stats
     return results
 
 
@@ -132,6 +136,8 @@ def shorten_result(payload: dict) -> dict:
         short["configs"] = {tasks[0]: {"metadata": budget}}
     if payload.get("gate_stats"):
         short["gate_stats"] = payload["gate_stats"]
+    if payload.get("rank_stats"):
+        short["rank_stats"] = payload["rank_stats"]
     if isinstance(payload.get("simulation"), dict):
         short["simulation"] = payload["simulation"]
     else:

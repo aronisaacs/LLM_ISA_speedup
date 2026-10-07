@@ -93,6 +93,20 @@ def pair_gate(k_layers="all", v_layers="all", tau=0.3, keep_pct=0):
     return _step("pair_gate", k_layers, v_layers, tau=float(tau), keep_pct=int(keep_pct))
 
 
+def pair_rank(k_layers="all", v_layers="all", merge_pct=50, keep_pct=0):
+    """Merge the ``merge_pct`` percent most similar token pairs of each layer, ranked per sequence.
+
+    No residual by default. ``pair_rank_residual`` is the same with ``keep_pct`` of the
+    largest differences kept exactly; the two names carry separate sweep rungs.
+    """
+    return _step("pair_rank", k_layers, v_layers, merge_pct=int(merge_pct), keep_pct=int(keep_pct))
+
+
+def pair_rank_residual(k_layers="all", v_layers="all", merge_pct=50, keep_pct=25):
+    """``pair_rank`` that keeps ``keep_pct`` percent of each merged pair's largest differences exactly."""
+    return _step("pair_rank_residual", k_layers, v_layers, merge_pct=int(merge_pct), keep_pct=int(keep_pct))
+
+
 def spatial_pool(k_layers="all", v_layers="all", chunk=8):
     """Replace each closed chunk with its mean."""
     return _step("spatial_pool", k_layers, v_layers, chunk=chunk)
