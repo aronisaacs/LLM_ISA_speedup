@@ -38,11 +38,14 @@ The norm dump (profile_norms.npz) keeps the L2 norm of every stored key and valu
 per question, keys and values [layers, kv_heads, positions] and the prompt length. RoPE is a
 rotation, so a key's norm is the same with RoPE applied or undone.
 
-With --dump-kv DIR the exact K, V and (for Llama) query states of every question are saved as
-one safetensors file per question, so any other statistic can be computed later with no model:
-keys and values [layers, kv_heads, positions, head_dim], queries [layers, heads, positions,
-head_dim], and the token ids; prompt length is in the file metadata and meta.json holds the
-model, seed, chosen questions and RoPE settings. Keys and queries are as stored (RoPE applied).
+With --dump-kv DIR the exact K, V and (for Llama) query states of a random share of the aligned
+pairs (--dump-pair-fraction, default 0.05) are saved as one safetensors file per question, so
+any pair statistic can be computed later with no model: keys and values [layers, kv_heads,
+2 * pairs, head_dim], queries [layers, heads, 2 * pairs, head_dim], pair_positions [pairs] (the
+position of each pair's first token; the same pairs in every layer and head) and the token ids.
+Prompt length is in the file metadata and meta.json holds the model, seed, chosen questions and
+RoPE settings. Keys and queries are as stored (RoPE applied). Only the sampled tokens are kept,
+so this cannot rebuild full attention. Use --dump-pair-fraction 1 to keep everything (large).
 
 Per pair, the smallest k whose rel is within a threshold is the residual that pair would
 need. The tier tables show how many pairs need each k, how many cannot be merged, and the
@@ -486,8 +489,10 @@ class Profiler:
 class KvDumper:
     """Collects the K/V (and queries) of one sequence per layer, then writes them out."""
 
-    def __init__(self, directory: Path) -> None:
+    def __init__(self, directory: Path, pair_fraction: float = 1.0, seed: int = 0) -> None:
         self.directory = directory
+        self.pair_fraction = pair_fraction
+        self.seed = seed
         directory.mkdir(parents=True, exist_ok=True)
         self.prompt_lengths: list[int] = []
         self.pending_query: torch.Tensor | None = None
@@ -508,13 +513,22 @@ class KvDumper:
         from safetensors.torch import save_file
 
         order = sorted(self.layers)
+        keys = torch.stack([torch.cat(self.layers[i]["k"], dim=-2)[0] for i in order])
+        values = torch.stack([torch.cat(self.layers[i]["v"], dim=-2)[0] for i in order])
+        pairs = keys.shape[-2] // 2
+        generator = torch.Generator().manual_seed(self.seed * 1_000_003 + question)
+        keep = torch.randperm(pairs, generator=generator)[: max(1, round(self.pair_fraction * pairs))].sort().values
+        # Both tokens of each kept aligned pair (2i, 2i+1), the same pairs in every layer and head.
+        tokens = torch.stack([2 * keep, 2 * keep + 1], dim=1).reshape(-1)
         tensors = {
-            "keys": torch.stack([torch.cat(self.layers[i]["k"], dim=-2)[0] for i in order]).contiguous(),
-            "values": torch.stack([torch.cat(self.layers[i]["v"], dim=-2)[0] for i in order]).contiguous(),
+            "keys": keys[..., tokens, :].contiguous(),
+            "values": values[..., tokens, :].contiguous(),
+            "pair_positions": (2 * keep).long(),
             "input_ids": ids.cpu().long().contiguous(),
         }
         if all(self.layers[i]["q"] for i in order):
-            tensors["queries"] = torch.stack([torch.cat(self.layers[i]["q"], dim=-2)[0] for i in order]).contiguous()
+            queries = torch.stack([torch.cat(self.layers[i]["q"], dim=-2)[0] for i in order])
+            tensors["queries"] = queries[..., tokens, :].contiguous()
         path = self.directory / f"question_{question:04d}.safetensors"
         save_file(tensors, str(path), metadata={"prompt_len": str(int(ids.shape[-1])), "question": str(question)})
         self.prompt_lengths.append(int(ids.shape[-1]))
@@ -524,7 +538,7 @@ class KvDumper:
 
 def run_profile(
     model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope: RopeTables | None, fractions=FRACTIONS, generate_kwargs=None, sample_pairs: int = 2000,
-    dump_dir: Path | None = None,
+    dump_dir: Path | None = None, dump_pair_fraction: float = 1.0, seed: int = 0,
 ) -> Profiler:
     """Generate greedily for each prompt (1-D token ids) while a hook scores every cache update."""
     from transformers.cache_utils import Cache
@@ -533,7 +547,7 @@ def run_profile(
         raise ValueError('fractions must start with "0": the movement dump buckets pairs by their rel before any residual')
     profiler = Profiler(rope, fractions, sample_pairs)
     original = Cache.update
-    dumper = KvDumper(dump_dir) if dump_dir is not None else None
+    dumper = KvDumper(dump_dir, dump_pair_fraction, seed) if dump_dir is not None else None
     llama = None
     original_rotary = None
     if dumper is not None:
@@ -701,7 +715,8 @@ def main() -> None:
     parser.add_argument("--shots", type=int, default=5, help="GSM8K only")
     parser.add_argument("--seed", type=int, default=0, help="seed for choosing the chunks or questions")
     parser.add_argument("--max-new-tokens", type=int, default=256, help="GSM8K only; WikiText never generates")
-    parser.add_argument("--dump-kv", type=Path, default=None, help="directory to save every question's exact K, V and queries (large)")
+    parser.add_argument("--dump-kv", type=Path, default=None, help="directory to save the exact K, V and queries of a random share of the pairs")
+    parser.add_argument("--dump-pair-fraction", type=float, default=0.05, help="share of aligned pairs kept in the --dump-kv files (1 = all, about 0.8 GB per 2048 tokens on 8B)")
     parser.add_argument("--sample-pairs", type=int, default=2000, help="random pairs kept per (kind, phase, layer) with their full curve; 0 to skip")
     parser.add_argument("--device", default=None, help="cuda, mps or cpu; default is the best one available")
     parser.add_argument("--dtype", default=None, help="bfloat16, float16 or float32; default bfloat16 (float32 on cpu)")
@@ -728,6 +743,8 @@ def main() -> None:
         max_new_tokens=max_new_tokens,
         rope=rope,
         dump_dir=args.dump_kv,
+        dump_pair_fraction=args.dump_pair_fraction,
+        seed=args.seed,
         generate_kwargs=generate_kwargs,
         sample_pairs=args.sample_pairs,
     )
@@ -754,7 +771,8 @@ def main() -> None:
                         "inv_freq": list(rope.inv_freq) if rope.inv_freq else None,
                         "attention_scaling": rope.attention_scaling,
                     },
-                    "layout": "keys/values [layers, kv_heads, positions, head_dim]; queries [layers, heads, positions, head_dim]; RoPE applied",
+                    "pair_fraction": args.dump_pair_fraction,
+                    "layout": "keys/values [layers, kv_heads, 2 * pairs, head_dim]; queries [layers, heads, 2 * pairs, head_dim]; tokens (2i, 2i+1) of the pairs in pair_positions; RoPE applied",
                 },
                 indent=1,
             )

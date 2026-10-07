@@ -277,3 +277,31 @@ def test_prefill_only_run_scores_the_whole_chunk_and_no_decode():
     assert summary["v"]["prefill"]["0"]["0"]["n"] == 2 * 8 * 2  # 2 chunks, 8 pairs, 2 KV heads
     norms = profiler.norm_arrays()
     assert norms["question_0001/k"].shape == (2, 2, 16) and int(norms["question_0001/prompt_len"]) == 16
+
+
+def test_dump_keeps_a_random_share_of_whole_pairs(tmp_path):
+    from safetensors.torch import safe_open
+    from transformers import LlamaConfig, LlamaForCausalLM
+
+    torch.manual_seed(0)
+    config = LlamaConfig(
+        vocab_size=64, hidden_size=32, intermediate_size=64, num_hidden_layers=2,
+        num_attention_heads=4, num_key_value_heads=2, max_position_embeddings=128,
+    )
+    model = LlamaForCausalLM(config).eval()
+    ids = torch.randint(0, 64, (21,))
+    rope = psp.rope_tables(model)
+    run = lambda path, fraction: psp.run_profile(
+        model, [ids], max_new_tokens=0, rope=rope, fractions=("0", "1/4"), sample_pairs=0, dump_dir=path, dump_pair_fraction=fraction
+    )
+    run(tmp_path / "all", 1.0)
+    run(tmp_path / "some", 0.3)
+    with safe_open(str(tmp_path / "all" / "question_0000.safetensors"), framework="pt") as f:
+        full = f.get_tensor("keys")
+    with safe_open(str(tmp_path / "some" / "question_0000.safetensors"), framework="pt") as f:
+        keys, queries, positions = f.get_tensor("keys"), f.get_tensor("queries"), f.get_tensor("pair_positions")
+    assert full.shape[-2] == 20 and len(positions) == 3  # 10 pairs, 30% kept
+    assert keys.shape == (2, 2, 6, 8) and queries.shape == (2, 4, 6, 8)
+    assert (positions % 2 == 0).all() and (positions[1:] > positions[:-1]).all()
+    tokens = torch.stack([positions, positions + 1], dim=1).reshape(-1)
+    assert torch.equal(keys, full[..., tokens, :])
