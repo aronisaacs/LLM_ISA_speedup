@@ -1,0 +1,796 @@
+{
+  "results": {
+    "ceval-valid": {
+      "acc,none": 0.5505200594353641,
+      "acc_norm,none": 0.5505200594353641
+    }
+  },
+  "config": {
+    "model_args": {
+      "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+      "dtype": "bfloat16",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              2
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 16
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              3
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 32
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              4
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 4
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              5
+            ],
+            "v_layers": [],
+            "saving": 0.2,
+            "residual_entries": 8
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              6
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 16
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              7
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 32
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              8
+            ],
+            "v_layers": [],
+            "saving": 0.2,
+            "residual_entries": 16
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              9
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 32
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              10
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 4
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              13
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 4
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              15
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 4
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              16
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 16
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              17
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 32
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              19
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 32
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              21
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 16
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              22
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 16
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              23
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 32
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              24
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "residual_entries": 4
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              25
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "residual_entries": 32
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              26
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 0
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              27
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 8
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              28
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "residual_entries": 4
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              30
+            ],
+            "v_layers": [],
+            "saving": 0.3,
+            "residual_entries": 32
+          },
+          {
+            "method": "pair_calibrated",
+            "k_layers": [
+              31
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "residual_entries": 8
+          }
+        ]
+      }
+    }
+  },
+  "n-shot": {
+    "ceval-valid": 5
+  },
+  "n-samples": {
+    "ceval-valid": {
+      "original": 1346,
+      "effective": 1346
+    }
+  },
+  "configs": {
+    "ceval-valid": {
+      "metadata": {
+        "kv_budget": 0.1,
+        "kv_compression": 0.10157942771911621
+      }
+    }
+  },
+  "gate_stats": {
+    "k_layer_2": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283678848,
+      "pairs": 3601072,
+      "merged": 887735,
+      "features": 128,
+      "kept": 16,
+      "cosine_sum": 878816.0844116211,
+      "cosine_min": 0.9841313362121582,
+      "cutoff_sum": 1325.5134508013725,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_3": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283846912,
+      "pairs": 3601072,
+      "merged": 1049022,
+      "features": 128,
+      "kept": 32,
+      "cosine_sum": 1044582.7262268066,
+      "cosine_min": 0.9935096502304077,
+      "cutoff_sum": 1336.941628396511,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_4": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283571840,
+      "pairs": 3601072,
+      "merged": 795958,
+      "features": 128,
+      "kept": 4,
+      "cosine_sum": 786387.7183227539,
+      "cosine_min": 0.9822700023651123,
+      "cutoff_sum": 1323.4056445360184,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_5": {
+      "dense_bits": 14760869888,
+      "stored_bits": 11807526656,
+      "pairs": 3601072,
+      "merged": 1648071,
+      "features": 128,
+      "kept": 8,
+      "cosine_sum": 1624176.8549804688,
+      "cosine_min": 0.9748354554176331,
+      "cutoff_sum": 1315.5797272324562,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_6": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283678848,
+      "pairs": 3601072,
+      "merged": 887735,
+      "features": 128,
+      "kept": 16,
+      "cosine_sum": 879815.1577453613,
+      "cosine_min": 0.9865587949752808,
+      "cutoff_sum": 1329.0857564210892,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_7": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283846912,
+      "pairs": 3601072,
+      "merged": 1049022,
+      "features": 128,
+      "kept": 32,
+      "cosine_sum": 1043755.1668395996,
+      "cosine_min": 0.991506814956665,
+      "cutoff_sum": 1335.7212287783623,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_8": {
+      "dense_bits": 14760869888,
+      "stored_bits": 11807586048,
+      "pairs": 3601072,
+      "merged": 1774810,
+      "features": 128,
+      "kept": 16,
+      "cosine_sum": 1753151.950805664,
+      "cosine_min": 0.9782742857933044,
+      "cutoff_sum": 1320.0657488107681,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_9": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283846912,
+      "pairs": 3601072,
+      "merged": 1049022,
+      "features": 128,
+      "kept": 32,
+      "cosine_sum": 1043509.5061340332,
+      "cosine_min": 0.9908381700515747,
+      "cutoff_sum": 1334.8909214138985,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_10": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283571840,
+      "pairs": 3601072,
+      "merged": 795958,
+      "features": 128,
+      "kept": 4,
+      "cosine_sum": 780966.0881652832,
+      "cosine_min": 0.9704118967056274,
+      "cutoff_sum": 1311.4436585903168,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_13": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283571840,
+      "pairs": 3601072,
+      "merged": 795958,
+      "features": 128,
+      "kept": 4,
+      "cosine_sum": 781363.1717834473,
+      "cosine_min": 0.9711320400238037,
+      "cutoff_sum": 1311.9763033986092,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_15": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283571840,
+      "pairs": 3601072,
+      "merged": 795958,
+      "features": 128,
+      "kept": 4,
+      "cosine_sum": 782300.5975952148,
+      "cosine_min": 0.9753848314285278,
+      "cutoff_sum": 1315.3334569334984,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_16": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283678848,
+      "pairs": 3601072,
+      "merged": 887735,
+      "features": 128,
+      "kept": 16,
+      "cosine_sum": 880826.8302612305,
+      "cosine_min": 0.9879170060157776,
+      "cutoff_sum": 1330.7748305797577,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_17": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283846912,
+      "pairs": 3601072,
+      "merged": 1049022,
+      "features": 128,
+      "kept": 32,
+      "cosine_sum": 1043455.1242980957,
+      "cosine_min": 0.99188232421875,
+      "cutoff_sum": 1335.4156058430672,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_19": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283846912,
+      "pairs": 3601072,
+      "merged": 1049022,
+      "features": 128,
+      "kept": 32,
+      "cosine_sum": 1043345.8589477539,
+      "cosine_min": 0.9917416572570801,
+      "cutoff_sum": 1335.2702631950378,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_21": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283678848,
+      "pairs": 3601072,
+      "merged": 887735,
+      "features": 128,
+      "kept": 16,
+      "cosine_sum": 878978.7420654297,
+      "cosine_min": 0.9851325154304504,
+      "cutoff_sum": 1327.457211971283,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_22": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283678848,
+      "pairs": 3601072,
+      "merged": 887735,
+      "features": 128,
+      "kept": 16,
+      "cosine_sum": 878669.6018676758,
+      "cosine_min": 0.9844274520874023,
+      "cutoff_sum": 1326.7916414141655,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_23": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283846912,
+      "pairs": 3601072,
+      "merged": 1049022,
+      "features": 128,
+      "kept": 32,
+      "cosine_sum": 1043207.0863647461,
+      "cosine_min": 0.9917131662368774,
+      "cutoff_sum": 1335.066268146038,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_24": {
+      "dense_bits": 14760869888,
+      "stored_bits": 11069458496,
+      "pairs": 3601072,
+      "merged": 1988907,
+      "features": 128,
+      "kept": 4,
+      "cosine_sum": 1948220.2529296875,
+      "cosine_min": 0.9632607698440552,
+      "cutoff_sum": 1303.2249770760536,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_25": {
+      "dense_bits": 14760869888,
+      "stored_bits": 11069779584,
+      "pairs": 3601072,
+      "merged": 2621513,
+      "features": 128,
+      "kept": 32,
+      "cosine_sum": 2604753.2036132812,
+      "cosine_min": 0.9879942536354065,
+      "cutoff_sum": 1330.8118038773537,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_26": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283674112,
+      "pairs": 3601072,
+      "merged": 721287,
+      "features": 128,
+      "kept": 0,
+      "cosine_sum": 705952.3863830566,
+      "cosine_min": 0.9676013588905334,
+      "cutoff_sum": 1307.3382549881935,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_27": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283627520,
+      "pairs": 3601072,
+      "merged": 824354,
+      "features": 128,
+      "kept": 8,
+      "cosine_sum": 812589.9225158691,
+      "cosine_min": 0.977135419845581,
+      "cutoff_sum": 1319.0520414710045,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_28": {
+      "dense_bits": 14760869888,
+      "stored_bits": 13283571840,
+      "pairs": 3601072,
+      "merged": 795958,
+      "features": 128,
+      "kept": 4,
+      "cosine_sum": 782471.7976989746,
+      "cosine_min": 0.9742584824562073,
+      "cutoff_sum": 1315.0664347410202,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_30": {
+      "dense_bits": 14760869888,
+      "stored_bits": 10331677824,
+      "pairs": 3601072,
+      "merged": 3145733,
+      "features": 128,
+      "kept": 32,
+      "cosine_sum": 3113978.3120117188,
+      "cosine_min": 0.979208767414093,
+      "cutoff_sum": 1320.5741646885872,
+      "updates": 1345,
+      "shortfall_updates": 0
+    },
+    "k_layer_31": {
+      "dense_bits": 14760869888,
+      "stored_bits": 11069661696,
+      "pairs": 3601072,
+      "merged": 2059826,
+      "features": 128,
+      "kept": 8,
+      "cosine_sum": 2030376.769104004,
+      "cosine_min": 0.9752562642097473,
+      "cutoff_sum": 1315.8561299443245,
+      "updates": 1345,
+      "shortfall_updates": 0
+    }
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "tasks": [
+      "ceval-valid"
+    ],
+    "num_fewshot": 5,
+    "limit": null,
+    "gen_kwargs": null,
+    "apply_chat_template": true,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            2
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 16
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            3
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 32
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            4
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 4
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            5
+          ],
+          "v_layers": [],
+          "saving": 0.2,
+          "residual_entries": 8
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            6
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 16
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            7
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 32
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            8
+          ],
+          "v_layers": [],
+          "saving": 0.2,
+          "residual_entries": 16
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            9
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 32
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            10
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 4
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            13
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 4
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            15
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 4
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            16
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 16
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            17
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 32
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            19
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 32
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            21
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 16
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            22
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 16
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            23
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 32
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            24
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "residual_entries": 4
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            25
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "residual_entries": 32
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            26
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 0
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            27
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 8
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            28
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "residual_entries": 4
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            30
+          ],
+          "v_layers": [],
+          "saving": 0.3,
+          "residual_entries": 32
+        },
+        {
+          "method": "pair_calibrated",
+          "k_layers": [
+            31
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "residual_entries": 8
+        }
+      ]
+    }
+  }
+}

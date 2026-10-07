@@ -1,0 +1,132 @@
+{
+ "results": {
+  "wikitext_chunks": {
+   "token_perplexity,none": 7.780200819725882,
+   "mean_nll,none": 2.0515821501612663
+  }
+ },
+ "chunk_scores": [
+  {
+   "chunk": 116,
+   "nll": 2.1823718547821045,
+   "tokens": 2047
+  },
+  {
+   "chunk": 9,
+   "nll": 1.9175869226455688,
+   "tokens": 2047
+  },
+  {
+   "chunk": 18,
+   "nll": 1.7099765539169312,
+   "tokens": 2047
+  },
+  {
+   "chunk": 7,
+   "nll": 1.7917321920394897,
+   "tokens": 2047
+  },
+  {
+   "chunk": 78,
+   "nll": 2.2348744869232178,
+   "tokens": 2047
+  },
+  {
+   "chunk": 56,
+   "nll": 1.6942753791809082,
+   "tokens": 2047
+  },
+  {
+   "chunk": 65,
+   "nll": 1.5951836109161377,
+   "tokens": 2047
+  },
+  {
+   "chunk": 127,
+   "nll": 1.8944857120513916,
+   "tokens": 2047
+  },
+  {
+   "chunk": 41,
+   "nll": 2.619978666305542,
+   "tokens": 2047
+  },
+  {
+   "chunk": 12,
+   "nll": 2.090686082839966,
+   "tokens": 2047
+  },
+  {
+   "chunk": 89,
+   "nll": 2.717292070388794,
+   "tokens": 2047
+  },
+  {
+   "chunk": 33,
+   "nll": 1.8807982206344604,
+   "tokens": 2047
+  },
+  {
+   "chunk": 138,
+   "nll": 2.0984153747558594,
+   "tokens": 2047
+  },
+  {
+   "chunk": 137,
+   "nll": 1.7631076574325562,
+   "tokens": 2047
+  },
+  {
+   "chunk": 70,
+   "nll": 2.243298053741455,
+   "tokens": 2047
+  },
+  {
+   "chunk": 135,
+   "nll": 2.391251564025879,
+   "tokens": 2047
+  }
+ ],
+ "gate_stats": {
+  "k_layer_10": {
+   "dense_bits": 536870912,
+   "stored_bits": 402644992,
+   "pairs": 131072,
+   "merged": 72320,
+   "features": 128,
+   "kept": 4,
+   "cosine_sum": 70764.93994140625,
+   "cosine_min": 0.9656164646148682,
+   "cutoff_sum": 15.48419576883316,
+   "updates": 16,
+   "shortfall_updates": 0
+  }
+ },
+ "simulation": {
+  "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+  "dtype": "bfloat16",
+  "tasks": [
+   "wikitext_chunks"
+  ],
+  "sampling": {
+   "pool_chunks": 80,
+   "offset": 0,
+   "chunks": 16,
+   "seed": 0,
+   "seq_len": 2048
+  },
+  "kv": {
+   "pipeline": [
+    {
+     "method": "pair_calibrated",
+     "k_layers": [
+      10
+     ],
+     "v_layers": [],
+     "saving": 0.25,
+     "residual_entries": 4
+    }
+   ]
+  }
+ }
+}
