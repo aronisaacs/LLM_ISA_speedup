@@ -60,7 +60,13 @@ def main() -> None:
     parser.add_argument("--variant", choices=sorted(VARIANTS), required=True)
     parser.add_argument("--from", dest="start", default="sweep", choices=STAGES)
     parser.add_argument("--through", default="summary", choices=STAGES)
+    parser.add_argument("--direction", action="store_true", help="RoPE alignment, normalized directions, separate norms, cosine ranking; norm overhead excluded")
     args = parser.parse_args()
+    if args.direction:
+        global FIGURES
+        FIGURES = FIGURES.parent / "pair_rank_direction"
+        for name, method in (("merge", pair_rank), ("residual", pair_rank_residual)):
+            VARIANTS[name]["kv"] = method(pct=25, rope=True, direction=True)
     start, end = STAGES.index(args.start), STAGES.index(args.through)
     if start > end:
         raise SystemExit(f"--from {args.start} is after --through {args.through}")
@@ -104,6 +110,14 @@ def sweep_run(variant: str, out: Path) -> dict:
 def _payloads(variant: str) -> list[dict]:
     spec = VARIANTS[variant]
     dense_ppl, rows = load_sweep_scores(method=spec["method"], pretrained=PRETRAINED)
+    wanted = {k: v for k, v in spec["kv"]["pipeline"][0].items() if k not in {"pct", "k_layers", "v_layers"}}
+    rows = [row for row in rows if row.kv and all(
+        step.get(k, False if k in {"rope", "direction"} else None) == v
+        for step in row.kv["pipeline"] for k, v in wanted.items()
+    ) and bool(row.kv["pipeline"][0].get("direction", False)) == bool(wanted.get("direction", False))
+    and bool(row.kv["pipeline"][0].get("rope", False)) == bool(wanted.get("rope", False))]
+    if len({(row.slot, row.level) for row in rows}) != LLAMA31_LAYERS * 4:
+        raise ValueError("complete matching 32-layer, four-rung sweep required before greedy allocation")
     payloads = selections_for_budgets(
         rows, LLAMA31_LAYERS, spec["kv"], dense_ppl, budgets=spec["budgets"], targets=TARGETS
     )
@@ -124,7 +138,7 @@ def task_run(variant: str, out: Path, payloads: list[dict]) -> dict:
         run["configurations"].append(
             {
                 "name": f"llama31_ceval_{tag}",
-                "kv": method(pct=rung.level),
+                "kv": method(pct=rung.level, rope=bool(spec["kv"]["pipeline"][0].get("rope")), direction=bool(spec["kv"]["pipeline"][0].get("direction"))),
                 "output_path": f"{out}/ceval_{tag}.json",
                 "metadata": {"kv_budget": rung.fraction, "kv_compression": rung.fraction},
                 **extra,
@@ -150,6 +164,9 @@ def summary(variant: str, root: Path | None = None) -> str:
             dense = float(score)
             continue
         if any(step.get("method") != method for step in pipeline):
+            continue
+        expected = VARIANTS[variant]["kv"]["pipeline"][0]
+        if any(bool(step.get(key, False)) != bool(expected.get(key, False)) for step in pipeline for key in ("rope", "direction")):
             continue
         uniform = len(pipeline) == 1 and pipeline[0].get("k_layers") == "all"
         rows.append((float(record.get("compression", 0.0)), "uniform" if uniform else "greedy", float(score), record.get("budget")))

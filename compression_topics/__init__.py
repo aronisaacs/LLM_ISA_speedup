@@ -13,6 +13,7 @@ from compression_topics.spatial.algorithms import pair_gate as _pair_gate  # noq
 from compression_topics.spatial.algorithms import pair_pool as _pair_pool  # noqa: F401
 from compression_topics.spatial.algorithms import pair_quant as _pair_quant  # noqa: F401
 from compression_topics.spatial.algorithms import pair_rank as _pair_rank  # noqa: F401
+from compression_topics.spatial.algorithms import pair_calibrated as _pair_calibrated  # noqa: F401
 from compression_topics.spatial.algorithms import residual_pool as _residual_pool  # noqa: F401
 from compression_topics.spatial.algorithms import spatial as _spatial  # noqa: F401
 from compression_topics.vector.algorithms import vector_compress as _vector_compress  # noqa: F401

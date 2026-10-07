@@ -33,6 +33,8 @@ from engine.eval_runner import (  # noqa: E402
     merge,
     reject_deprecated_kv_keys,
     shorten_result,
+    result_output_path,
+    write_result_json,
     split_base_and_configurations,
 )
 from engine.eval_runner.cache import reuse_cached_result, simulation_identity
@@ -77,6 +79,7 @@ def worker_command(
     skip_existing: bool,
     results_root: Path | None = None,
     dry_run: bool = False,
+    write_results: bool = False,
 ) -> list[str]:
     command = [
         sys.executable,
@@ -94,11 +97,15 @@ def worker_command(
         command += ["--results-root", str(results_root)]
     if dry_run:
         command.append("--dry-run")
+    if write_results:
+        command.append("--write-results")
     return command
 
 
 def _parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--write-results", action="store_true",
+                        help="Also save per-configuration JSON, including detailed compression statistics")
     parser.add_argument(
         "--run",
         required=True,
@@ -138,7 +145,8 @@ def _spawn_workers(args, devices: list[str]) -> None:
         env = os.environ.copy()
         env["CUDA_VISIBLE_DEVICES"] = device
         command = worker_command(
-            args.run, worker, len(devices), args.skip_existing, args.results_root, args.dry_run
+            args.run, worker, len(devices), args.skip_existing, args.results_root, args.dry_run,
+            args.write_results
         )
         processes.append((device, subprocess.Popen(command, env=env)))
     failed = []
@@ -180,6 +188,16 @@ def _run_configurations(args) -> None:
         cached = reuse_cached_result(
             base, configuration, kv_spec, None, skip_unkeyed=args.skip_existing, root=args.results_root
         )
+        if cached is not None and getattr(args, "write_results", False):
+            # The score index omits detailed gate statistics. A calibration
+            # must rerun if its matching detailed result is missing.
+            try:
+                details = json.loads(result_output_path(base, configuration).read_text())
+                matching = details.get("simulation") == simulation_identity(base, configuration, kv_spec)
+            except (OSError, ValueError):
+                matching = False
+            if not matching:
+                cached = None
         if cached is not None:
             _say(label, f"[{index}/{total}]  {cached}  {name}")
             continue
@@ -198,6 +216,9 @@ def _run_configurations(args) -> None:
         finally:
             uninstall()
         if getattr(lm, "rank", 0) == 0 and not args.dry_run:
+            if getattr(args, "write_results", False):
+                write_result_json(lm, base, configuration, results,
+                                  simulation_identity(base, configuration, kv_spec))
             _record(results, simulation_identity(base, configuration, kv_spec), args.results_root)
 
         finished += 1

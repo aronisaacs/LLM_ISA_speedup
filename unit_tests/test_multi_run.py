@@ -62,6 +62,10 @@ class WorkerCommandTests(unittest.TestCase):
         self.assertEqual(command[command.index("--results-root") + 1], "/tmp/smoke")
         self.assertIn("--dry-run", command)
 
+    def test_workers_keep_detailed_calibration_results(self):
+        command = multi_run.worker_command("study.json", 0, 2, True, write_results=True)
+        self.assertIn("--write-results", command)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,10 @@ call, because padding would rank as the most similar pairs, so a batch larger th
 ``rope`` (keys only) aligns the second token of each pair into the first token's RoPE frame by
 one step before the mean, and rotates the reconstruction back.
 
+``direction=True`` normalizes aligned keys, ranks by residual-adjusted cosine,
+normalizes each reconstructed direction and restores both original norms. Norm
+storage overhead is deliberately excluded from the experimental byte estimate.
+
 Counts of pairs seen and merged go into ``pair_gate.STATS`` per target, so a run reports its
 actual stored bytes (see ``pair_gate.bytes_vs_dense``).
 """
@@ -40,6 +44,7 @@ def apply(
     pct: int = 50,
     keep_pct: int = 0,
     rope: bool = False,
+    direction: bool = False,
     seq_start: int = 0,
     rope_tables: RopeTables | None = None,
     **_unused,
@@ -59,6 +64,7 @@ def apply(
         rope=rope and target == "k",
         rope_tables=rope_tables,
         target=target,
+        direction=direction,
     )
 
 
@@ -74,6 +80,7 @@ def merge_top_pairs(
     pct: int,
     keep_pct: int,
     rope: bool = False,
+    direction: bool = False,
     rope_tables: RopeTables | None = None,
     target: str | None = None,
 ) -> torch.Tensor:
@@ -86,19 +93,45 @@ def merge_top_pairs(
     body = tensor[..., :full, :]
     first = body[..., 0::2, :]
     second = body[..., 1::2, :]
+    if direction:
+        if not rope or rope_tables is None or rope_tables.attention_scaling != 1.0:
+            raise ValueError("direction merging requires pure-rotation RoPE alignment")
+        first, second = first.float(), second.float()
     if rope:
         second = _shift_rope(second, rope_tables, inverse=True)
+    if direction:
+        if not rope or target == "v":
+            raise ValueError("direction merging requires RoPE-aligned keys")
+        first, second = first.float(), second.float()
+        norm_first = first.norm(dim=-1, keepdim=True)
+        norm_second = second.norm(dim=-1, keepdim=True)
+        first = first / norm_first.clamp_min(1e-12)
+        second = second / norm_second.clamp_min(1e-12)
     mean = (first + second) / 2
     delta = (first - second) / 2
     kept = pair_gate._largest(delta, (delta.shape[-1] * keep_pct) // 100)
-    score = (delta - kept).float().norm(dim=-1) / mean.float().norm(dim=-1).clamp_min(1e-8)
+    if direction:
+        # Compare directions after removing the difference stored in the residual.
+        rest = delta - kept
+        score = 1 - torch.nn.functional.cosine_similarity(mean + rest, mean - rest, dim=-1)
+        valid = (norm_first.squeeze(-1) > 1e-12) & (norm_second.squeeze(-1) > 1e-12)
+        valid &= (mean + kept).norm(dim=-1) > 1e-6
+        valid &= (mean - kept).norm(dim=-1) > 1e-6
+        score = score.masked_fill(~valid, float("inf"))
+    else:
+        score = (delta - kept).float().norm(dim=-1) / mean.float().norm(dim=-1).clamp_min(1e-8)
     merge = _smallest(score, pct).unsqueeze(-1)
+    merged_first = mean + kept
     merged_second = mean - kept
+    if direction:
+        merge = merge & valid.unsqueeze(-1)
+        merged_first = torch.nn.functional.normalize(merged_first, dim=-1) * norm_first
+        merged_second = torch.nn.functional.normalize(merged_second, dim=-1) * norm_second
     if rope:
         merged_second = _shift_rope(merged_second, rope_tables, inverse=False)
     restored = body.clone()
-    restored[..., 0::2, :] = torch.where(merge, mean + kept, body[..., 0::2, :])
-    restored[..., 1::2, :] = torch.where(merge, merged_second, body[..., 1::2, :])
+    restored[..., 0::2, :] = torch.where(merge, merged_first.to(body.dtype), body[..., 0::2, :])
+    restored[..., 1::2, :] = torch.where(merge, merged_second.to(body.dtype), body[..., 1::2, :])
     if target is not None:
         pair_gate._count(target, merge.numel(), int(merge.sum()), delta.shape[-1], (delta.shape[-1] * keep_pct) // 100)
     if full == sequence:
