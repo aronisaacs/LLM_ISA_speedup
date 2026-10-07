@@ -60,7 +60,7 @@ def test_profile_runs_on_a_tiny_llama_with_prefill_and_decode():
     model = LlamaForCausalLM(config).eval()
     prompts = [torch.randint(0, 64, (9,)), torch.randint(0, 64, (12,))]
     profiler = psp.run_profile(
-        model, prompts, max_new_tokens=10, rope=psp.rope_tables(model), ks=(0, 2),
+        model, prompts, max_new_tokens=10, rope=psp.rope_tables(model), fractions=("0", "1/4"),
         generate_kwargs={"min_new_tokens": 10},
     )
     summary = profiler.summary()
@@ -71,20 +71,27 @@ def test_profile_runs_on_a_tiny_llama_with_prefill_and_decode():
     assert summary["v"]["prefill"]["0"]["0"]["n"] == (4 + 6) * 2
     # Generated tokens sit at positions 9..18 and 12..21; the 9-start gives 5 pairs of (10,11)..(17,18) -> 4.
     assert summary["v"]["decode"]["0"]["0"]["n"] > 0
-    assert psp.markdown_tables(summary, ks=(0, 2))
+    assert psp.markdown_tables(summary, fractions=("0", "1/4"))
+    assert profiler.ks == (0, 2)
+    assert set(summary["v"]["prefill"]) == {"0", "1/4", "tiers"}
     hist = profiler.histogram_dump()["hist"]["v"]["prefill"]["0"]["0"]
     assert hist["n"] == (4 + 6) * 2 and sum(hist["rel"]) <= hist["n"] and len(hist["cos"]) == psp.COS_BINS
     moves = profiler.moves_dump()["moves"]["v"]["prefill"]["0"]
     assert len(moves) == 2 and len(moves[0]) == len(psp.BUCKET_EDGES) + 1
     assert sum(cell[0] for cell in moves[0]) == (4 + 6) * 2
     arrays = profiler.sample_arrays()
-    assert arrays["v/prefill/0/curve"].shape[1] == 9 and arrays["v/prefill/0/meta"].shape[1] == 5
+    assert arrays["v/prefill/0/curve"].shape[1] == 9 and arrays["v/prefill/0/meta"].shape[1] == len(psp.Reservoir.META)
     assert arrays["v/prefill/0/curve"].shape[0] <= 2000
     dump = profiler.kneeded_dump()
     assert dump["head_dim"] == 8 and len(dump["taus"]) == 50
     row = dump["counts"]["v"]["prefill"]["0"]
     assert len(row) == 50 and len(row[0]) == 9
     assert sum(row[0]) == (4 + 6) * 2
+    norms = profiler.norm_arrays()
+    # One entry per question: every stored token, prompt plus generated (the last one is never fed back).
+    assert norms["question_0000/k"].shape == (2, 2, 9 + 9) and norms["question_0001/v"].shape == (2, 2, 12 + 9)
+    assert int(norms["question_0000/prompt_len"]) == 9 and int(norms["question_0001/prompt_len"]) == 12
+    assert (norms["question_0000/k"] > 0).all()
 
 
 def test_tier_counts_pick_the_smallest_residual_within_the_threshold():
@@ -179,7 +186,7 @@ def test_reservoir_keeps_a_bounded_sample_with_metadata():
         head = torch.arange(40) // 20
         position = 2 * (torch.arange(40) % 20)
         reservoir.add(a, b, head, position, question)
-    assert reservoir.curves.shape == (10, 9) and reservoir.meta.shape == (10, 5)
+    assert reservoir.curves.shape == (10, 9) and reservoir.meta.shape == (10, len(psp.Reservoir.META))
     assert set(reservoir.meta[:, 0].tolist()) <= {0.0, 1.0, 2.0}
     assert (reservoir.meta[:, 1] <= 1).all() and (reservoir.meta[:, 2] % 2 == 0).all()
 
@@ -196,7 +203,7 @@ def test_dump_kv_writes_the_exact_stored_states(tmp_path):
     model = LlamaForCausalLM(config).eval()
     ids = torch.randint(0, 64, (9,))
     psp.run_profile(
-        model, [ids], max_new_tokens=6, rope=psp.rope_tables(model), ks=(0, 2),
+        model, [ids], max_new_tokens=6, rope=psp.rope_tables(model), fractions=("0", "1/4"),
         generate_kwargs={"min_new_tokens": 6}, sample_pairs=0, dump_dir=tmp_path,
     )
     with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:
@@ -224,3 +231,31 @@ def test_dump_kv_writes_the_exact_stored_states(tmp_path):
     finally:
         Cache.update = original
     assert torch.allclose(torch.cat(captured["k"], dim=-2)[0], keys[0], atol=1e-6)
+
+
+def test_residual_shares_map_to_feature_counts():
+    assert psp.ks_for(("0", "1/32", "1/16", "1/8", "1/4"), 128) == (0, 4, 8, 16, 32)
+    assert psp.ks_for(("0", "1/8"), 64) == (0, 8)
+    assert psp.label("0") == "none" and psp.label("1/8") == "top 1/8"
+
+
+def test_token_norms_match_the_dumped_states(tmp_path):
+    from safetensors.torch import safe_open
+    from transformers import LlamaConfig, LlamaForCausalLM
+
+    torch.manual_seed(0)
+    config = LlamaConfig(
+        vocab_size=64, hidden_size=32, intermediate_size=64, num_hidden_layers=2,
+        num_attention_heads=4, num_key_value_heads=2, max_position_embeddings=128,
+    )
+    model = LlamaForCausalLM(config).eval()
+    ids = torch.randint(0, 64, (9,))
+    profiler = psp.run_profile(
+        model, [ids], max_new_tokens=6, rope=psp.rope_tables(model), fractions=("0", "1/4"),
+        generate_kwargs={"min_new_tokens": 6}, sample_pairs=0, dump_dir=tmp_path,
+    )
+    with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:
+        keys, values = f.get_tensor("keys"), f.get_tensor("values")
+    norms = profiler.norm_arrays()
+    assert torch.allclose(torch.from_numpy(norms["question_0000/k"]), keys.float().norm(dim=-1), atol=1e-5)
+    assert torch.allclose(torch.from_numpy(norms["question_0000/v"]), values.float().norm(dim=-1), atol=1e-5)
