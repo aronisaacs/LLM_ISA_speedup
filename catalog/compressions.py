@@ -83,6 +83,16 @@ def pair_quant(k_layers="all", v_layers="all", bits=8, group=32):
     return _step("pair_quant", k_layers, v_layers, bits=int(bits), group=int(group))
 
 
+def pair_gate(k_layers="all", v_layers="all", tau=0.3, keep_pct=0):
+    """Merge a token pair only when it is similar, keeping the biggest differences exactly.
+
+    ``keep_pct`` percent of the features with the largest |difference| are stored exactly.
+    The pair merges when the difference left over is at most ``tau`` times the pair's mean
+    in length; otherwise both tokens stay as they are. ``keep_pct`` 0 keeps no residual.
+    """
+    return _step("pair_gate", k_layers, v_layers, tau=float(tau), keep_pct=int(keep_pct))
+
+
 def spatial_pool(k_layers="all", v_layers="all", chunk=8):
     """Replace each closed chunk with its mean."""
     return _step("spatial_pool", k_layers, v_layers, chunk=chunk)

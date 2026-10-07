@@ -72,8 +72,11 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
     eval_kwargs = {
         key: merge(base, configuration, key, default) for key, default in _EVAL_DEFAULTS.items()
     }
+    from compression_topics.spatial.algorithms import pair_gate
+
+    pair_gate.reset_stats()
     with temporary_environ(env):
-        return simple_evaluate(
+        results = simple_evaluate(
             model=lm,
             model_args=parsed_args,
             tasks=tasks,
@@ -83,6 +86,10 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
             verbosity="INFO",
             **eval_kwargs,
         )
+    gate_stats = pair_gate.pop_stats()
+    if gate_stats and isinstance(results, dict):
+        results["gate_stats"] = gate_stats
+    return results
 
 
 def result_output_path(base, configuration) -> Path:
@@ -123,6 +130,8 @@ def shorten_result(payload: dict) -> dict:
     budget = _budget_metadata(payload)
     if budget and tasks:
         short["configs"] = {tasks[0]: {"metadata": budget}}
+    if payload.get("gate_stats"):
+        short["gate_stats"] = payload["gate_stats"]
     if isinstance(payload.get("simulation"), dict):
         short["simulation"] = payload["simulation"]
     else:
