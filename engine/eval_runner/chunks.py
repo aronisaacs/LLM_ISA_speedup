@@ -20,7 +20,7 @@ import torch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from engine.kv_compress import metrics
-from engine.eval_runner.datasets import wikitext_chunks
+from engine.eval_runner.text_chunks import wikitext_chunks
 from engine.eval_runner.execute import load_model_if_needed
 from engine.eval_runner.cache import simulation_identity, identities_match
 from engine.eval_runner.files import write_json

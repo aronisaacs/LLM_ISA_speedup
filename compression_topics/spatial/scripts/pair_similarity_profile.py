@@ -76,7 +76,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from engine.eval_runner.datasets import wikitext_chunks
+from engine.eval_runner.text_chunks import wikitext_chunks
 from engine.kv_compress.rope import RopeTables, apply_rope  # noqa: E402
 
 FIGURES = Path(__file__).resolve().parents[1] / "figures" / "pair_similarity"
