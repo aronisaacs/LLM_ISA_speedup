@@ -1,0 +1,221 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 6.838505256793401,
+      "mean_nll,none": 1.922569178044796
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 124,
+      "nll": 1.8114899396896362,
+      "tokens": 2047
+    },
+    {
+      "chunk": 136,
+      "nll": 2.223788261413574,
+      "tokens": 2047
+    },
+    {
+      "chunk": 91,
+      "nll": 2.4484477043151855,
+      "tokens": 2047
+    },
+    {
+      "chunk": 37,
+      "nll": 1.4131048917770386,
+      "tokens": 2047
+    },
+    {
+      "chunk": 81,
+      "nll": 1.8286311626434326,
+      "tokens": 2047
+    },
+    {
+      "chunk": 30,
+      "nll": 1.555477499961853,
+      "tokens": 2047
+    },
+    {
+      "chunk": 68,
+      "nll": 1.7420530319213867,
+      "tokens": 2047
+    },
+    {
+      "chunk": 17,
+      "nll": 2.060865640640259,
+      "tokens": 2047
+    },
+    {
+      "chunk": 72,
+      "nll": 1.8426235914230347,
+      "tokens": 2047
+    },
+    {
+      "chunk": 122,
+      "nll": 2.0191738605499268,
+      "tokens": 2047
+    },
+    {
+      "chunk": 15,
+      "nll": 2.340299606323242,
+      "tokens": 2047
+    },
+    {
+      "chunk": 107,
+      "nll": 1.7265044450759888,
+      "tokens": 2047
+    },
+    {
+      "chunk": 39,
+      "nll": 1.6277505159378052,
+      "tokens": 2047
+    },
+    {
+      "chunk": 98,
+      "nll": 2.017350435256958,
+      "tokens": 2047
+    },
+    {
+      "chunk": 10,
+      "nll": 1.8633954524993896,
+      "tokens": 2047
+    },
+    {
+      "chunk": 134,
+      "nll": 2.2615408897399902,
+      "tokens": 2047
+    },
+    {
+      "chunk": 128,
+      "nll": 1.9263310432434082,
+      "tokens": 2047
+    },
+    {
+      "chunk": 79,
+      "nll": 1.713488221168518,
+      "tokens": 2047
+    },
+    {
+      "chunk": 32,
+      "nll": 1.9672160148620605,
+      "tokens": 2047
+    },
+    {
+      "chunk": 55,
+      "nll": 1.5304676294326782,
+      "tokens": 2047
+    },
+    {
+      "chunk": 101,
+      "nll": 2.0272135734558105,
+      "tokens": 2047
+    },
+    {
+      "chunk": 69,
+      "nll": 2.0101754665374756,
+      "tokens": 2047
+    },
+    {
+      "chunk": 38,
+      "nll": 1.4304308891296387,
+      "tokens": 2047
+    },
+    {
+      "chunk": 129,
+      "nll": 2.0037059783935547,
+      "tokens": 2047
+    },
+    {
+      "chunk": 63,
+      "nll": 1.8440461158752441,
+      "tokens": 2047
+    },
+    {
+      "chunk": 57,
+      "nll": 1.7627079486846924,
+      "tokens": 2047
+    },
+    {
+      "chunk": 51,
+      "nll": 1.7789503335952759,
+      "tokens": 2047
+    },
+    {
+      "chunk": 102,
+      "nll": 1.8028935194015503,
+      "tokens": 2047
+    },
+    {
+      "chunk": 61,
+      "nll": 2.4077563285827637,
+      "tokens": 2047
+    },
+    {
+      "chunk": 93,
+      "nll": 2.1587135791778564,
+      "tokens": 2047
+    },
+    {
+      "chunk": 45,
+      "nll": 2.2100777626037598,
+      "tokens": 2047
+    },
+    {
+      "chunk": 24,
+      "nll": 2.1655423641204834,
+      "tokens": 2047
+    }
+  ],
+  "gate_stats": {
+    "v_layer_12": {
+      "dense_bits": 1073741824,
+      "stored_bits": 644226560,
+      "pairs": 262144,
+      "merged": 244192,
+      "features": 128,
+      "kept": 8,
+      "group_size": 2,
+      "accounting": "fp16_shared_pair_residual_norms_masks_bitmap_header_v2",
+      "metadata_bits": 262656,
+      "norm_bits": 7814144,
+      "residual_mask_bits": 31256576,
+      "cosine_sum": 221627.16943359375,
+      "cosine_min": 0.8234859704971313,
+      "cutoff_sum": 26.56029522418976,
+      "updates": 32,
+      "shortfall_updates": 0
+    }
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "group_calibrated",
+          "k_layers": [],
+          "v_layers": [
+            12
+          ],
+          "accounting": "fp16_shared_pair_residual_norms_masks_bitmap_header_v2",
+          "group_size": 2,
+          "saving": 0.4,
+          "residual_entries": 8
+        }
+      ]
+    },
+    "sampling": {
+      "pool_chunks": 80,
+      "offset": 16,
+      "chunks": 32,
+      "seed": 0,
+      "seq_len": 2048
+    }
+  }
+}
