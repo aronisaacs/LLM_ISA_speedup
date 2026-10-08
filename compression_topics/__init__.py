@@ -20,3 +20,4 @@ from compression_topics.vector.algorithms import vector_compress as _vector_comp
 from compression_topics.vector.algorithms import vector_compress_pair as _vector_compress_pair  # noqa: F401
 
 from compression_topics.spatial.algorithms import group_calibrated as _group_calibrated  # noqa: F401
+from compression_topics.spatial.algorithms import pca_group as _pca_group  # noqa: F401
