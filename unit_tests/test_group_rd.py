@@ -154,7 +154,7 @@ class SelectionTests(unittest.TestCase):
                            query_weights=str(path), rope_tables=ROPE)
             stats = pair_gate.pop_stats()['k_layer_2']
             self.assertGreaterEqual(1 - stats['stored_bits'] / stats['dense_bits'], .4)
-            weights = torch.load(path)['weights'][2]
+            weights = torch.load(path, weights_only=True)['weights'][2]
             menu = group_rd.build_menu(x, rope_tables=ROPE, distortion='query', weights=weights)
             squared = group_rd.build_menu(x, rope_tables=ROPE, distortion='squared')
             uniform = group_rd.build_menu(x, rope_tables=ROPE, distortion='query', weights=torch.ones(2, 128))
@@ -228,7 +228,7 @@ class ValueTests(unittest.TestCase):
         with_rope = group_rd.build_menu(same, rope_tables=ROPE).distortion
         without = group_rd.build_menu(same, rope_tables=None).distortion
         self.assertGreater(float(with_rope[..., 1:].min()), 0)  # rotating unequal positions would cost
-        self.assertEqual(float(without[torch.isfinite(without)].max()), 0)
+        self.assertLess(float(without[torch.isfinite(without)].max()), 1e-5)  # zero up to rounding
 
     def test_value_accounting_and_separate_slot_prices(self):
         x = correlated_keys(length=256, seed=6)
