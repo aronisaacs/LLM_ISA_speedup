@@ -19,11 +19,14 @@ class SamplingTests(unittest.TestCase):
         def result(chunk, nll):
             return {'chunk_scores': [{'chunk': chunk, 'nll': nll, 'tokens': 10}],
                     'gate_stats': {'k_layer_0': {'dense_bits': 100, 'stored_bits': 80,
-                        'features': 128, 'kept': 16, 'cosine_min': .95, 'merged': 5}}}
+                        'features': 128, 'kept': 16, 'group_size': 4,
+                        'accounting': 'metadata_v1', 'cosine_min': .95, 'merged': 5}}}
         merged = combine(result(1, 1.), result(2, 3.))
         self.assertEqual(merged['results']['wikitext_chunks']['mean_nll,none'], 2.)
         self.assertEqual(merged['gate_stats']['k_layer_0']['dense_bits'], 200)
         self.assertEqual(merged['gate_stats']['k_layer_0']['kept'], 16)
+        self.assertEqual(merged['gate_stats']['k_layer_0']['group_size'], 4)
+        self.assertEqual(merged['gate_stats']['k_layer_0']['accounting'], 'metadata_v1')
         with self.assertRaises(ValueError):
             combine(result(1, 1.), result(1, 3.))
 

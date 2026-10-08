@@ -111,7 +111,7 @@ def combine(prefix, additional):
         a, b = prefix["gate_stats"].get(slot, {}), additional["gate_stats"].get(slot, {})
         merged = {}
         for key in set(a) | set(b):
-            if key in {"features", "kept"}:
+            if key in {"features", "kept", "group_size", "accounting"}:
                 if a.get(key) != b.get(key):
                     raise ValueError("extension changed representation")
                 merged[key] = a[key]
