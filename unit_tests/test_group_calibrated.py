@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 import torch
 from compression_topics.spatial.algorithms import pair_gate
-from compression_topics.spatial.algorithms.group_calibrated import apply, group_saving
+from compression_topics.spatial.algorithms.group_calibrated import apply, group_saving, merged_bits, metadata_bits
 from compression_topics.spatial.scripts import group_calibrated_study as study
 from engine.kv_compress.rope import RopeTables, apply_rope
 from engine.kv_compress.spec import parse_kv_spec
@@ -53,7 +53,7 @@ class GroupTests(unittest.TestCase):
         ids = error.abs().topk(32, dim=-1).indices
         sparse = torch.zeros_like(error).scatter(-1, ids, error.gather(-1, ids))
         expected = torch.nn.functional.normalize(mean + sparse, dim=-1) * x.norm(dim=-1, keepdim=True)
-        actual = apply(x, layer_idx=0, target='v', saving=.5, residual_entries=32)
+        actual = apply(x, layer_idx=0, target='v', saving=.4, residual_entries=32)
         torch.testing.assert_close(actual, expected)
 
     def test_invalid_budget_and_zero_groups(self):
@@ -64,9 +64,29 @@ class GroupTests(unittest.TestCase):
         self.assertTrue(torch.equal(actual, x))
         self.assertEqual(pair_gate.pop_stats()['v_layer_0']['shortfall_updates'], 1)
 
+    def test_exact_metadata_storage_and_budget_rounding(self):
+        # 16 groups, one mean + four residuals + norms per merged group.
+        x = torch.randn(1, 1, 64, 128)
+        apply(x, layer_idx=0, target='v', saving=.3, residual_entries=16)
+        stats = pair_gate.pop_stats()['v_layer_0']
+        expected = (16 - stats['merged']) * 4 * 128 * 16
+        expected += stats['merged'] * merged_bits(16) + metadata_bits(16)
+        self.assertEqual(stats['stored_bits'], expected)
+        self.assertEqual(stats['metadata_bits'], 32)
+        self.assertEqual(stats['norm_bits'], stats['merged'] * 4 * 16)
+        self.assertEqual(stats['residual_mask_bits'], stats['merged'] * 4 * 128)
+        self.assertGreaterEqual(1 - expected / stats['dense_bits'], .3)
+        # Bitmap/header remain present even when all groups stay dense.
+        pair_gate.reset_stats()
+        apply(torch.zeros_like(x), layer_idx=0, target='v', saving=.3)
+        stats = pair_gate.pop_stats()['v_layer_0']
+        self.assertEqual(stats['stored_bits'], stats['dense_bits'] + metadata_bits(16))
+
     def test_manifest_accounting_and_registration(self):
         manifest = study.plan(Path('/tmp/group-test'), layers=1)
-        self.assertFalse(manifest['residual_mask_counted'])
+        self.assertTrue(manifest['residual_mask_counted'])
+        self.assertTrue(manifest['norm_overhead_counted'])
+        self.assertTrue(manifest['flags_counted'])
         self.assertEqual(manifest['group_sizes'], [2, 4])
         for row in manifest['candidates']:
             self.assertLessEqual(row['budget'], group_saving(row['residual_entries'], group_size=row['group_size']))
@@ -98,7 +118,7 @@ class GroupTests(unittest.TestCase):
             self.assertEqual(next(r for r in mixed['selected'] if r['layer'] == 0 and r['target'] == 'k' and r['budget'] == .2)['group_size'], 2)
             self.assertEqual(next(r for r in mixed['selected'] if r['layer'] == 1 and r['target'] == 'k' and r['budget'] == .2)['group_size'], 4)
             selections, run = study.task_plan(calibrated, 2, out)
-            self.assertEqual(len(selections), 22)
+            self.assertEqual(len(selections), 20)
             for selection in selections:
                 slots = [(r['layer'], r['target']) for r in selection['assignment']]
                 self.assertEqual(len(slots), len(set(slots)))

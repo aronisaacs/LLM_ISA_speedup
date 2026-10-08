@@ -1,6 +1,8 @@
 """Prefill group merging with independent sparse directional residuals.
 
-Optimistic value-only accounting: excludes masks, norms, and group flags.
+Accounting includes 16-bit norms, per-token residual masks, a byte-packed
+merge bitmap for all groups (including dense groups), and a two-byte slot header.
+The header stores group size and residual count; values use 16 bits.
 Groups are fixed adjacent blocks; the incomplete tail remains exact.
 """
 from __future__ import annotations
@@ -11,22 +13,38 @@ from engine.kv_compress.rope import apply_rope
 from compression_topics.spatial.algorithms import pair_gate
 
 
+ACCOUNTING = 'fp16_values_norms_masks_bitmap_header_v1'
+
+
+def merged_bits(kept, dim=128, group_size=4):
+    return 16 * (dim + group_size * kept + group_size) + (group_size * dim if kept else 0)
+
+
+def metadata_bits(groups):
+    # One merge bit per group, rounded to bytes, plus uint8 group size/count.
+    return 8 * math.ceil(groups / 8) + 16
+
+
 def group_saving(kept: int, dim: int = 128, group_size: int = 4) -> float:
     if isinstance(group_size, bool) or group_size not in (2, 3, 4):
         raise ValueError("group_size must be 2, 3, or 4")
     if isinstance(kept, bool) or not isinstance(kept, int) or not 0 <= kept <= dim:
         raise ValueError("residual_entries must be an integer within head dimension")
-    return 1 - 1 / group_size - kept / dim
+    dense = 16 * group_size * dim
+    # Asymptotic ceiling; finite bitmap padding/header and tails reduce it.
+    return 1 - (merged_bits(kept, dim, group_size) + 1) / dense
 
 
 def apply(tensor, *, layer_idx, target, saving, residual_entries=0,
-          group_size=4, seq_start=0, rope_tables=None, **unused):
+          group_size=4, seq_start=0, rope_tables=None, accounting=ACCOUNTING, **unused):
+    if accounting != ACCOUNTING:
+        raise ValueError("unsupported group storage accounting version")
     if target not in ('k', 'v'):
         raise ValueError("target must be k or v")
     dim = tensor.shape[-1]
     maximum = group_saving(residual_entries, dim, group_size)
     if isinstance(saving, bool) or not isinstance(saving, (float, int)) or not math.isfinite(saving) or not 0 <= saving <= max(0., maximum):
-        raise ValueError("saving must be finite and within the value-only representation maximum")
+        raise ValueError("saving must be finite and within the metadata-inclusive representation maximum")
     if seq_start != 0 or saving == 0:
         return tensor
     if tensor.shape[0] != 1:
@@ -56,8 +74,9 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0,
     fidelity = (grouped * reconstruction).sum(-1).amin(-1).clamp(-1, 1)
     flat = fidelity.masked_fill(~valid, -float('inf')).reshape(-1)
     # Dense tails count toward the requested saving; impossible tails are logged.
-    saved_bits = 16 * (group_size * dim - dim - group_size * residual_entries)
-    requested = math.ceil(saving * tensor.numel() * 16 / saved_bits - 1e-10)
+    saved_bits = 16 * group_size * dim - merged_bits(residual_entries, dim, group_size)
+    overhead = metadata_bits(flat.numel())
+    requested = math.ceil((saving * tensor.numel() * 16 + overhead) / saved_bits - 1e-10)
     count = min(requested, int(valid.sum()))
     mask = torch.zeros_like(flat, dtype=torch.bool)
     if count:
@@ -72,12 +91,16 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0,
     key = f'{target}_layer_{layer_idx}'
     row = pair_gate.STATS.setdefault(key, {'dense_bits': 0, 'stored_bits': 0,
         'pairs': 0, 'merged': 0, 'features': dim, 'kept': residual_entries,
-        'group_size': group_size, 'accounting': 'values_only_excludes_all_metadata',
+        'group_size': group_size, 'accounting': ACCOUNTING, 'metadata_bits': 0,
+        'norm_bits': 0, 'residual_mask_bits': 0,
         'cosine_sum': 0., 'cosine_min': 1., 'cutoff_sum': 0., 'updates': 0,
         'shortfall_updates': 0})
     dense_bits = tensor.numel() * 16
     row['dense_bits'] += dense_bits
-    row['stored_bits'] += dense_bits - count * saved_bits
+    row['stored_bits'] += dense_bits - count * saved_bits + overhead
+    row['metadata_bits'] += overhead
+    row['norm_bits'] += count * group_size * 16
+    row['residual_mask_bits'] += count * group_size * dim if residual_entries else 0
     row['pairs'] += flat.numel()  # Existing measurement schema; these are groups.
     row['merged'] += count
     row['updates'] += 1

@@ -6,7 +6,10 @@ EACH size on identical disjoint chunks. Close/reordered within-size finalists
 and close pair-versus-quad comparisons receive more chunks. Final tasks compare
 pairs-only against a per-slot pair/quad policy. Each assigned slot uses one
 fixed group size; individual groups can remain dense. Prefill only.
-All budgets count mean/residual values only, excluding masks, norms and flags.
+All calibration and task budgets include norms, residual masks, byte-packed
+merge flags for merged/dense groups, and a two-byte slot header. Values/norms
+are accounted at 16 bits. This remains a reconstruction simulation, not a
+measurement of allocated PyTorch cache memory.
 """
 from __future__ import annotations
 
@@ -24,14 +27,14 @@ if str(ROOT) not in sys.path:
 
 from catalog.models import LLAMA31_8B
 from catalog.tasks import CEVAL_VALID_5SHOT, WIKITEXT_FULL
-from compression_topics.spatial.algorithms.group_calibrated import group_saving
+from compression_topics.spatial.algorithms.group_calibrated import ACCOUNTING, group_saving
 from engine.layer_select.scores import word_perplexity
 
 GROUP_SIZES = (2, 4)
 
 LAYERS = 32
 GLOBAL_BUDGETS = (.1, .2, .3, .4, .5, .6)
-LOCAL_BUDGETS = (.1, .2, .25, .3, .4, .5, .6, .65, .7, .75)
+LOCAL_BUDGETS = (.1, .2, .25, .3, .4, .49, .5, .6, .65, .7, .74)
 RESIDUAL_ENTRIES = (0, 4, 8, 16, 32)
 STAGES = ("sweep", "shortlist", "refine", "stabilize", "select", "greedy", "tasks", "summary")
 
@@ -42,7 +45,7 @@ def write_json(path, payload):
 
 
 def step(layer, target, budget, kept, group_size):
-    return {"method": "group_calibrated", "group_size": group_size, "k_layers": [layer] if target == "k" else [],
+    return {"method": "group_calibrated", "accounting": ACCOUNTING, "group_size": group_size, "k_layers": [layer] if target == "k" else [],
             "v_layers": [layer] if target == "v" else [], "saving": budget,
             "residual_entries": kept}
 
@@ -77,7 +80,7 @@ def plan(out, layers=LAYERS, local_budgets=LOCAL_BUDGETS, residuals=RESIDUAL_ENT
             "global_budgets": list(GLOBAL_BUDGETS), "screen_chunks": screen_chunks,
             "refine_chunks": refine_chunks, "extra_chunks": extra_chunks, "seed": seed,
             "seq_len": seq_len, "finalists": finalists,
-            "norm_overhead_counted": False, "flags_counted": False, "residual_mask_counted": False, "group_sizes": list(GROUP_SIZES), "accounting": "values_only_excludes_all_metadata",
+            "norm_overhead_counted": True, "flags_counted": True, "residual_mask_counted": True, "slot_header_counted": True, "norm_bits_per_token": 16, "merge_flag_bits_per_group": 1, "slot_header_bits": 16, "group_sizes": list(GROUP_SIZES), "accounting": ACCOUNTING,
             "ranking": "minimum reconstruction cosine across all group tokens",
             "candidates": candidates, "run": {"model": "hf", "model_args": LLAMA31_8B,
                 "batch_size": 1, "configurations": configs,
@@ -251,7 +254,7 @@ def task_plan(calibration, layers, out):
         calibrated = policy_calibration(calibration, policy)
         for mode, targets in (("keys", ("k",)), ("kv", ("k", "v"))):
             for budget in GLOBAL_BUDGETS:
-                if policy == "pairs" and budget > .5:
+                if policy == "pairs" and budget > group_saving(0, group_size=2):
                     continue
                 selection = allocate(calibrated, layers, targets, budget)
                 selection.update(mode=mode, policy=policy, tag=f"{policy}_{mode}_b{round(budget * 100):02d}")
@@ -285,7 +288,7 @@ def summary(out, selections):
             "measured_compression": per_slot_saving * selected_slots / denominator,
             "whole_kv_compression": per_slot_saving * selected_slots / (2 * layers),
             "accuracy": accuracy, "delta_accuracy": accuracy - dense, "cosine": measured})
-    return {"dense_accuracy": dense, "task": "ceval-valid", "shots": 5, "group_sizes": list(GROUP_SIZES), "accounting": "values_only_excludes_all_metadata", "rows": rows}
+    return {"dense_accuracy": dense, "task": "ceval-valid", "shots": 5, "group_sizes": list(GROUP_SIZES), "accounting": ACCOUNTING, "rows": rows}
 
 
 def main():
@@ -304,7 +307,7 @@ def main():
     parser.add_argument("--execute", action="store_true", help="explicitly start evaluations; otherwise only write the plan")
     args = parser.parse_args()
     if args.out is None:
-        args.out = ROOT / "compression_topics/spatial/figures/pair_quad_separate_sampled"
+        args.out = ROOT / "compression_topics/spatial/figures/pair_quad_metadata_sampled"
     if STAGES.index(args.start) > STAGES.index(args.through):
         parser.error("--from must not follow --through")
     budgets = sorted(set(args.local_budgets))

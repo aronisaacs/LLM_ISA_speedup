@@ -2,6 +2,7 @@
 # Submit from the repository root after mkdir -p logs.
 # Per layer/K/V slot: choose pairs or quads using matched calibration chunks.
 # Final evaluation: pairs-only versus mixed slot assignments.
+# Budgets include residual masks, norms, merge flags, and slot headers.
 # Calibration only: sbatch .../group_calibrated_dgx.sh --through select
 # Resume tasks: sbatch .../group_calibrated_dgx.sh --from greedy
 #SBATCH --job-name=spatial-groups
