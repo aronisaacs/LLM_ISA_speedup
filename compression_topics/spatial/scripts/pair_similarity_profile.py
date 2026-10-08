@@ -590,14 +590,14 @@ class KvDumper:
 
 def run_profile(
     model, prompts: list[torch.Tensor], *, max_new_tokens: int, rope: RopeTables | None, fractions=FRACTIONS, generate_kwargs=None, sample_pairs: int = 2000,
-    dump_dir: Path | None = None, dump_windows: int = 8, dump_window: int = 16, dump_seed: int = 0, dump_queries: bool = True,
+    dump_dir: Path | None = None, dump_windows: int = 8, dump_window: int = 16, dump_seed: int = 0, dump_queries: bool = True, profiler: Profiler | None = None,
 ) -> Profiler:
     """Generate greedily for each prompt (1-D token ids) while a hook scores every cache update."""
     from transformers.cache_utils import Cache
 
     if not fractions or Fraction(fractions[0]) != 0:
         raise ValueError('fractions must start with "0": the movement dump buckets pairs by their rel before any residual')
-    profiler = Profiler(rope, fractions, sample_pairs)
+    profiler = profiler if profiler is not None else Profiler(rope, fractions, sample_pairs)
     original = Cache.update
     dumper = KvDumper(dump_dir, dump_windows, dump_window, dump_seed, dump_queries) if dump_dir is not None else None
     llama = None
