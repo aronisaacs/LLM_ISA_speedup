@@ -18,3 +18,5 @@ from compression_topics.spatial.algorithms import residual_pool as _residual_poo
 from compression_topics.spatial.algorithms import spatial as _spatial  # noqa: F401
 from compression_topics.vector.algorithms import vector_compress as _vector_compress  # noqa: F401
 from compression_topics.vector.algorithms import vector_compress_pair as _vector_compress_pair  # noqa: F401
+
+from compression_topics.spatial.algorithms import group_calibrated as _group_calibrated  # noqa: F401
