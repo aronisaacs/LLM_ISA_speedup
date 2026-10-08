@@ -30,7 +30,7 @@ from __future__ import annotations
 import torch
 
 from compression_topics.spatial.algorithms import pair_gate
-from engine.kv_compress.methods import METHODS
+from engine.kv_compress.methods import METHODS, OPTION_SIGNATURES
 from engine.kv_compress.rope import RopeTables, apply_rope
 
 RESIDUAL_KEEP_PCT = 25
@@ -168,3 +168,5 @@ def _check(pct: int, keep_pct: int, rope: bool) -> None:
 
 METHODS["pair_rank"] = apply
 METHODS["pair_rank_residual"] = apply_residual
+
+OPTION_SIGNATURES["pair_rank_residual"] = apply

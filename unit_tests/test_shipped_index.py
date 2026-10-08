@@ -28,12 +28,13 @@ class ShippedIndexTests(unittest.TestCase):
         self.assertEqual(len(rows), 32 * 2 * 3)
         self.assertEqual(rows[0].kv["pipeline"][0]["method"], "vector_compress")
 
-    def test_budget_rows_store_the_target_and_the_realized_compression(self):
+    def test_budget_rows_store_target_and_explicit_or_historical_compression(self):
         budgeted = [row for row in simulations() if "budget" in row]
         self.assertGreaterEqual(len(budgeted), 1)
         for row in budgeted:
-            self.assertIn("compression", row)
-            self.assertGreaterEqual(row["compression"], 0.0)
+            planned = row.get("planned_compression", row.get("compression"))
+            self.assertIsNotNone(planned)
+            self.assertGreaterEqual(planned, 0.0)
 
 
 if __name__ == "__main__":

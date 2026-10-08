@@ -1,15 +1,19 @@
 """One row per finished simulation.
 
 ``results.json`` is the record: identity, scores, sample count, and,
-for a budget eval, the target budget and the realized compression.
+for a budget eval, separate target, planned and measured compression.
+Historical rows retain their original `compression` field; it is not relabeled
+as a measurement. Writes are locked across processes and replaced atomically.
 """
 
 from __future__ import annotations
 
 import json
+import fcntl
+from contextlib import contextmanager
 from pathlib import Path
 
-from engine.eval_runner.cache import _canonical, _identity_from_file, _legacy
+from engine.eval_runner.cache import _canonical, _identity_from_file, identities_match
 
 _NAME = "results.json"
 
@@ -30,10 +34,9 @@ def simulations(root: Path | None = None) -> list[dict]:
 def find_result(identity: dict, root: Path | None = None) -> dict | None:
     """The index row for this simulation, or ``None`` when it has not been scored."""
     rows = _rows(root)
-    wanted = {_canonical(identity), _canonical(_legacy(identity))}
     for row in rows:
         stored = row.get("identity") or {}
-        if _canonical(stored) in wanted or _canonical(_legacy(stored)) in wanted:
+        if identities_match(stored, identity):
             return row
     return None
 
@@ -41,12 +44,13 @@ def find_result(identity: dict, root: Path | None = None) -> dict | None:
 def drop_simulations(predicate, root: Path | None = None) -> int:
     """Remove index rows for which ``predicate`` is true. Returns how many dropped."""
     root = root or repo_root()
-    rows = _rows(root)
-    kept = [row for row in rows if not predicate(row)]
-    removed = len(rows) - len(kept)
-    if removed:
-        _write(root, kept)
-    return removed
+    with _locked(root):
+        rows = _rows(root)
+        kept = [row for row in rows if not predicate(row)]
+        removed = len(rows) - len(kept)
+        if removed:
+            _write(root, kept)
+        return removed
 
 
 def record_simulation(
@@ -56,23 +60,31 @@ def record_simulation(
     budget: float | None = None,
     compression: float | None = None,
     root: Path | None = None,
+    *, planned_compression: float | None = None, storage: dict | None = None,
+    compression_target: str = "kv",
 ) -> dict:
     """Append this simulation when the index does not already list it."""
     root = root or repo_root()
-    existing = find_result(identity, root)
-    if existing is not None:
-        return existing
-    row = {"identity": identity, "scores": scores}
-    if samples:
-        row["samples"] = samples
-    if budget is not None:
-        row["budget"] = budget
-    if compression is not None:
-        row["compression"] = compression
-    rows = _rows(root)
-    rows.append(row)
-    _write(root, rows)
-    return row
+    with _locked(root):
+        existing = find_result(identity, root)
+        if existing is not None:
+            return existing
+        row = {"identity": identity, "scores": scores}
+        if samples:
+            row["samples"] = samples
+        if budget is not None:
+            row["budget"] = budget
+        if compression is not None or planned_compression is not None:
+            # Historical callers supply planned savings as `compression`.
+            row["planned_compression"] = planned_compression if planned_compression is not None else compression
+        if storage:
+            row["storage"] = storage
+            row["compression_target"] = compression_target
+            row["measured_compression"] = storage["targets"][compression_target]["compression"]
+        rows = _rows(root)
+        rows.append(row)
+        _write(root, rows)
+        return row
 
 
 def record_result(path: Path, root: Path | None = None) -> dict | None:
@@ -86,50 +98,60 @@ def record_result(path: Path, root: Path | None = None) -> dict | None:
         row["scores"],
         samples=row.get("samples"),
         budget=row.get("budget"),
-        compression=row.get("compression"),
+        planned_compression=row.get("planned_compression"),
+        storage=row.get("storage"),
+        compression_target=row.get("compression_target", "kv"),
         root=root,
     )
 
 
 def rebuild(root: Path) -> list[dict]:
-    """Scan ``root`` for old result JSON files and write ``results.json`` there."""
+    """Import detailed result files, preserving scores already in the ledger."""
     root = root.resolve()
-    rows = []
-    seen: set[str] = set()
-    if not root.is_dir():
+    with _locked(root):
+        rows = _rows(root)
+        seen = {_canonical(row["identity"]) for row in rows}
+        for path in sorted(root.rglob("*.json")):
+            if path.name == _NAME or path.name == "budgets.json" or path.name.startswith("selected"):
+                continue
+            row = _row_from_file(path)
+            if row is None:
+                continue
+            key = _canonical(row["identity"])
+            if key in seen:
+                continue
+            seen.add(key)
+            rows.append(row)
         _write(root, rows)
         return rows
-    for path in sorted(root.rglob("*.json")):
-        if path.name == _NAME or path.name == "budgets.json" or path.name.startswith("selected"):
-            continue
-        row = _row_from_file(path)
-        if row is None:
-            continue
-        key = _canonical(row["identity"])
-        if key in seen:
-            continue
-        seen.add(key)
-        rows.append(row)
-    _write(root, rows)
-    return rows
 
 
 def _rows(root: Path | None) -> list[dict]:
     path = index_path(root)
     if not path.is_file():
         return []
-    try:
-        payload = json.loads(path.read_text())
-    except (OSError, json.JSONDecodeError):
-        return []
-    simulations = payload.get("simulations") if isinstance(payload, dict) else None
-    return list(simulations) if isinstance(simulations, list) else []
+    payload = json.loads(path.read_text())
+    rows = payload.get("simulations") if isinstance(payload, dict) else None
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise ValueError(f"Invalid results ledger: {path}")
+    return rows
+
+
+@contextmanager
+def _locked(root):
+    root.mkdir(parents=True, exist_ok=True)
+    # Keep a stable lock inode: never unlink the lock file after releasing it.
+    with (root / ".results.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def _write(root: Path, rows: list[dict]) -> None:
-    path = index_path(root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"simulations": rows}, indent=2) + "\n")
+    from engine.eval_runner.files import write_json
+    write_json(index_path(root), {"simulations": rows})
 
 
 def _row_from_file(path: Path) -> dict | None:
@@ -147,7 +169,14 @@ def _row_from_file(path: Path) -> dict | None:
     budget = _budget(payload)
     if budget is not None:
         row["budget"] = budget[0]
-        row["compression"] = budget[1]
+        row["planned_compression"] = budget[1]
+    if payload.get("storage"):
+        row["storage"] = payload["storage"]
+        metadata = next((c.get("metadata", {}) for c in payload.get("configs", {}).values()
+                         if c.get("metadata", {}).get("compression_target")), {})
+        target = metadata.get("compression_target", "kv")
+        row["compression_target"] = target
+        row["measured_compression"] = payload["storage"]["targets"][target]["compression"]
     return row
 
 

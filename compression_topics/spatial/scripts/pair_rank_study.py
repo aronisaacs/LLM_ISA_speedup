@@ -169,7 +169,7 @@ def summary(variant: str, root: Path | None = None) -> str:
         if any(bool(step.get(key, False)) != bool(expected.get(key, False)) for step in pipeline for key in ("rope", "direction")):
             continue
         uniform = len(pipeline) == 1 and pipeline[0].get("k_layers") == "all"
-        rows.append((float(record.get("compression", 0.0)), "uniform" if uniform else "greedy", float(score), record.get("budget")))
+        rows.append((float(record.get("measured_compression", record.get("planned_compression", record.get("compression", 0.0)))), "uniform" if uniform else "greedy", float(score), record.get("budget")))
     lines = [
         f"C-Eval ({CEVAL_METRIC}), Llama 3.1 8B Instruct, keys only, pair_rank '{variant}'"
         + ("" if dense is None else f"; dense {dense:.3f}"),

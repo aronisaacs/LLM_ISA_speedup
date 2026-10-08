@@ -73,3 +73,54 @@ job vector_study 'bash -lc "source /opt/conda/etc/profile.d/conda.sh && conda ac
 ```
 
 See it with `tat vector_study`. Ctrl+B then D detaches.
+
+## Extending the code
+
+Compression kernels live under `compression_topics/<topic>/algorithms`. Register
+an `apply(tensor, *, layer_idx, target, ...)` function in `METHODS`; declare its
+configuration options explicitly in the signature. The parser rejects unknown
+options before loading a model. A forwarding wrapper can register its option
+signature in `OPTION_SIGNATURES`.
+
+Methods that finish groups across decode updates can register an optional
+`AFTER_APPEND` callback. It receives the full cached tensor, target, layer,
+absolute `start`/`end`, RoPE tables, and method options. The method owns group
+boundaries and reconstruction; the shared cache owns dispatch. A new method
+normally needs no edits to the cache or evaluator.
+
+`engine/kv_compress/metrics.py` owns evaluation statistics. Methods with a byte
+model report per-slot `dense_bits` and `stored_bits`; the cache observes dense
+bytes for all layers and both targets. Storage measurements describe the
+simulated representation at 16 bits per dense value, not allocated tensor
+memory. Unsupported methods or overlapping representations leave measured
+storage unavailable rather than claiming zero overhead. Spatial storage formulas
+are defined in `compression_topics/spatial/algorithms/storage.py`.
+
+`engine/layer_select/calibration.py` owns screening, matched-chunk comparisons,
+refinement, and selection. Studies define candidates and their grouping, final
+tasks, and summaries. Fixed-rung and calibrated studies use the same greedy
+allocator. `engine/eval_runner/chunks.py` runs chunk-loss evaluations using the
+shared model loader and worker lifecycle; the old spatial runner path remains a
+small compatibility entry point. Spatial planners accept `--model-args`,
+`--layers`, and `--head-dim` for offline planning and validate the planned shape
+against the loaded model before evaluation. Model defaults remain in the study.
+
+## Results and resuming
+
+`results.json` is the authoritative compact score ledger. Updates are locked
+across workers and written atomically. Corrupt ledgers cause an error and are
+never silently replaced. Run identities include the model options, compression
+pipeline, task settings, prompt settings, and nondefault evaluation seeds.
+Execution settings such as device do not prevent score reuse.
+
+New budget rows distinguish `budget`, `planned_compression`, and, when measured,
+`measured_compression` with a `compression_target` (`k`, `v`, or `kv`). The
+`storage` field contains measured K, V, and combined totals. Historical
+`compression` fields remain unchanged and should be treated as planned savings.
+
+Calibration chunks, candidate manifests, and detailed per-configuration results
+stay in their study directories: they are intermediate data used for resuming and
+paired comparisons. Final spatial task scores go into the root ledger. Detailed
+JSON files preserve the historical `gate_stats` field name for compatibility,
+although collection now belongs to the shared metrics module. Reports and charts
+are derived artifacts. Study scripts remain plan-only unless `--execute` is given.

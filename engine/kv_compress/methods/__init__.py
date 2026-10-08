@@ -5,13 +5,28 @@ module is imported. get_method looks up a JSON "method" name.
 """
 
 from collections.abc import Callable
-from typing import Any
 
 import torch
 
 Method = Callable[..., torch.Tensor]
 
 METHODS: dict[str, Method] = {}
+# Optional method-owned callbacks for groups completed across cache updates.
+AFTER_APPEND: dict[str, Callable] = {}
+OPTION_SIGNATURES: dict[str, Callable] = {}
+
+
+def validate_options(name, options):
+    """Reject misspelled method options, even for kernels accepting **context."""
+    import inspect
+    parameters = inspect.signature(OPTION_SIGNATURES.get(name, get_method(name))).parameters
+    allowed = {key for key, value in parameters.items()
+               if value.kind not in (value.VAR_KEYWORD, value.VAR_POSITIONAL)}
+    allowed -= {"tensor", "layer_idx", "target", "seq_start", "rope_tables"}
+    unknown = set(options) - allowed
+    if unknown:
+        raise ValueError(f"{name} contains unknown options: {sorted(unknown)}")
+
 
 
 def get_method(name: str) -> Method:

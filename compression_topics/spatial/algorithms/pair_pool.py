@@ -10,7 +10,7 @@ from __future__ import annotations
 import torch
 
 from compression_topics.spatial.algorithms.residual_pool import close_pairs
-from engine.kv_compress.methods import METHODS
+from engine.kv_compress.methods import METHODS, AFTER_APPEND
 
 
 def apply(
@@ -30,3 +30,13 @@ def apply(
 
 
 METHODS["pair_pool"] = apply
+
+
+def after_append(tensor, *, target, layer_idx, start, end, rope_tables=None, **options):
+    from compression_topics.spatial.algorithms.residual_pool import write_closed_pairs
+    if start % 2:
+        write_closed_pairs(tensor, prune_pct=100, rope=False, rope_tables=None,
+                           start=start // 2 * 2, end=end // 2 * 2)
+
+
+AFTER_APPEND["pair_pool"] = after_append

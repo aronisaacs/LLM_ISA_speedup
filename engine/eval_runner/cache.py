@@ -13,21 +13,20 @@ from engine.eval_runner.execute import is_finished_result, normalize_tasks
 from engine.eval_runner.load_run import merge
 from engine.kv_compress.spec import parse_kv_spec
 
-_LEGACY = (
-    "pretrained",
-    "dtype",
-    "tasks",
-    "num_fewshot",
-    "limit",
-    "gen_kwargs",
-    "kv",
-)
-
-
 def simulation_identity(base, configuration, kv_spec) -> dict:
     """Fields that change the score. Device and batch size are left out."""
     model_args = merge(base, configuration, "model_args", "")
     fields = _model_fields(model_args)
+    from engine.eval_runner.execute import _EVAL_DEFAULTS
+    fields["model"] = merge(base, configuration, "model", "hf")
+    # Store nondefault score-affecting evaluation options, including seeds.
+    excluded = {"max_batch_size", "bootstrap_iters", "write_out", "log_samples", "confirm_run_unsafe_code"}
+    represented = {"num_fewshot", "limit", "gen_kwargs", "apply_chat_template"}
+    fields["evaluation_options"] = {
+        key: merge(base, configuration, key, default)
+        for key, default in _EVAL_DEFAULTS.items()
+        if key not in excluded | represented and merge(base, configuration, key, default) != default
+    }
     fields.update(
         {
             "tasks": sorted(normalize_tasks(merge(base, configuration, "tasks", None))),
@@ -84,15 +83,10 @@ def _legacy_from_payload(payload: dict) -> dict | None:
     tasks = sorted(groups) if groups else sorted(payload.get("results") or {})
     shots = list((payload.get("n-shot") or {}).values())
     fewshot = shots[0] if shots and all(shot == shots[0] for shot in shots) else (shots or None)
-    return {
-        "pretrained": model_args.get("pretrained"),
-        "dtype": model_args.get("dtype"),
-        "tasks": tasks,
-        "num_fewshot": fewshot,
-        "limit": config.get("limit"),
-        "gen_kwargs": config.get("gen_kwargs"),
-        "kv": kv,
-    }
+    # Preserve any prompt, seed and model options actually present in the file.
+    # Historical files lacking those fields use the documented evaluator defaults.
+    base = {**config, "model": "hf", "tasks": tasks, "num_fewshot": fewshot}
+    return simulation_identity(base, {}, parse_kv_spec(kv))
 
 
 def _kv_from_payload(payload: dict) -> dict:
@@ -109,22 +103,30 @@ def _kv_from_payload(payload: dict) -> dict:
     raise ValueError("no kv metadata")
 
 
-def _legacy(identity: dict) -> dict:
-    return {key: identity.get(key) for key in _LEGACY}
-
-
 def _model_fields(model_args) -> dict:
     if isinstance(model_args, dict):
         raw = model_args
     else:
-        raw = {}
-        for part in str(model_args).split(","):
-            if "=" not in part:
-                continue
-            key, value = part.split("=", 1)
-            raw[key.strip()] = value.strip()
-    return {"pretrained": raw.get("pretrained"), "dtype": raw.get("dtype")}
+        from lm_eval.utils import simple_parse_args_string
+        raw = simple_parse_args_string(str(model_args))
+    execution = {"device", "device_map", "parallelize", "batch_size", "max_batch_size"}
+    return {"pretrained": raw.get("pretrained"), "dtype": raw.get("dtype"),
+            "model_options": {k: v for k, v in raw.items()
+                              if k not in execution | {"pretrained", "dtype", "kv"}}}
 
 
 def _canonical(identity: dict) -> str:
     return json.dumps(identity, sort_keys=True, default=str)
+
+
+def identities_match(stored, wanted):
+    """Exact identities, with conservative defaults for historical score rows.
+
+    Missing chat-template flags mean False only. New identity fields must match
+    their defaults before an older row may satisfy a modern lookup.
+    """
+    defaults = {"apply_chat_template": False, "model": "hf", "model_options": {},
+                "evaluation_options": {}}
+    def normalized(value):
+        return {**defaults, **value}
+    return _canonical(normalized(stored)) == _canonical(normalized(wanted))

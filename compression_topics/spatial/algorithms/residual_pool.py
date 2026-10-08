@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import torch
 
-from engine.kv_compress.methods import METHODS
+from engine.kv_compress.methods import METHODS, AFTER_APPEND
 from engine.kv_compress.rope import RopeTables, apply_rope
 
 
@@ -121,3 +121,13 @@ def _check_prune(prune_pct: int) -> None:
 
 
 METHODS["residual_pool"] = apply
+
+
+def after_append(tensor, *, target, layer_idx, start, end, rope_tables=None, **options):
+    if start % 2:
+        write_closed_pairs(tensor, prune_pct=options.get("prune_pct", 25),
+                           rope=target == "k" and options.get("rope", False), rope_tables=rope_tables,
+                           start=start // 2 * 2, end=end // 2 * 2)
+
+
+AFTER_APPEND["residual_pool"] = after_append

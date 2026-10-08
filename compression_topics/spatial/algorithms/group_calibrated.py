@@ -11,20 +11,18 @@ import math
 import torch
 from engine.kv_compress.methods import METHODS
 from engine.kv_compress.rope import apply_rope
-from compression_topics.spatial.algorithms import pair_gate
+from compression_topics.spatial.algorithms.residual import largest_residual
+from engine.kv_compress.metrics import STATS
 
 
 ACCOUNTING = 'fp16_shared_pair_residual_norms_masks_bitmap_header_v2'
 
 
+from compression_topics.spatial.algorithms.storage import vector_group_bits, metadata_bits
+
+
 def merged_bits(kept, dim=128, group_size=4):
-    residuals = 1 if group_size == 2 else group_size
-    return 16 * (dim + residuals * kept + group_size) + (residuals * dim if kept else 0)
-
-
-def metadata_bits(groups):
-    # One merge bit per group, rounded to bytes, plus uint8 group size/count.
-    return 8 * math.ceil(groups / 8) + 16
+    return vector_group_bits(kept, dim, group_size, include_norms=True)
 
 
 def group_saving(kept: int, dim: int = 128, group_size: int = 4) -> float:
@@ -71,11 +69,11 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0,
     if group_size == 2:
         # One half-difference and one mask; the second residual is its negative.
         delta = (grouped[..., 0, :] - grouped[..., 1, :]) / 2
-        residual = pair_gate._largest(delta, residual_entries)
+        residual = largest_residual(delta, residual_entries)
         reconstruction = torch.stack((mean.squeeze(-2) + residual,
                                       mean.squeeze(-2) - residual), dim=-2)
     else:
-        residual = pair_gate._largest(grouped - mean, residual_entries)
+        residual = largest_residual(grouped - mean, residual_entries)
         reconstruction = mean + residual
     valid = (norms.reshape(*grouped.shape[:-1], 1).squeeze(-1) > 1e-12).all(-1)
     valid &= (reconstruction.norm(dim=-1) > 1e-6).all(-1)
@@ -98,7 +96,7 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0,
     out = tensor.clone()
     out[..., :full, :] = torch.where(token_mask, restored.to(tensor.dtype), tensor[..., :full, :])
     key = f'{target}_layer_{layer_idx}'
-    row = pair_gate.STATS.setdefault(key, {'dense_bits': 0, 'stored_bits': 0,
+    row = STATS.setdefault(key, {'dense_bits': 0, 'stored_bits': 0,
         'pairs': 0, 'merged': 0, 'features': dim, 'kept': residual_entries,
         'group_size': group_size, 'accounting': ACCOUNTING, 'metadata_bits': 0,
         'norm_bits': 0, 'residual_mask_bits': 0,

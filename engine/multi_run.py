@@ -16,8 +16,8 @@ nothing.
 from __future__ import annotations
 
 import argparse
+import json
 import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -37,7 +37,7 @@ from engine.eval_runner import (  # noqa: E402
     write_result_json,
     split_base_and_configurations,
 )
-from engine.eval_runner.cache import reuse_cached_result, simulation_identity
+from engine.eval_runner.cache import reuse_cached_result, simulation_identity, identities_match
 from engine.eval_runner.index import record_simulation
 from engine.eval_runner.progress import format_hms, kv_brief, mirror_terminal, say, summarize_scores
 from engine.kv_compress import install, parse_kv_spec
@@ -140,24 +140,10 @@ def _parse_args():
 
 def _spawn_workers(args, devices: list[str]) -> None:
     say(f"workers  {len(devices)} gpus  {','.join(devices)}")
-    processes = []
-    for worker, device in enumerate(devices):
-        env = os.environ.copy()
-        env["CUDA_VISIBLE_DEVICES"] = device
-        command = worker_command(
-            args.run, worker, len(devices), args.skip_existing, args.results_root, args.dry_run,
-            args.write_results
-        )
-        processes.append((device, subprocess.Popen(command, env=env)))
-    failed = []
-    for device, process in processes:
-        code = process.wait()
-        if code != 0:
-            failed.append((device, code))
-    if failed:
-        detail = ", ".join(f"gpu{device}={code}" for device, code in failed)
-        say(f"failed  {detail}")
-        raise SystemExit(failed[0][1])
+    from engine.eval_runner.workers import run_workers
+    run_workers(devices, lambda worker, workers: worker_command(
+        args.run, worker, workers, args.skip_existing, args.results_root,
+        args.dry_run, args.write_results))
 
 
 def _run_configurations(args) -> None:
@@ -193,7 +179,7 @@ def _run_configurations(args) -> None:
             # must rerun if its matching detailed result is missing.
             try:
                 details = json.loads(result_output_path(base, configuration).read_text())
-                matching = details.get("simulation") == simulation_identity(base, configuration, kv_spec)
+                matching = identities_match(details.get("simulation", {}), simulation_identity(base, configuration, kv_spec))
             except (OSError, ValueError):
                 matching = False
             if not matching:
@@ -239,17 +225,21 @@ def _record(results: dict, identity: dict, root: Path | None = None) -> None:
     if counted:
         samples = next(iter(counted.values()))
     budget = compression = None
+    compression_target = "kv"
     for task_config in (short.get("configs") or {}).values():
         metadata = (task_config or {}).get("metadata") or {}
         if "kv_budget" in metadata:
             budget = metadata["kv_budget"]
-            compression = metadata["kv_compression"]
+            compression = metadata.get("kv_compression")
+            compression_target = metadata.get("compression_target", "kv")
     record_simulation(
         identity,
         short.get("results") or {},
         samples=samples,
         budget=budget,
-        compression=compression,
+        planned_compression=compression,
+        storage=short.get("storage"),
+        compression_target=compression_target,
         root=root,
     )
 

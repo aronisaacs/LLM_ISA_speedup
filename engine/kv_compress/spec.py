@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
-from engine.kv_compress.methods import METHODS
+from engine.kv_compress.methods import METHODS, validate_options
 
 LayerSelection = Literal["all"] | frozenset[int]
 
@@ -74,6 +74,7 @@ def _parse_step(step: Any, index: int) -> PipelineStep:
             f"kv.pipeline[{index}] uses unknown method {method!r}. Known methods: {known}"
         )
     kwargs = {key: copy_value for key, copy_value in step.items() if key not in _STEP_RESERVED_KEYS}
+    validate_options(method, kwargs)
     return PipelineStep(
         method=method,
         k_layers=_parse_layers(step.get("k_layers"), f"kv.pipeline[{index}].k_layers"),

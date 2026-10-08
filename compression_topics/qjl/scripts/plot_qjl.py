@@ -78,7 +78,7 @@ def _task_rows(task: str, pretrained: str) -> list[tuple[str, str, str, str]]:
             continue
         if pipeline[0].get("method") != "qjl" or "budget" not in record:
             continue
-        points.append((float(record["budget"]), float(record.get("compression") or 0.0), float(accuracy)))
+        points.append((float(record["budget"]), float(record.get("measured_compression", record.get("planned_compression", record.get("compression"))) or 0.0), float(accuracy)))
     if baseline is None:
         raise ValueError(f"no dense Llama 3.1 {task} baseline in the index")
     points.sort()

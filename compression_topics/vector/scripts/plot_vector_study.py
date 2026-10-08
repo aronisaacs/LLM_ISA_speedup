@@ -343,7 +343,7 @@ def _task_points_from_index() -> list[dict]:
                 {
                     "task": task,
                     "budget": float(record["budget"]),
-                    "compression": float(record.get("compression") or 0.0),
+                    "compression": float(record.get("measured_compression", record.get("planned_compression", record.get("compression"))) or 0.0),
                     "accuracy": accuracy,
                     "pretrained": identity.get("pretrained"),
                 }

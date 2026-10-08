@@ -72,9 +72,9 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
     eval_kwargs = {
         key: merge(base, configuration, key, default) for key, default in _EVAL_DEFAULTS.items()
     }
-    from compression_topics.spatial.algorithms import pair_gate
+    from engine.kv_compress import metrics
 
-    pair_gate.reset_stats()
+    metrics.reset_stats()
     with temporary_environ(env):
         results = simple_evaluate(
             model=lm,
@@ -86,7 +86,10 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
             verbosity="INFO",
             **eval_kwargs,
         )
-    gate_stats = pair_gate.pop_stats()
+    storage = metrics.storage_summary()
+    gate_stats = metrics.pop_stats()
+    if storage and isinstance(results, dict):
+        results["storage"] = storage
     if gate_stats and isinstance(results, dict):
         results["gate_stats"] = gate_stats
     return results
@@ -117,6 +120,8 @@ def shorten_result(payload: dict) -> dict:
         return payload
     tasks = _score_tasks(payload)
     short = {"results": {task: _metrics(payload, task) for task in tasks}}
+    if "storage" in payload:
+        short["storage"] = payload["storage"]
     short["results"] = {task: metrics for task, metrics in short["results"].items() if metrics}
     config = _short_config(payload)
     if config:
@@ -152,7 +157,8 @@ def write_result_json(lm, base, configuration, results, simulation=None):
     results = shorten_result(results)
     output_path = result_output_path(base, configuration)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(results, indent=2, default=_json_default))
+    from engine.eval_runner.files import write_json
+    write_json(output_path, results, default=_json_default)
     return output_path
 
 
@@ -225,7 +231,7 @@ def _budget_metadata(payload: dict) -> dict:
     for task_config in (payload.get("configs") or {}).values():
         metadata = (task_config or {}).get("metadata") or {}
         if "kv_budget" in metadata and "kv_compression" in metadata:
-            return {"kv_budget": metadata["kv_budget"], "kv_compression": metadata["kv_compression"]}
+            return {key: metadata[key] for key in ("kv_budget", "kv_compression", "compression_target") if key in metadata}
     return {}
 
 

@@ -21,7 +21,7 @@ from __future__ import annotations
 import torch
 
 from compression_topics.quantize.algorithms.quantize import _quantize_last
-from engine.kv_compress.methods import METHODS
+from engine.kv_compress.methods import METHODS, AFTER_APPEND
 
 BITS = (8, 4, 2, 1, 0)
 
@@ -131,3 +131,12 @@ def _check(bits: int, group: int) -> None:
 
 
 METHODS["pair_quant"] = apply
+
+
+def after_append(tensor, *, target, layer_idx, start, end, rope_tables=None, **options):
+    if start % 2:
+        write_closed_pairs(tensor, bits=options.get("bits", 8), group=options.get("group", 32),
+                           start=start // 2 * 2, end=end // 2 * 2)
+
+
+AFTER_APPEND["pair_quant"] = after_append

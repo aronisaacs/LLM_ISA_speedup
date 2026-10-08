@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import torch
 
-from engine.kv_compress.methods import METHODS
+from engine.kv_compress.methods import METHODS, AFTER_APPEND
 
 
 def apply(
@@ -102,3 +102,15 @@ def _check(bits: int, group: int) -> None:
 
 
 METHODS["quantize"] = apply
+
+
+def after_append(tensor, *, target, layer_idx, start, end, rope_tables=None, **options):
+    if target != "k":
+        return
+    group = options.get("group", 32)
+    if start % group:
+        write_closed_key_groups(tensor, bits=options.get("bits", 8), group=group,
+                                start=start // group * group, end=end // group * group)
+
+
+AFTER_APPEND["quantize"] = after_append

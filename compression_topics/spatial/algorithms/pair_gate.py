@@ -19,20 +19,9 @@ from __future__ import annotations
 
 import torch
 
-from engine.kv_compress.methods import METHODS
+from engine.kv_compress.methods import METHODS, AFTER_APPEND
 
-STATS: dict[str, dict[str, int]] = {}
-
-
-def reset_stats() -> None:
-    STATS.clear()
-
-
-def pop_stats() -> dict[str, dict[str, int]]:
-    """Counts per target since the last reset, then clear them."""
-    snapshot = {target: dict(counts) for target, counts in STATS.items()}
-    STATS.clear()
-    return snapshot
+from engine.kv_compress.metrics import STATS, reset_stats, pop_stats
 
 
 def _count(target: str, pairs: int, merged: int, features: int, kept: int) -> None:
@@ -103,14 +92,7 @@ def close_pairs(tensor: torch.Tensor, *, tau: float, keep_pct: int, target: str 
     return torch.cat((restored, tensor[..., full:, :]), dim=-2)
 
 
-def _largest(delta: torch.Tensor, count: int) -> torch.Tensor:
-    """The ``count`` largest-|d| entries of each vector, zeros elsewhere."""
-    if count <= 0:
-        return torch.zeros_like(delta)
-    if count >= delta.shape[-1]:
-        return delta
-    index = delta.abs().topk(count, dim=-1).indices
-    return torch.zeros_like(delta).scatter(-1, index, delta.gather(-1, index))
+from compression_topics.spatial.algorithms.residual import largest_residual as _largest
 
 
 def bytes_vs_dense(stats: dict[str, int]) -> float:
@@ -131,3 +113,12 @@ def _check(tau: float, keep_pct: int) -> None:
 
 
 METHODS["pair_gate"] = apply
+
+
+def after_append(tensor, *, target, layer_idx, start, end, rope_tables=None, **options):
+    if start % 2:
+        write_closed_pairs(tensor, tau=options.get("tau", .3), keep_pct=options.get("keep_pct", 0),
+                           target=target, start=start // 2 * 2, end=end // 2 * 2)
+
+
+AFTER_APPEND["pair_gate"] = after_append

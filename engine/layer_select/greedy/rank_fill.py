@@ -7,8 +7,7 @@ WikiText scores. Pick argmax (Δcompression / ΔPPL). A slot cannot skip a rung.
 
 from __future__ import annotations
 
-from engine.layer_select.levels import mean_compression, next_level
-from engine.layer_select.rungs import PRUNE, fraction_of
+from engine.layer_select.rungs import PRUNE
 from engine.layer_select.scores import ScoreRow, score_table
 from engine.layer_select.slots import Slot, all_slots
 
@@ -27,41 +26,13 @@ def rank_fill(
     if dense_ppl is None:
         dense_ppl = _infer_dense_ppl(rows)
     _require_rungs(table, slots, rungs)
-    assignment = {slot: 0 for slot in slots}
-    while mean_compression(assignment, len(slots), rungs) < budget:
-        pick = _best_step(assignment, slots, table, dense_ppl, rungs)
-        if pick is None:
-            break
-        slot, new_level = pick
-        assignment[slot] = new_level
-    return {slot: pct for slot, pct in assignment.items() if pct > 0}
-
-
-def _best_step(assignment, slots, table, dense_ppl, rungs):
-    levels = tuple(rung.level for rung in rungs)
-    best = None
-    for slot in slots:
-        current = assignment[slot]
-        nxt = next_level(current, levels)
-        if nxt is None:
-            continue
-        current_fraction = 0.0 if current == 0 else fraction_of(rungs, current)
-        extra = fraction_of(rungs, nxt) - current_fraction
-        extra_ppl = _ppl(table, dense_ppl, slot, nxt) - _ppl(table, dense_ppl, slot, current)
-        efficiency = float("inf") if extra_ppl <= 0 else extra / extra_ppl
-        extra_pct = extra
-        # Higher efficiency wins; then more extra compression; then smaller Slot.
-        candidate = (efficiency, extra_pct, _slot_sort_key(slot), slot, nxt)
-        if best is None or candidate[:3] > best[:3]:
-            best = candidate
-    if best is None:
-        return None
-    return best[3], best[4]
-
-
-def _slot_sort_key(slot: Slot):
-    """Larger is better for the max-tuple; prefer smaller Slot on ties."""
-    return (-slot.layer, 0 if slot.target == "k" else -1)
+    from engine.layer_select.greedy.calibrated import choose_candidates
+    choices = {(slot.layer, slot.target): [
+        {"level": rung.level, "compression": rung.fraction,
+         "ppl": _ppl(table, dense_ppl, slot, rung.level)} for rung in rungs]
+        for slot in slots}
+    selected, _ = choose_candidates(choices, dense_ppl, budget, require_budget=False)
+    return {Slot(layer, target): row["level"] for (layer, target), row in selected.items()}
 
 
 def _ppl(table, dense_ppl, slot, level):

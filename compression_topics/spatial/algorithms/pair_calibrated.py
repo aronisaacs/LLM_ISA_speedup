@@ -10,14 +10,16 @@ from __future__ import annotations
 import math
 import torch
 from engine.kv_compress.methods import METHODS
-from compression_topics.spatial.algorithms import pair_gate
+from compression_topics.spatial.algorithms.residual import largest_residual
+from engine.kv_compress.metrics import STATS
+from compression_topics.spatial.algorithms.storage import vector_group_bits
 from compression_topics.spatial.algorithms.pair_rank import _shift_rope
 
 
 def pair_saving(kept: int, dim: int = 128) -> float:
     if isinstance(kept, bool) or not isinstance(kept, int) or not 0 <= kept <= dim:
         raise ValueError("residual_entries must be an integer within head dimension")
-    return 0.5 if kept == 0 else 1 - (17 * dim + 16 * kept) / (32 * dim)
+    return 1 - vector_group_bits(kept, dim, 2, include_norms=False) / (32 * dim)
 
 
 def apply(tensor, *, layer_idx, target, saving, residual_entries=0, seq_start=0, rope_tables=None, **unused):
@@ -49,7 +51,7 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0, seq_start=0,
     a = torch.nn.functional.normalize(first, dim=-1)
     b = torch.nn.functional.normalize(second, dim=-1)
     mean, delta = (a + b) / 2, (a - b) / 2
-    residual = pair_gate._largest(delta, residual_entries)
+    residual = largest_residual(delta, residual_entries)
     ra, rb = mean + residual, mean - residual
     valid = (na.squeeze(-1) > 1e-12) & (nb.squeeze(-1) > 1e-12)
     valid &= (ra.norm(dim=-1) > 1e-6) & (rb.norm(dim=-1) > 1e-6)
@@ -72,7 +74,7 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0, seq_start=0,
     out[..., 1:full:2, :] = torch.where(mask, rb.to(tensor.dtype), tensor[..., 1:full:2, :])
     # Slot-specific stats support mixed residual sizes and measured budget reporting.
     key = f"{target}_layer_{layer_idx}"
-    row = pair_gate.STATS.setdefault(key, {"dense_bits": 0, "stored_bits": 0, "pairs": 0,
+    row = STATS.setdefault(key, {"dense_bits": 0, "stored_bits": 0, "pairs": 0,
         "merged": 0, "features": dim, "kept": residual_entries, "cosine_sum": 0.,
         "cosine_min": 1., "cutoff_sum": 0., "updates": 0, "shortfall_updates": 0})
     dense_bits = tensor.numel() * 16
