@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Calibrate pairs versus quads per independent layer/K/V slot.
+"""Calibrate shared-residual pairs versus quads per independent layer/K/V slot.
 
+Pairs screen zero residual and the largest feasible residual size; quads screen the full grid.
 Screen residual sizes separately for each group size, then refine the best of
 EACH size on identical disjoint chunks. Close/reordered within-size finalists
 and close pair-versus-quad comparisons receive more chunks. Final tasks compare
@@ -31,6 +32,14 @@ from compression_topics.spatial.algorithms.group_calibrated import ACCOUNTING, g
 from engine.layer_select.scores import word_perplexity
 
 GROUP_SIZES = (2, 4)
+
+
+def residual_choices(budget, residuals, group_size):
+    feasible = [k for k in sorted(set(residuals))
+                if budget <= group_saving(k, group_size=group_size) + 1e-12]
+    if group_size == 2 and feasible:
+        return sorted({feasible[0], feasible[-1]})
+    return feasible
 
 LAYERS = 32
 GLOBAL_BUDGETS = (.1, .2, .3, .4, .5, .6)
@@ -65,7 +74,7 @@ def plan(out, layers=LAYERS, local_budgets=LOCAL_BUDGETS, residuals=RESIDUAL_ENT
         for target in ("k", "v"):
             for budget in local_budgets:
                 for group_size in GROUP_SIZES:
-                    for kept in residuals:
+                    for kept in residual_choices(budget, residuals, group_size):
                         maximum = group_saving(kept, group_size=group_size)
                         if budget > maximum + 1e-12:
                             continue
@@ -81,6 +90,8 @@ def plan(out, layers=LAYERS, local_budgets=LOCAL_BUDGETS, residuals=RESIDUAL_ENT
             "refine_chunks": refine_chunks, "extra_chunks": extra_chunks, "seed": seed,
             "seq_len": seq_len, "finalists": finalists,
             "norm_overhead_counted": True, "flags_counted": True, "residual_mask_counted": True, "slot_header_counted": True, "norm_bits_per_token": 16, "merge_flag_bits_per_group": 1, "slot_header_bits": 16, "group_sizes": list(GROUP_SIZES), "accounting": ACCOUNTING,
+            "pair_residual_menu": "smallest and largest feasible residual counts",
+            "pair_residual_representation": "one shared signed half-difference and mask",
             "ranking": "minimum reconstruction cosine across all group tokens",
             "candidates": candidates, "run": {"model": "hf", "model_args": LLAMA31_8B,
                 "batch_size": 1, "configurations": configs,
@@ -266,7 +277,7 @@ def task_plan(calibration, layers, out):
 
 def execute(path, out):
     subprocess.run([sys.executable, str(ROOT / "engine/multi_run.py"), "--run", str(path),
-                    "--skip-existing", "--write-results", "--results-root", str(out)], cwd=ROOT, check=True)
+                    "--skip-existing", "--write-results", "--results-root", str(ROOT)], cwd=ROOT, check=True)
 
 
 def summary(out, selections):
@@ -307,7 +318,7 @@ def main():
     parser.add_argument("--execute", action="store_true", help="explicitly start evaluations; otherwise only write the plan")
     args = parser.parse_args()
     if args.out is None:
-        args.out = ROOT / "compression_topics/spatial/figures/pair_quad_metadata_sampled"
+        args.out = ROOT / "compression_topics/spatial/figures/pair_quad_shared_sampled"
     if STAGES.index(args.start) > STAGES.index(args.through):
         parser.error("--from must not follow --through")
     budgets = sorted(set(args.local_budgets))

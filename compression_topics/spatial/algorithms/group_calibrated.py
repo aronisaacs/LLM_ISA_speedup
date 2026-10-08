@@ -1,7 +1,8 @@
-"""Prefill group merging with independent sparse directional residuals.
+"""Prefill pairs with one signed residual, or quads with per-token residuals.
 
-Accounting includes 16-bit norms, per-token residual masks, a byte-packed
-merge bitmap for all groups (including dense groups), and a two-byte slot header.
+Accounting includes 16-bit norms and one residual mask per pair, or one per
+token for larger groups. Format metadata consists of a byte-packed merge bitmap
+for all groups (including dense groups) and a two-byte slot header.
 The header stores group size and residual count; values use 16 bits.
 Groups are fixed adjacent blocks; the incomplete tail remains exact.
 """
@@ -13,11 +14,12 @@ from engine.kv_compress.rope import apply_rope
 from compression_topics.spatial.algorithms import pair_gate
 
 
-ACCOUNTING = 'fp16_values_norms_masks_bitmap_header_v1'
+ACCOUNTING = 'fp16_shared_pair_residual_norms_masks_bitmap_header_v2'
 
 
 def merged_bits(kept, dim=128, group_size=4):
-    return 16 * (dim + group_size * kept + group_size) + (group_size * dim if kept else 0)
+    residuals = 1 if group_size == 2 else group_size
+    return 16 * (dim + residuals * kept + group_size) + (residuals * dim if kept else 0)
 
 
 def metadata_bits(groups):
@@ -66,8 +68,15 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0,
     directions = torch.nn.functional.normalize(aligned, dim=-1)
     grouped = directions.reshape(*directions.shape[:-2], full // group_size, group_size, dim)
     mean = grouped.mean(dim=-2, keepdim=True)
-    residual = pair_gate._largest(grouped - mean, residual_entries)
-    reconstruction = mean + residual
+    if group_size == 2:
+        # One half-difference and one mask; the second residual is its negative.
+        delta = (grouped[..., 0, :] - grouped[..., 1, :]) / 2
+        residual = pair_gate._largest(delta, residual_entries)
+        reconstruction = torch.stack((mean.squeeze(-2) + residual,
+                                      mean.squeeze(-2) - residual), dim=-2)
+    else:
+        residual = pair_gate._largest(grouped - mean, residual_entries)
+        reconstruction = mean + residual
     valid = (norms.reshape(*grouped.shape[:-1], 1).squeeze(-1) > 1e-12).all(-1)
     valid &= (reconstruction.norm(dim=-1) > 1e-6).all(-1)
     reconstruction = torch.nn.functional.normalize(reconstruction, dim=-1)
@@ -100,7 +109,7 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0,
     row['stored_bits'] += dense_bits - count * saved_bits + overhead
     row['metadata_bits'] += overhead
     row['norm_bits'] += count * group_size * 16
-    row['residual_mask_bits'] += count * group_size * dim if residual_entries else 0
+    row['residual_mask_bits'] += count * (1 if group_size == 2 else group_size) * dim if residual_entries else 0
     row['pairs'] += flat.numel()  # Existing measurement schema; these are groups.
     row['merged'] += count
     row['updates'] += 1

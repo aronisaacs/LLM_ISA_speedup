@@ -1,9 +1,10 @@
-"""Synthetic checks for independent-residual group compression."""
+"""Shared-residual pair identities, quad reconstruction and metadata accounting."""
 import unittest
 import json
 import math
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 import torch
 from compression_topics.spatial.algorithms import pair_gate
 from compression_topics.spatial.algorithms.group_calibrated import apply, group_saving, merged_bits, metadata_bits
@@ -55,6 +56,50 @@ class GroupTests(unittest.TestCase):
         expected = torch.nn.functional.normalize(mean + sparse, dim=-1) * x.norm(dim=-1, keepdim=True)
         actual = apply(x, layer_idx=0, target='v', saving=.4, residual_entries=32)
         torch.testing.assert_close(actual, expected)
+
+    def test_shared_pair_reconstructs_like_original_pair_method(self):
+        from compression_topics.spatial.algorithms import pair_calibrated
+        x = torch.randn(1, 2, 12, 128)
+        rope = RopeTables(10000., 128)
+        for target in ('k', 'v'):
+            for kept in (0, 8, 32):
+                pair_gate.reset_stats()
+                actual = apply(x, layer_idx=0, target=target, group_size=2,
+                    saving=group_saving(kept, group_size=2), residual_entries=kept,
+                    rope_tables=rope)
+                pair_gate.reset_stats()
+                expected = pair_calibrated.apply(x, layer_idx=0, target=target,
+                    saving=pair_calibrated.pair_saving(kept), residual_entries=kept,
+                    rope_tables=rope)
+                torch.testing.assert_close(actual, expected, atol=2e-6, rtol=2e-6)
+
+    def test_pair_counts_one_residual_mask_and_both_norms(self):
+        self.assertEqual(merged_bits(32, group_size=2) // 8, 340)
+        self.assertEqual(merged_bits(0, group_size=2) // 8, 260)
+        self.assertEqual(merged_bits(32, group_size=4) // 8, 584)
+        x = torch.randn(1, 1, 64, 128)
+        apply(x, layer_idx=0, target='v', group_size=2, saving=.3, residual_entries=32)
+        stats = pair_gate.pop_stats()['v_layer_0']
+        self.assertEqual(stats['residual_mask_bits'], stats['merged'] * 128)
+        self.assertEqual(stats['norm_bits'], stats['merged'] * 2 * 16)
+        self.assertEqual(stats['stored_bits'], x.numel() * 16 -
+            stats['merged'] * (2 * 128 * 16 - 340 * 8) + metadata_bits(32))
+        self.assertGreaterEqual(1 - stats['stored_bits'] / stats['dense_bits'], .3)
+
+    def test_old_format_is_rejected_and_pair_menu_is_budget_feasible(self):
+        with self.assertRaisesRegex(ValueError, 'accounting'):
+            apply(torch.randn(1, 1, 8, 128), layer_idx=0, target='v', saving=.1,
+                  group_size=2, accounting='obsolete_format')
+        self.assertEqual(study.residual_choices(.3, (0,4,8,16,32), 2), [0,32])
+        # Norms and metadata mean 16 residual coordinates no longer fit 40%.
+        self.assertEqual(study.residual_choices(.4, (0,4,8,16,32), 2), [0,8])
+        self.assertEqual(study.residual_choices(.3, (0,4,8,16,32), 4), [0,4,8,16,32])
+
+    def test_final_results_use_repository_ledger(self):
+        with patch.object(study.subprocess, 'run') as run:
+            study.execute(Path('/tmp/tasks_run.json'), Path('/tmp/group-output'))
+        command = run.call_args.args[0]
+        self.assertEqual(command[command.index('--results-root') + 1], str(study.ROOT))
 
     def test_invalid_budget_and_zero_groups(self):
         x = torch.zeros(1, 1, 8, 128)
