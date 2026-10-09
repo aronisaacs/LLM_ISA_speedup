@@ -125,7 +125,7 @@ def evaluate_chunks(model, prompts, kv, chunk_ids, *, scoring_prefix=None, progr
                 scores.append({"chunk": chunk_id, "nll": nll, "tokens": count})
                 if progress_path is not None:
                     partial = sum(r['nll'] * r['tokens'] for r in scores) / sum(r['tokens'] for r in scores)
-                    storage = prefill_storage_summary(prefill_storage) if prefill_storage else None
+                    storage = prefill_storage_summary(prefill_storage) if prefill_storage else metrics.storage_summary()
                     write_json(progress_path, {'status': 'preliminary', 'completed_chunks': len(scores),
                                               'total_chunks': len(prompts), 'token_perplexity': math.exp(partial),
                                               'chunk_scores': scores, 'prefill_storage': storage,
@@ -137,9 +137,12 @@ def evaluate_chunks(model, prompts, kv, chunk_ids, *, scoring_prefix=None, progr
         uninstall()
     tokens = sum(r["tokens"] for r in scores)
     nll = sum(r["nll"] * r["tokens"] for r in scores) / tokens
+    storage = metrics.storage_summary()
     result = {"results": {"wikitext_chunks": {"token_perplexity,none": math.exp(nll),
                                             "mean_nll,none": nll}},
             "chunk_scores": scores, "gate_stats": metrics.pop_stats()}
+    if storage is not None:
+        result['storage'] = storage
     if scoring_prefix is not None:
         result['storage'] = prefill_storage_summary(prefill_storage)
         result['scoring'] = {'prefix_tokens': scoring_prefix, 'definition': 'continuation token NLL only; prefix logits excluded'}
@@ -217,7 +220,8 @@ def main():
             if expected and (expected["layers"] != config.num_hidden_layers or expected["head_dim"] != actual_dim):
                 raise ValueError("planned layer count/head dimension do not match the loaded model")
             prompts, chosen = wikitext_chunks(lm.tokenizer, sampling["pool_chunks"],
-                                               sampling["seq_len"], sampling["seed"])
+                                               sampling["seq_len"], sampling["seed"],
+                                               **({'split': sampling['split']} if 'split' in sampling else {}))
             prompts, chosen = partition(prompts, chosen, sampling)
         prefix = None
         if configuration.get("reuse_path"):
@@ -231,6 +235,8 @@ def main():
             for key in ("pool_chunks", "offset", "seed", "seq_len"):
                 if prefix_sampling[key] != sampling[key]:
                     raise ValueError("extension sampling does not match prefix")
+            if prefix_sampling.get('split', 'test') != sampling.get('split', 'test'):
+                raise ValueError('extension dataset split differs from prefix')
             if prefix["simulation"]["kv"] != configuration["kv"]:
                 raise ValueError("extension KV configuration does not match prefix")
             count = len(prefix["chunk_scores"])
