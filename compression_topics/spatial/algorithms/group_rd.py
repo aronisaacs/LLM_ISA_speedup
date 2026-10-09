@@ -58,12 +58,18 @@ price (or at ``lam``); tokens of an unfinished unit stay dense until it
 completes. Since a unit's mode depends only on that unit, prefill plus decode
 makes the same choices as compressing the whole sequence at that price.
 ``decode=False`` keeps generated tokens dense.
+``importance='prefill_attention'`` weights format error by attention received
+within the currently available prefill. The cache supplies post-RoPE queries;
+keys and values share the same token importance, normalized over heads/tokens.
+This policy requires ``decode=False``. Score continuation tokens after that
+prefill, not its earlier positions (which supplied the importance queries).
 Pairs-only or quads-only with one residual size match the
 ``group_calibrated`` format bit for bit. Batch size one.
 """
 from __future__ import annotations
 
 import functools
+import hashlib
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -455,15 +461,27 @@ def _check(target, residuals, modes, mask, distortion, query_weights, saving, la
 
 def apply(tensor, *, layer_idx, target, saving=None, lam=None, residuals=RESIDUALS,
           modes='both', menu=DEFAULT_MENU, granularity=BLOCK, mask='bitmap', distortion='cosine',
-          query_weights=None, select_by='deviation', decode=True, seq_start=0, rope_tables=None,
+          query_weights=None, query_weights_sha256=None, select_by='deviation', decode=True, seq_start=0, rope_tables=None,
           accounting=ACCOUNTING,
+          importance='none', token_weights=None,
           **unused):
     residuals = tuple(residuals)
     _check(target, residuals, modes, mask, distortion, query_weights, saving, lam,
            granularity, accounting, select_by)
     names = mode_names(residuals, modes, menu)
+    if importance not in ('none', 'prefill_attention'):
+        raise ValueError('importance must be none or prefill_attention')
+    if importance == 'prefill_attention' and decode:
+        raise ValueError('prefill_attention requires decode=False; generated tokens stay dense')
     if seq_start != 0 or saving == 0 or lam == 0:
         return tensor
+    if importance == 'prefill_attention':
+        if token_weights is None or token_weights.shape != tensor.shape[:-1]:
+            raise ValueError('prefill_attention needs weights for every current token/head')
+        if not torch.isfinite(token_weights).all() or (token_weights < 0).any():
+            raise ValueError('token importance must be finite and nonnegative')
+    elif token_weights is not None:
+        raise ValueError('token_weights requires prefill_attention')
     rope_tables = _check_tensor(tensor, target, rope_tables, residuals)
     full = tensor.shape[-2] // granularity * granularity
     PRICES.pop((target, layer_idx), None)
@@ -471,8 +489,8 @@ def apply(tensor, *, layer_idx, target, saving=None, lam=None, residuals=RESIDUA
         return tensor
     body = tensor[..., :full, :]
     table = build_menu(body, rope_tables=rope_tables, residuals=residuals, modes=modes, menu=menu,
-                       mask=mask, distortion=distortion, weights=_weights(query_weights, layer_idx),
-                       select_by=select_by)
+                       mask=mask, distortion=distortion, weights=_weights(query_weights, layer_idx, query_weights_sha256),
+                       select_by=select_by, token_weights=None if token_weights is None else token_weights[..., :full])
     overhead = metadata_bits(units(table, granularity), mode_bits(len(names)))
     dense_bits = tensor.numel() * 16
     tail_bits = (tensor.shape[-2] - full) * tensor.shape[1] * tensor.shape[-1] * 16
@@ -523,8 +541,22 @@ def after_append(tensor, *, target, layer_idx, start, end, rope_tables=None, sav
             overhead=overhead, lam=lam, residuals=residuals, mask=mask, granularity=granularity)
 
 
-def _weights(query_weights, layer_idx):
-    return None if query_weights is None else _load_weights(str(query_weights))[layer_idx]
+@functools.lru_cache(maxsize=16)
+def _verified_weights(path, digest):
+    file = Path(path)
+    file = file if file.is_absolute() else ROOT / file
+    if hashlib.sha256(file.read_bytes()).hexdigest() != digest:
+        raise ValueError('query weight file changed; recalibration requires a new output directory')
+    return torch.load(file, map_location='cpu', weights_only=True)['weights'].float()
+
+
+def _weights(query_weights, layer_idx, digest=None):
+    if query_weights is None:
+        if digest is not None:
+            raise ValueError('weight checksum requires query_weights')
+        return None
+    weights = _load_weights(str(query_weights)) if digest is None else _verified_weights(str(query_weights), digest)
+    return weights[layer_idx]
 
 
 def _check_tensor(tensor, target, rope_tables, residuals):

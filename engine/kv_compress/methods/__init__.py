@@ -22,7 +22,7 @@ def validate_options(name, options):
     parameters = inspect.signature(OPTION_SIGNATURES.get(name, get_method(name))).parameters
     allowed = {key for key, value in parameters.items()
                if value.kind not in (value.VAR_KEYWORD, value.VAR_POSITIONAL)}
-    allowed -= {"tensor", "layer_idx", "target", "seq_start", "rope_tables"}
+    allowed -= {"tensor", "layer_idx", "target", "seq_start", "rope_tables", "token_weights"}
     unknown = set(options) - allowed
     if unknown:
         raise ValueError(f"{name} contains unknown options: {sorted(unknown)}")

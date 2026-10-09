@@ -177,28 +177,9 @@ def capture(manifest, device=None):
 
 
 def attention_received(query, keys, block=256):
-    """Mean causal attention each key receives per query that can see it, summed over its query heads.
-
-    ``query`` [1, Hq, T, D] and ``keys`` [1, Hkv, T, D], both with RoPE applied. Returns
-    [3, Hkv, T]: from all queries, from even query positions only, from odd ones only.
-    """
-    heads, length, dim = query.shape[1:]
-    kv_heads = keys.shape[1]
-    expanded = keys[0].repeat_interleave(heads // kv_heads, dim=0)  # [Hq, T, D]
-    total = torch.zeros(2, heads, length, device=query.device)  # even, odd query positions
-    columns = torch.arange(length, device=query.device)
-    for start in range(0, length, block):
-        rows = torch.arange(start, min(start + block, length), device=query.device)
-        scores = query[0, :, rows] @ expanded.transpose(-1, -2) / dim ** .5  # [Hq, b, T]
-        probs = scores.masked_fill(columns > rows[:, None], float("-inf")).softmax(-1)
-        for parity in (0, 1):
-            total[parity] += probs[:, rows % 2 == parity].sum(1)
-    later = (length - columns).float()  # queries at or after each key
-    odd = (length - columns) // 2 + ((length - columns) % 2) * (columns % 2)  # odd positions >= key
-    counts = torch.stack((later - odd, odd.float())).clamp_min(1)
-    split = (total / counts[:, None]).reshape(2, kv_heads, heads // kv_heads, length).sum(2)
-    whole = (total.sum(0) / later).reshape(kv_heads, heads // kv_heads, length).sum(1)
-    return torch.cat((whole[None], split))
+    """The same attention-importance definition used by live compression."""
+    from engine.kv_compress.importance import attention_received as received
+    return received(query, keys, block)
 
 
 def load_rope(path):

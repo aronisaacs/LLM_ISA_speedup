@@ -59,6 +59,8 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
     from lm_eval.utils import simple_parse_args_string
 
     tasks = normalize_tasks(merge(base, configuration, "tasks", None))
+    if any(step.kwargs.get('importance') == 'prefill_attention' for step in kv_spec.pipeline) and 'wikitext' in tasks:
+        raise ValueError('prefill importance requires the continuation-only chunk runner, not full WikiText perplexity')
     env = normalize_env(merge(base, configuration, "env", None))
     batch_size = normalize_batch_size(merge(base, configuration, "batch_size", None))
     max_batch_size = merge(base, configuration, "max_batch_size", None)

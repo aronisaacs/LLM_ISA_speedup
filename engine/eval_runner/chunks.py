@@ -12,6 +12,7 @@ import json
 import math
 import random
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -61,27 +62,88 @@ def identity(configuration, sampling, base):
     return result
 
 
-def evaluate_chunks(model, prompts, kv, chunk_ids):
+def prefill_storage_summary(snapshots):
+    targets = {}
+    for target in ('k', 'v'):
+        dense = sum(r[target]['dense_bits'] for r in snapshots)
+        stored = sum(r[target]['stored_bits'] for r in snapshots)
+        targets[target] = {'dense_bits': dense, 'stored_bits': stored,
+                           'compression': 1 - stored / dense if dense else 0.}
+    dense = sum(r['dense_bits'] for r in targets.values())
+    stored = sum(r['stored_bits'] for r in targets.values())
+    targets['kv'] = {'dense_bits': dense, 'stored_bits': stored, 'compression': 1 - stored / dense if dense else 0.}
+    return {'scope': 'simulated_prefill_cache_storage', 'targets': targets}
+
+
+def evaluate_chunks(model, prompts, kv, chunk_ids, *, scoring_prefix=None, progress_path=None):
     if len(prompts) != len(chunk_ids) or not prompts:
         raise ValueError("nonempty prompts and matching chunk IDs required")
+    if scoring_prefix is None and any(step.get('importance') == 'prefill_attention' for step in kv.get('pipeline', [])):
+        raise ValueError('prefill importance requires continuation-only scoring, not full-sequence perplexity')
     metrics.reset_stats()
     uninstall = install(SimpleNamespace(model=model), parse_kv_spec(kv))
     scores = []
+    prefill_storage = []
+    started = time.monotonic()
     try:
         with torch.inference_mode():
             for chunk_id, ids in zip(chunk_ids, prompts):
                 batch = ids.unsqueeze(0).to(model.device)
-                output = model(input_ids=batch, attention_mask=torch.ones_like(batch),
-                               labels=batch, use_cache=True)
-                scores.append({"chunk": chunk_id, "nll": float(output.loss), "tokens": len(ids) - 1})
+                if scoring_prefix is None:
+                    output = model(input_ids=batch, attention_mask=torch.ones_like(batch),
+                                   labels=batch, use_cache=True)
+                    nll, count = float(output.loss), len(ids) - 1
+                else:
+                    if not 1 <= scoring_prefix < len(ids):
+                        raise ValueError('scoring_prefix must leave a nonempty continuation')
+                    prefix, suffix = batch[:, :scoring_prefix], batch[:, scoring_prefix:]
+                    before = metrics.storage_summary()
+                    output = model(input_ids=prefix, attention_mask=torch.ones_like(prefix), use_cache=True)
+                    # Snapshot prefill accounting before dense continuation is appended.
+                    after = metrics.storage_summary()
+                    if after is None:
+                        if kv.get('pipeline'):
+                            raise ValueError('missing prefill byte accounting')
+                        config = getattr(model.config, 'text_config', model.config)
+                        dim = getattr(config, 'head_dim', None) or config.hidden_size // config.num_attention_heads
+                        bits = prefix.numel() * config.num_hidden_layers * config.num_key_value_heads * dim * 16
+                        prefill_storage.append({target: {'dense_bits': bits, 'stored_bits': bits}
+                                                for target in ('k', 'v')})
+                    else:
+                        prefill_storage.append({target: {
+                            field: after['targets'][target][field] -
+                            (before['targets'][target][field] if before else 0)
+                            for field in ('dense_bits', 'stored_bits')}
+                            for target in ('k', 'v')})
+                    continuation = model(input_ids=suffix, past_key_values=output.past_key_values,
+                                         attention_mask=torch.ones_like(batch), use_cache=True)
+                    logits = torch.cat((output.logits[:, -1:], continuation.logits[:, :-1]), dim=1)
+                    count = suffix.numel()
+                    nll = float(torch.nn.functional.cross_entropy(logits.float().reshape(-1, logits.shape[-1]),
+                                                                   suffix.reshape(-1)))
+                    del continuation, logits
+                scores.append({"chunk": chunk_id, "nll": nll, "tokens": count})
+                if progress_path is not None:
+                    partial = sum(r['nll'] * r['tokens'] for r in scores) / sum(r['tokens'] for r in scores)
+                    storage = prefill_storage_summary(prefill_storage) if prefill_storage else None
+                    write_json(progress_path, {'status': 'preliminary', 'completed_chunks': len(scores),
+                                              'total_chunks': len(prompts), 'token_perplexity': math.exp(partial),
+                                              'chunk_scores': scores, 'prefill_storage': storage,
+                                              'elapsed_seconds': time.monotonic() - started})
+                    print(f'[preliminary] {Path(progress_path).stem}: {len(scores)}/{len(prompts)} chunks; '
+                          f'token PPL {math.exp(partial):.5f}', flush=True)
                 del output
     finally:
         uninstall()
     tokens = sum(r["tokens"] for r in scores)
     nll = sum(r["nll"] * r["tokens"] for r in scores) / tokens
-    return {"results": {"wikitext_chunks": {"token_perplexity,none": math.exp(nll),
+    result = {"results": {"wikitext_chunks": {"token_perplexity,none": math.exp(nll),
                                             "mean_nll,none": nll}},
             "chunk_scores": scores, "gate_stats": metrics.pop_stats()}
+    if scoring_prefix is not None:
+        result['storage'] = prefill_storage_summary(prefill_storage)
+        result['scoring'] = {'prefix_tokens': scoring_prefix, 'definition': 'continuation token NLL only; prefix logits excluded'}
+    return result
 
 
 def combine(prefix, additional):
@@ -159,6 +221,8 @@ def main():
             prompts, chosen = partition(prompts, chosen, sampling)
         prefix = None
         if configuration.get("reuse_path"):
+            if sampling.get('scoring_prefix') is not None:
+                raise ValueError('continuation runs resume finished configurations; chunk-prefix extension is unsupported')
             prefix = json.loads(Path(configuration["reuse_path"]).read_text())
             prefix_sampling = prefix["simulation"]["sampling"]
             expected_prefix = identity(configuration, prefix_sampling, run)
@@ -172,10 +236,14 @@ def main():
             count = len(prefix["chunk_scores"])
             if [r["chunk"] for r in prefix["chunk_scores"]] != chosen[:count] or count >= len(chosen):
                 raise ValueError("extension does not contain the expected chunk prefix")
-            additional = evaluate_chunks(model, prompts[count:], configuration["kv"], chosen[count:])
+            additional = evaluate_chunks(model, prompts[count:], configuration["kv"], chosen[count:],
+                                         scoring_prefix=sampling.get('scoring_prefix'))
             result = combine(prefix, additional)
         else:
-            result = evaluate_chunks(model, prompts, configuration["kv"], chosen)
+            result = evaluate_chunks(model, prompts, configuration["kv"], chosen,
+                                     scoring_prefix=sampling.get('scoring_prefix'),
+                                     progress_path=Path(configuration['output_path']).with_suffix('.partial.json')
+                                     if run.get('preliminary_results') else None)
         result["simulation"] = identity(configuration, sampling, run)
         path = Path(configuration["output_path"])
         write_json(path, result)
