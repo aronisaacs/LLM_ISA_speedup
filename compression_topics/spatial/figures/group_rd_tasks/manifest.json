@@ -1,0 +1,843 @@
+{
+  "menu_name": "flag_d",
+  "menu": [
+    "D",
+    "P32/d",
+    "P32+32",
+    "P16/0",
+    "Q32",
+    "Q16",
+    "Q8",
+    "Q0"
+  ],
+  "granularity": 4,
+  "budgets": [
+    0.3,
+    0.4,
+    0.5
+  ],
+  "arms": [
+    "plain",
+    "attention"
+  ],
+  "tasks": [
+    "ceval",
+    "wikitext"
+  ],
+  "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+  "rows": [
+    {
+      "tag": "plain_b30_ceval",
+      "arm": "plain",
+      "budget": 0.3,
+      "task": "ceval"
+    },
+    {
+      "tag": "plain_b30_wikitext",
+      "arm": "plain",
+      "budget": 0.3,
+      "task": "wikitext"
+    },
+    {
+      "tag": "plain_b40_ceval",
+      "arm": "plain",
+      "budget": 0.4,
+      "task": "ceval"
+    },
+    {
+      "tag": "plain_b40_wikitext",
+      "arm": "plain",
+      "budget": 0.4,
+      "task": "wikitext"
+    },
+    {
+      "tag": "plain_b50_ceval",
+      "arm": "plain",
+      "budget": 0.5,
+      "task": "ceval"
+    },
+    {
+      "tag": "plain_b50_wikitext",
+      "arm": "plain",
+      "budget": 0.5,
+      "task": "wikitext"
+    },
+    {
+      "tag": "attention_b30_ceval",
+      "arm": "attention",
+      "budget": 0.3,
+      "task": "ceval"
+    },
+    {
+      "tag": "attention_b30_wikitext",
+      "arm": "attention",
+      "budget": 0.3,
+      "task": "wikitext"
+    },
+    {
+      "tag": "attention_b40_ceval",
+      "arm": "attention",
+      "budget": 0.4,
+      "task": "ceval"
+    },
+    {
+      "tag": "attention_b40_wikitext",
+      "arm": "attention",
+      "budget": 0.4,
+      "task": "wikitext"
+    },
+    {
+      "tag": "attention_b50_ceval",
+      "arm": "attention",
+      "budget": 0.5,
+      "task": "ceval"
+    },
+    {
+      "tag": "attention_b50_wikitext",
+      "arm": "attention",
+      "budget": 0.5,
+      "task": "wikitext"
+    }
+  ],
+  "run": {
+    "model": "hf",
+    "model_args": "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16",
+    "batch_size": 1,
+    "configurations": [
+      {
+        "name": "dense_ceval",
+        "kv": {
+          "pipeline": []
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/dense_ceval.json",
+        "metadata": {},
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "apply_chat_template": true
+      },
+      {
+        "name": "dense_wikitext",
+        "kv": {
+          "pipeline": []
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/dense_wikitext.json",
+        "metadata": {},
+        "tasks": [
+          "wikitext"
+        ],
+        "num_fewshot": 0,
+        "apply_chat_template": false
+      },
+      {
+        "name": "plain_b30_ceval",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.3,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "deviation"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.3,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/plain_b30_ceval.json",
+        "metadata": {
+          "kv_budget": 0.3,
+          "arm": "plain",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "apply_chat_template": true
+      },
+      {
+        "name": "plain_b30_wikitext",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.3,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "deviation"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.3,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/plain_b30_wikitext.json",
+        "metadata": {
+          "kv_budget": 0.3,
+          "arm": "plain",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "wikitext"
+        ],
+        "num_fewshot": 0,
+        "apply_chat_template": false
+      },
+      {
+        "name": "plain_b40_ceval",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.4,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "deviation"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.4,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/plain_b40_ceval.json",
+        "metadata": {
+          "kv_budget": 0.4,
+          "arm": "plain",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "apply_chat_template": true
+      },
+      {
+        "name": "plain_b40_wikitext",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.4,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "deviation"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.4,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/plain_b40_wikitext.json",
+        "metadata": {
+          "kv_budget": 0.4,
+          "arm": "plain",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "wikitext"
+        ],
+        "num_fewshot": 0,
+        "apply_chat_template": false
+      },
+      {
+        "name": "plain_b50_ceval",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.5,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "deviation"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.5,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/plain_b50_ceval.json",
+        "metadata": {
+          "kv_budget": 0.5,
+          "arm": "plain",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "apply_chat_template": true
+      },
+      {
+        "name": "plain_b50_wikitext",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.5,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "deviation"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.5,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/plain_b50_wikitext.json",
+        "metadata": {
+          "kv_budget": 0.5,
+          "arm": "plain",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "wikitext"
+        ],
+        "num_fewshot": 0,
+        "apply_chat_template": false
+      },
+      {
+        "name": "attention_b30_ceval",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.3,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "query"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.3,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/attention_b30_ceval.json",
+        "metadata": {
+          "kv_budget": 0.3,
+          "arm": "attention",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "apply_chat_template": true
+      },
+      {
+        "name": "attention_b30_wikitext",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.3,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "query"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.3,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/attention_b30_wikitext.json",
+        "metadata": {
+          "kv_budget": 0.3,
+          "arm": "attention",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "wikitext"
+        ],
+        "num_fewshot": 0,
+        "apply_chat_template": false
+      },
+      {
+        "name": "attention_b40_ceval",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.4,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "query"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.4,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/attention_b40_ceval.json",
+        "metadata": {
+          "kv_budget": 0.4,
+          "arm": "attention",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "apply_chat_template": true
+      },
+      {
+        "name": "attention_b40_wikitext",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.4,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "query"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.4,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/attention_b40_wikitext.json",
+        "metadata": {
+          "kv_budget": 0.4,
+          "arm": "attention",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "wikitext"
+        ],
+        "num_fewshot": 0,
+        "apply_chat_template": false
+      },
+      {
+        "name": "attention_b50_ceval",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.5,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "query"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.5,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/attention_b50_ceval.json",
+        "metadata": {
+          "kv_budget": 0.5,
+          "arm": "attention",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "apply_chat_template": true
+      },
+      {
+        "name": "attention_b50_wikitext",
+        "kv": {
+          "pipeline": [
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.5,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": "all",
+              "v_layers": [],
+              "distortion": "query",
+              "query_weights": "compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+              "select_by": "query"
+            },
+            {
+              "method": "group_rd",
+              "accounting": "fp16_rd_block_modes_norms_header_v1",
+              "saving": 0.5,
+              "menu": [
+                "D",
+                "P32/d",
+                "P32+32",
+                "P16/0",
+                "Q32",
+                "Q16",
+                "Q8",
+                "Q0"
+              ],
+              "granularity": 4,
+              "k_layers": [],
+              "v_layers": "all",
+              "distortion": "squared"
+            }
+          ]
+        },
+        "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_tasks/tasks/attention_b50_wikitext.json",
+        "metadata": {
+          "kv_budget": 0.5,
+          "arm": "attention",
+          "menu": "flag_d",
+          "granularity": 4
+        },
+        "tasks": [
+          "wikitext"
+        ],
+        "num_fewshot": 0,
+        "apply_chat_template": false
+      }
+    ]
+  }
+}
