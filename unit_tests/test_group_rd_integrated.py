@@ -97,6 +97,7 @@ class LiveIntegrationTests(unittest.TestCase):
 
     def test_plan_uses_complete_policy_and_hash_guard(self):
         manifest = study.plan(Path(self.temp.name), layers=2, budgets=(.25, .4), weights_path=self.weights)
+        self.assertEqual(manifest['global_budgets'], [.1, .2, .3, .4, .5])
         self.assertEqual(len(manifest['candidates']), 8)
         for candidate in manifest['candidates']:
             step = candidate['kv']['pipeline'][0]
@@ -152,7 +153,7 @@ class LiveIntegrationTests(unittest.TestCase):
         from unittest.mock import patch
         import json
         out = Path(self.temp.name)
-        manifest = study.plan(out, layers=2, budgets=(.25, .4), screen_chunks=2,
+        manifest = study.plan(out, layers=2, budgets=(.25, .4), global_budgets=(.4,), screen_chunks=2,
                               refine_chunks=2, validation_chunks=2, weights_path=self.weights)
         manifest.update(seq_len=32, scoring_prefix=24)
 
@@ -180,6 +181,21 @@ class LiveIntegrationTests(unittest.TestCase):
         self.assertEqual(report['status'], 'complete')
         self.assertGreaterEqual(report['rows'][0]['measured_prefill_kv_saving'], .399)
         self.assertTrue(json.loads((out / 'validation_gate.json').read_text())['rows'][0]['passed'])
+
+    def test_high_saving_quality_warning_does_not_cancel_requested_sweep(self):
+        from unittest.mock import patch
+        import json
+        out = Path(self.temp.name)
+        manifest = study.plan(out, layers=2, weights_path=self.weights)
+        write_json(out / 'pilot_gate.json', {'passed': True})
+        write_json(out / 'selections.json', [{'tag': 'integrated_b50', 'budget': .5, 'kv': {'pipeline': []}}])
+        report = {'dense_continuation_token_ppl': 10., 'rows': [
+            {'budget': .5, 'continuation_token_ppl': 20., 'measured_prefill_kv_saving': .5}]}
+        with patch.object(study, 'execute_chunks'), patch.object(study, 'summarize', return_value=report):
+            study.run_stage(manifest, 'validate')
+        gate = json.loads((out / 'validation_gate.json').read_text())['rows'][0]
+        self.assertTrue(gate['quality_warning'])
+        self.assertTrue(gate['passed'])
 
 
 if __name__ == '__main__':

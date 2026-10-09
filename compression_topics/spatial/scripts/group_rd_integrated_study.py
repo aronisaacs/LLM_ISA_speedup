@@ -32,6 +32,7 @@ from engine.layer_select.greedy.calibrated import allocate
 OUT = ROOT / 'compression_topics/spatial/figures/group_rd_integrated'
 WEIGHTS = ROOT / 'compression_topics/spatial/figures/group_rd_offline/query_weights.pt'
 STAGES = ('pilot', 'screen', 'refine', 'allocate', 'validate', 'tasks', 'summary')
+GLOBAL_BUDGETS = (.1, .2, .3, .4, .5)
 
 
 def policy(layer, target, saving, weights_path, weights_sha256):
@@ -48,7 +49,7 @@ def policy(layer, target, saving, weights_path, weights_sha256):
     return step
 
 
-def plan(out, *, layers=32, budgets=(.1, .25, .4, .55, .7), global_budgets=(.4,),
+def plan(out, *, layers=32, budgets=(.1, .25, .4, .55, .7), global_budgets=GLOBAL_BUDGETS,
          screen_chunks=4, refine_chunks=12, validation_chunks=16, seed=17,
          model_args=LLAMA31_8B, weights_path=WEIGHTS):
     digest = hashlib.sha256(weights_path.read_bytes()).hexdigest()
@@ -263,18 +264,22 @@ def run_stage(manifest, stage, pilot_max_delta_nll=.25):
             delta = math.log(row['continuation_token_ppl'] / report['dense_continuation_token_ppl'])
             gates.append({'budget': row['budget'], 'delta_nll': delta,
                           'saving': row['measured_prefill_kv_saving'],
-                          'passed': delta <= pilot_max_delta_nll and
-                          row['measured_prefill_kv_saving'] >= row['budget'] - .001})
+                          'quality_warning': delta > pilot_max_delta_nll,
+                          'passed': row['measured_prefill_kv_saving'] >= row['budget'] - .001})
         write_json(out / 'validation_gate.json', {'max_delta_nll': pilot_max_delta_nll, 'rows': gates})
+        for row in gates:
+            if row['quality_warning']:
+                print(f"Quality warning at {row['budget']:.0%}: delta NLL {row['delta_nll']:.4f}; "
+                      'continuing the requested full compression sweep.', flush=True)
         if not all(row['passed'] for row in gates):
-            raise RuntimeError('combined-model validation gate failed; stopped before full C-Eval')
+            raise RuntimeError('combined-model byte accounting gate failed; stopped before full C-Eval')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, default=OUT)
     parser.add_argument('--local-budgets', type=float, nargs='+', default=[.1, .25, .4, .55, .7])
-    parser.add_argument('--global-budgets', type=float, nargs='+', default=[.4])
+    parser.add_argument('--global-budgets', type=float, nargs='+', default=list(GLOBAL_BUDGETS))
     parser.add_argument('--screen-chunks', type=int, default=4)
     parser.add_argument('--refine-chunks', type=int, default=12)
     parser.add_argument('--validation-chunks', type=int, default=16)
