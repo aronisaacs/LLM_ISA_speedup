@@ -117,6 +117,20 @@ class SelectionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'maximum'):
             group_rd.apply(x, layer_idx=0, target='k', saving=.9, rope_tables=ROPE)
 
+    def test_batched_price_search_matches_bisection(self):
+        for seed in range(3):
+            x = correlated_keys(length=512, seed=20 + seed)
+            for menu in (list(group_rd.DEFAULT_MENU), ['D', 'P32/d', 'P32+32', 'P16/0', 'Q32', 'Q16', 'Q8', 'Q0']):
+                table = group_rd.build_menu(x, rope_tables=ROPE, menu=menu)
+                for granularity in (4, 16, 64):
+                    for saving in (.1, .35, .5, .7):
+                        target = x.numel() * 16 * (1 - saving)
+                        fast = group_rd.solve_lambda(table, target, granularity)
+                        slow = group_rd.solve_lambda_bisection(table, target, granularity)
+                        self.assertTrue(torch.equal(group_rd.select(table, fast, granularity),
+                                                    group_rd.select(table, slow, granularity)))
+                        self.assertLessEqual(group_rd.total_bits(table, fast, granularity), target)
+
     def test_fixed_price_is_causal_per_block(self):
         x = correlated_keys(length=128)
         whole = group_rd.select(group_rd.build_menu(x, rope_tables=ROPE), 1e-4)

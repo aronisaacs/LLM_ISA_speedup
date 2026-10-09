@@ -333,8 +333,57 @@ def total_bits(menu, lam, granularity=BLOCK):
     return float(menu.bits[select(menu, lam, granularity)].sum())
 
 
-def solve_lambda(menu, target, granularity=BLOCK, iterations=60):
-    """Smallest price (within bisection precision) whose block bits are at most ``target``."""
+def solve_lambda(menu, target, granularity=BLOCK, grid=32, chunk=32):
+    """Smallest price whose block bits are at most ``target`` (just above that breakpoint).
+
+    Every unit's choice only changes where two of its modes cost the same, so the answer is one
+    of those breakpoints. All breakpoints are found at once, then a coarse grid and the bracket
+    it leaves are evaluated in a few batched passes, instead of ~60 sequential bisection steps.
+    """
+    per_unit = granularity // BLOCK
+    blocks = menu.distortion.shape[-2]
+    distortion = _units(menu.distortion.double(), per_unit).reshape(-1, menu.distortion.shape[-1])
+    counts = torch.full((math.ceil(blocks / per_unit),), float(per_unit), dtype=torch.float64,
+                        device=distortion.device)
+    counts[-1] = blocks - per_unit * (len(counts) - 1)
+    counts = counts.repeat(distortion.shape[0] // len(counts))
+    bits = menu.bits.double()
+    finite = torch.isfinite(distortion)
+
+    def totals(lams):
+        out = []
+        for start in range(0, len(lams), chunk):
+            lam = lams[start:start + chunk, None, None]
+            cost = torch.where(finite, distortion, float('inf')) + lam * counts[None, :, None] * bits
+            out.append((counts * bits[cost.argmin(-1)]).sum(-1))
+        return torch.cat(out)
+
+    if float(totals(torch.zeros(1, dtype=torch.float64, device=bits.device))[0]) <= target:
+        return 0.
+    if total_bits(menu, None, granularity) > target:
+        raise ValueError("saving exceeds the metadata-inclusive representation maximum")
+    # Breakpoints: where mode j (fewer bits) starts to beat mode i in some unit.
+    gap = bits[:, None] - bits[None, :]  # [i, j] > 0 when j is cheaper
+    rise = distortion[:, None, :] - distortion[:, :, None]  # [u, i, j] = D_j - D_i
+    with torch.no_grad():
+        points = rise / (counts[:, None, None] * gap)
+    valid = (gap > 0) & finite[:, :, None] & finite[:, None, :] & (points > 0) & torch.isfinite(points)
+    candidates = torch.unique(points[valid])  # sorted
+    if candidates.numel() == 0:
+        return 0.
+    above = candidates * (1 + 1e-9)  # decisions just past each breakpoint; the last is feasible
+    low, high = 0, len(above) - 1
+    while True:  # narrow to the first feasible breakpoint, ``grid`` prices per batched pass
+        index = torch.linspace(low, high, min(grid, high - low + 1), device=above.device).round().long().unique()
+        feasible = (totals(above[index]) <= target).nonzero()
+        first = int(feasible[0]) if len(feasible) else len(index) - 1
+        if high - low + 1 <= grid:
+            return float(above[index[first]])
+        low, high = (int(index[first - 1]) + 1 if first > 0 else low), int(index[first])
+
+
+def solve_lambda_bisection(menu, target, granularity=BLOCK, iterations=60):
+    """Reference: smallest price (within bisection precision) whose block bits are at most ``target``."""
     if total_bits(menu, 0., granularity) <= target:
         return 0.
     if total_bits(menu, None, granularity) > target:
