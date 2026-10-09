@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "accounting": "presentation_spatial_fp16_bitmap_norms_header_v1",
+  "out": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/presentation_ladder_clean_50",
+  "layers": 32,
+  "head_dim": 128,
+  "model_args": "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16",
+  "local_budgets": [
+    0.1,
+    0.25,
+    0.4,
+    0.49,
+    0.6,
+    0.7
+  ],
+  "global_budgets": [
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5
+  ],
+  "residuals": [
+    0,
+    8,
+    16,
+    32
+  ],
+  "screen_chunks": 4,
+  "refine_chunks": 12,
+  "validation_chunks": 16,
+  "seed": 29,
+  "seq_len": 2048,
+  "labels": {
+    "1": "aligned pairs baseline",
+    "2": "pairs + residuals + norm restoration",
+    "3": "query-weighted key residuals",
+    "4": "calibrated fixed pairs/quads"
+  },
+  "norm_representation": "one precomputed 16-bit restoration coefficient per merged token",
+  "protocol": "fresh_train_calibration_validation_holdout_ceval_valid5shot_wikitext_test_v1",
+  "ranking": "worst relative squared reconstruction error",
+  "finalists": 1
+}

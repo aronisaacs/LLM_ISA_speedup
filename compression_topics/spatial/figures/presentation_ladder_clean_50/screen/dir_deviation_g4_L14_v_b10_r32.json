@@ -1,0 +1,105 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 7.433505629374163,
+      "mean_nll,none": 2.0059975683689117
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 910,
+      "nll": 1.8589417934417725,
+      "tokens": 2047
+    },
+    {
+      "chunk": 1110,
+      "nll": 2.374206781387329,
+      "tokens": 2047
+    },
+    {
+      "chunk": 177,
+      "nll": 1.8493112325668335,
+      "tokens": 2047
+    },
+    {
+      "chunk": 859,
+      "nll": 1.941530466079712,
+      "tokens": 2047
+    }
+  ],
+  "gate_stats": {
+    "v_layer_14": {
+      "dense_bits": 134217728,
+      "stored_bits": 120787776,
+      "pairs": 16384,
+      "merged": 3820,
+      "features": 128,
+      "kept": 32,
+      "group_size": 4,
+      "accounting": "presentation_spatial_fp16_bitmap_norms_header_v1",
+      "metadata_bits": 16448,
+      "norm_bits": 244480,
+      "residual_mask_bits": 1955840,
+      "cosine_sum": 3595.437744140625,
+      "cosine_min": 0.9286057353019714,
+      "cutoff_sum": 3.721001148223877,
+      "updates": 4,
+      "shortfall_updates": 0
+    }
+  },
+  "storage": {
+    "scope": "simulated_cache_storage",
+    "dense_value_bits": 16,
+    "targets": {
+      "k": {
+        "dense_bits": 4294967296,
+        "stored_bits": 4294967296,
+        "compression": 0.0
+      },
+      "v": {
+        "dense_bits": 4294967296,
+        "stored_bits": 4281537344,
+        "compression": 0.0031269043684005737
+      },
+      "kv": {
+        "dense_bits": 8589934592,
+        "stored_bits": 8576504640,
+        "compression": 0.0015634521842002869
+      }
+    }
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "presentation_spatial",
+          "k_layers": [],
+          "v_layers": [
+            14
+          ],
+          "accounting": "presentation_spatial_fp16_bitmap_norms_header_v1",
+          "saving": 0.1,
+          "group_size": 4,
+          "residual_entries": 32,
+          "directional": true,
+          "select_by": "deviation"
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 20,
+      "offset": 4,
+      "chunks": 4,
+      "seed": 29,
+      "seq_len": 2048
+    }
+  }
+}

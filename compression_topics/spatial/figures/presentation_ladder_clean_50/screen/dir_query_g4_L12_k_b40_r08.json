@@ -1,0 +1,107 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 7.45610932204172,
+      "mean_nll,none": 2.009033739566803
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 910,
+      "nll": 1.864194631576538,
+      "tokens": 2047
+    },
+    {
+      "chunk": 1110,
+      "nll": 2.3758394718170166,
+      "tokens": 2047
+    },
+    {
+      "chunk": 177,
+      "nll": 1.8488421440124512,
+      "tokens": 2047
+    },
+    {
+      "chunk": 859,
+      "nll": 1.947258710861206,
+      "tokens": 2047
+    }
+  ],
+  "gate_stats": {
+    "k_layer_12": {
+      "dense_bits": 134217728,
+      "stored_bits": 80519232,
+      "pairs": 16384,
+      "merged": 10624,
+      "features": 128,
+      "kept": 8,
+      "group_size": 4,
+      "accounting": "presentation_spatial_fp16_bitmap_norms_header_v1",
+      "metadata_bits": 16448,
+      "norm_bits": 679936,
+      "residual_mask_bits": 5439488,
+      "cosine_sum": 10056.35986328125,
+      "cosine_min": 0.9217321276664734,
+      "cutoff_sum": 3.7029117345809937,
+      "updates": 4,
+      "shortfall_updates": 0
+    }
+  },
+  "storage": {
+    "scope": "simulated_cache_storage",
+    "dense_value_bits": 16,
+    "targets": {
+      "k": {
+        "dense_bits": 4294967296,
+        "stored_bits": 4241268800,
+        "compression": 0.012502655386924744
+      },
+      "v": {
+        "dense_bits": 4294967296,
+        "stored_bits": 4294967296,
+        "compression": 0.0
+      },
+      "kv": {
+        "dense_bits": 8589934592,
+        "stored_bits": 8536236096,
+        "compression": 0.006251327693462372
+      }
+    }
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "presentation_spatial",
+          "k_layers": [
+            12
+          ],
+          "v_layers": [],
+          "accounting": "presentation_spatial_fp16_bitmap_norms_header_v1",
+          "saving": 0.4,
+          "group_size": 4,
+          "residual_entries": 8,
+          "directional": true,
+          "select_by": "query",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/presentation_ladder_clean_50/query_weights.pt",
+          "query_weights_sha256": "5e1c4ec81d2495ea7a97f66e4707291c95d27f0891e26600dc016768398c8dde"
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 20,
+      "offset": 4,
+      "chunks": 4,
+      "seed": 29,
+      "seq_len": 2048
+    }
+  }
+}
