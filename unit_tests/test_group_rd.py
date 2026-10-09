@@ -212,6 +212,51 @@ class ReconstructionTests(unittest.TestCase):
                                    atol=1e-4, rtol=1e-4)
 
 
+class FlaggedPairTests(unittest.TestCase):
+    def setUp(self):
+        pair_gate.reset_stats()
+
+    def test_flagged_names_bits_and_validation(self):
+        names = group_rd.mode_names(menu=['D', 'P32/d', 'P32/0', 'Q16'])
+        self.assertEqual(names, ['D', 'Q16', 'P32/d', 'P32/0'])
+        bits = group_rd.bit_table(names)
+        full = group_rd.mode_names()
+        ordered = group_rd.bit_table(full)
+        self.assertEqual(bits[2], ordered[full.index('Pd+32')] + 1)  # same size plus the flag bit
+        self.assertEqual(bits[3], ordered[full.index('P32+0')] + 1)
+        for bad in (['D', 'P32/32'], ['D', 'P7/d'], ['P32/d']):
+            with self.assertRaises(ValueError):
+                group_rd.mode_names(menu=bad)
+        with self.assertRaises(ValueError):
+            group_rd.mode_names(modes='quads', menu=['D', 'P32/d'])
+
+    def test_flagged_mode_takes_the_better_orientation_per_block(self):
+        x = correlated_keys(length=256, seed=8)
+        flagged = group_rd.build_menu(x, rope_tables=ROPE, menu=['D', 'P32/d'])
+        ordered = group_rd.build_menu(x, rope_tables=ROPE, menu=['D', 'P32+d', 'Pd+32'])
+        a, b = ordered.distortion[..., ordered.names.index('P32+d')], ordered.distortion[..., ordered.names.index('Pd+32')]
+        torch.testing.assert_close(flagged.distortion[..., 1], torch.minimum(a, b))
+        swap = flagged.swap[..., 1]
+        self.assertTrue(swap.any() and (~swap).any())  # both orientations occur
+
+    def test_one_page_format_merges_different_pairs_in_different_blocks(self):
+        x = correlated_keys(length=128, seed=9)
+        # Make the second pair of even blocks and the first pair of odd blocks near-identical.
+        blocks = x.reshape(1, 2, 32, 4, 128)
+        blocks[:, :, 0::2, 3] = blocks[:, :, 0::2, 2] * 1.01
+        blocks[:, :, 1::2, 1] = blocks[:, :, 1::2, 0] * 1.01
+        x = blocks.reshape(1, 2, 128, 128)
+        out = group_rd.apply(x, layer_idx=0, target='v', lam=1e9, menu=['D', 'P0/d'], granularity=64)
+        stats = pair_gate.pop_stats()['v_layer_0']
+        changed = (out != x).any(-1).reshape(1, 2, 32, 4)
+        self.assertTrue(torch.equal(changed[:, :, 0::2, :2], torch.zeros_like(changed[:, :, 0::2, :2])))
+        self.assertTrue(changed[:, :, 0::2, 2:].all())
+        self.assertTrue(torch.equal(changed[:, :, 1::2, 2:], torch.zeros_like(changed[:, :, 1::2, 2:])))
+        self.assertTrue(changed[:, :, 1::2, :2].all())
+        pair = vector_group_bits(0, 128, 2, include_norms=True)
+        self.assertEqual(stats['stored_bits'], 64 * (2 * 128 * 16 + pair + 1) + metadata_bits(4, 1))
+
+
 class ValueTests(unittest.TestCase):
     def setUp(self):
         pair_gate.reset_stats()

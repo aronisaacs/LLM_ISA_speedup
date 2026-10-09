@@ -32,6 +32,14 @@ tokens of one head: the summary counts distinct modes per page.
   python compression_topics/spatial/scripts/group_rd_offline.py              # plan only
   python compression_topics/spatial/scripts/group_rd_offline.py --execute --stage capture
   python compression_topics/spatial/scripts/group_rd_offline.py --execute --stage analyze
+  python compression_topics/spatial/scripts/group_rd_offline.py --execute --stage menus
+
+``menus`` is a fast re-check on the captures (vectorized over prices; minutes):
+candidate 8-format menus at one format per 64-token page, keys with
+query-weighted error and values with squared error, against all 41 formats
+chosen per 4 tokens and against the best fixed format per layer. Candidates
+come from ``CANDIDATE_MENUS`` or ``--menus`` (JSON: name -> list of formats).
+Flagged pair formats such as ``P32/d`` let each block pick which pair it merges.
 """
 from __future__ import annotations
 
@@ -60,6 +68,16 @@ GRANULARITIES = (4, 16, 64)
 TARGETS = tuple(round(0.05 * i, 2) for i in range(1, 16))  # 5% .. 75%
 PAGE = 64
 PAGE_SAVINGS = (.3, .5, .7)
+CANDIDATE_MENUS = {
+    "default": list(group_rd.DEFAULT_MENU),
+    "data_top8": ["D", "Q16", "Q32", "Q0", "Q8", "P32+32", "P32+0", "P32+16"],
+    "flag_a": ["D", "P32/d", "P32+32", "P32/0", "Q32", "Q16", "Q8", "Q0"],
+    "flag_b": ["D", "P32/d", "P32+32", "P32/0", "P0+0", "Q32", "Q16", "Q0"],
+    "flag_c": ["D", "P32/d", "P16/d", "P32+32", "Q32", "Q16", "Q8", "Q0"],
+    "flag_d": ["D", "P32/d", "P32+32", "P16/0", "Q32", "Q16", "Q8", "Q0"],
+}
+MENU_SLOTS = (("k", "query"), ("v", "squared"))
+MENU_SAVINGS = (.3, .35, .4, .45, .5, .55, .6, .65, .7)
 LAMBDA_SPAN = (-4, 4, 129)  # decades around the layer's typical price, and points
 
 
@@ -408,6 +426,121 @@ def _fmt(value, points=False):
     return f"{value * 100:+.1f} pts" if points else f"{value:+.1%}"
 
 
+def menu_columns(menu, names):
+    """Columns of ``menu`` as a function of the full ordered table (flagged = better orientation)."""
+    def column(table, name):
+        if "/" not in name:
+            return table[..., names.index(name)]
+        a, b = name[1:].split("/")
+        return torch.minimum(table[..., names.index(f"P{a}+{b}")], table[..., names.index(f"P{b}+{a}")])
+    return lambda table: torch.stack([column(table, name) for name in group_rd.mode_names(menu=menu)], -1)
+
+
+def fast_curve(table, bits, lams, granularity, overhead, batch=16):
+    """Total distortion and bits per price; ``table`` is [chunks, H, blocks, modes] on any device."""
+    per = granularity // group_rd.BLOCK
+    chunks, heads, blocks, modes = table.shape
+    units = table.reshape(chunks, heads, blocks // per, per, modes).sum(-2)
+    finite = torch.isfinite(units)
+    unit_bits = bits.to(table) * per
+    distortion, stored = [], []
+    for start in range(0, len(lams), batch):
+        group = lams[start:start + batch]
+        rows = []
+        for lam in group:
+            rows.append(unit_bits.expand_as(units) + torch.where(finite, 0., float("inf")) if lam is None
+                        else units + lam * unit_bits)
+        cost = torch.stack(rows)
+        choice = cost.argmin(-1)
+        d = units.unsqueeze(0).expand_as(cost).gather(-1, choice.unsqueeze(-1)).squeeze(-1)
+        distortion += d.flatten(1).sum(-1).tolist()
+        stored += (unit_bits[choice].flatten(1).sum(-1) + overhead * chunks).tolist()
+    return distortion, stored
+
+
+def menu_check(manifest, device="cpu", menus=None, savings=MENU_SAVINGS):
+    """Candidate menus at 64-token pages vs 41 formats per block and the best fixed format per layer."""
+    menus = menus or CANDIDATE_MENUS
+    out = Path(manifest["query_weights"]).parent
+    rope = load_rope(manifest["rope"])
+    weights = torch.load(manifest["query_weights"], weights_only=True)["weights"]
+    residuals = tuple(manifest["residuals"])
+    names = group_rd.mode_names(residuals)
+    files = sorted(Path(manifest["keys_dir"]).glob("chunk_*.pt"))
+    if not files:
+        raise SystemExit("no captured keys; run --stage capture first")
+    tables = {slot: {} for slot in MENU_SLOTS}
+    for path in files:
+        captured = torch.load(path, weights_only=True)
+        layers, heads, length, dim = captured["keys"].shape
+        full = length // 64 * 64
+        for target, kind in MENU_SLOTS:
+            source = captured["keys" if target == "k" else "values"]
+            for layer in range(layers):
+                body = source[layer, :, :full].unsqueeze(0).to(device).float()
+                menu = group_rd.build_menu(body, rope_tables=rope if target == "k" else None, residuals=residuals,
+                                           menu=None, distortion=kind, weights=weights[layer] if kind == "query" else None)
+                tables[target, kind].setdefault(layer, []).append(menu.distortion[0].float())
+        print(f"[menus] built {path.name}", flush=True)
+    blocks = full // group_rd.BLOCK
+    dense = len(files) * heads * blocks * group_rd.BLOCK * dim * 16
+    configs = {f"menu:{name}": (menu, 64) for name, menu in menus.items()}
+    configs["full41_g4"] = (names, 4)
+    configs["full41_g64"] = (names, 64)
+    for r in residuals:
+        configs[f"fixed_pairs_r{r}"] = (group_rd.mode_names((r,), "pairs"), 4)
+        configs[f"fixed_quads_r{r}"] = (group_rd.mode_names((r,), "quads"), 4)
+    report = {"savings": list(savings), "menus": menus, "slots": {}}
+    for (target, kind), by_layer in tables.items():
+        label = f"{target}/{kind}"
+        rows = {}
+        for layer, chunk_tables in by_layer.items():
+            table = torch.stack(chunk_tables)  # [chunks, H, blocks, 41]
+            full_bits = group_rd.bit_table(names, residuals, dim)
+            lams = _lambdas([table.cpu()], full_bits, names.index(f"Q{residuals[0]}"))
+            row = {}
+            for config, (menu, granularity) in configs.items():
+                menu_names = group_rd.mode_names(residuals, menu=menu) if config.startswith("menu:") else menu
+                sub = menu_columns(menu_names, names)(table) if config.startswith("menu:") else \
+                    table[..., [names.index(n) for n in menu_names]]
+                bits = group_rd.bit_table(menu_names, residuals, dim)
+                overhead = metadata_bits(heads * blocks * group_rd.BLOCK // granularity, group_rd.mode_bits(len(menu_names)))
+                d, b = fast_curve(sub, bits, lams, granularity, overhead)
+                row[config] = envelope([1 - x / dense for x in b], d, savings)
+            row["best_fixed"] = [min((row[c][i] for c in row if c.startswith("fixed_") and row[c][i] is not None),
+                                     default=None) for i in range(len(savings))]
+            rows[str(layer)] = {c: v for c, v in row.items() if not c.startswith("fixed_")}
+        report["slots"][label] = rows
+        print(f"[menus] evaluated {label}", flush=True)
+    write_json(out / "menus.json", report)
+    text = menu_summary(report)
+    (out / "menus.md").write_text(text)
+    print(text)
+
+
+def menu_summary(report):
+    savings = report["savings"]
+    lines = ["# group_rd menu re-check (one format per 64-token page)", "",
+             "Error reduction at equal stored bits, median over layers (positive = less error).", ""]
+    lines += [f"- `{name}`: {', '.join(menu)}" for name, menu in report["menus"].items()]
+    for label, rows in report["slots"].items():
+        configs = [c for c in next(iter(rows.values())) if c.startswith("menu:")] + ["full41_g64", "full41_g4"]
+        for reference, title in (("best_fixed", "vs the best fixed format per layer"),
+                                 ("full41_g4", "vs all 41 formats chosen per 4 tokens")):
+            shown = [c for c in configs if c != reference]
+            lines += ["", f"## {'keys' if label.startswith('k') else 'values'} ({label.split('/')[1]} error), {title}", "",
+                      "| saving | " + " | ".join(c.replace("menu:", "") for c in shown) + " |",
+                      "|---|" + "---|" * len(shown)]
+            for i, saving in enumerate(savings):
+                cells = []
+                for c in shown:
+                    values = [1 - row[c][i] / row[reference][i] for row in rows.values()
+                              if row[c][i] is not None and row[reference][i]]
+                    cells.append(f"{_median(values):+.1%}" if values else "–")
+                lines.append(f"| {saving:.0%} | " + " | ".join(cells) + " |")
+    return "\n".join(lines) + "\n"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=OUT)
@@ -419,7 +552,8 @@ def main():
     parser.add_argument("--model-args", default=LLAMA31_8B)
     parser.add_argument("--top", type=int, nargs="+", default=[6, 8], help="sizes of data-driven menus, D included")
     parser.add_argument("--menu-saving", type=float, default=.5, help="saving at which mode usage picks those menus")
-    parser.add_argument("--stage", choices=("capture", "analyze", "all"), default="all")
+    parser.add_argument("--stage", choices=("capture", "analyze", "all", "menus"), default="all")
+    parser.add_argument("--menus", type=json.loads, default=None, help="JSON object: menu name -> list of formats")
     parser.add_argument("--device", default=None)
     parser.add_argument("--execute", action="store_true", help="run the stage; otherwise only write the plan")
     args = parser.parse_args()
@@ -439,10 +573,13 @@ def main():
           f"savings {TARGETS[0]:.0%}..{TARGETS[-1]:.0%}.")
     print(f"Keys: {manifest['keys_dir']} (~{manifest['keys_bytes_estimate'] / 1e9:.1f} GB). Output: {out}")
     if not args.execute:
-        print("Plan only. Add --execute (with --stage capture | analyze | all) when ready to run.")
+        print("Plan only. Add --execute (with --stage capture | analyze | all | menus) when ready to run.")
         return
     if args.stage in ("capture", "all"):
         capture(manifest, args.device)
+    if args.stage == "menus":
+        menu_check(manifest, args.device or "cpu", args.menus)
+        return
     if args.stage in ("analyze", "all"):
         analyze(manifest, args.device or "cpu")
 

@@ -12,6 +12,10 @@ mode code takes ceil(log2(modes)) bits. ``DEFAULT_MENU`` has 8 modes, a 3-bit
 code, spread evenly over the savings a mode can reach (bitmap masks):
   D 0%, Pd+32 17%, P32+32 34%, P8+8 43%, P0+0 49%, Q16 55%, Q8 62%, Q0 74%.
 ``modes`` ('pairs', 'quads') restricts the full set before ``menu``.
+A menu may also list ``P<a>/<b>`` (a != b): one format covering ``P<a>+<b>``
+and ``P<b>+<a>``, the same size, plus one flag bit per block saying which pair
+takes which side, so every block can choose its own orientation even when one
+format covers a whole page (e.g. ``P32/d``: either pair merged with 32 entries).
 
 Each decision unit takes the mode with the smallest distortion + lam * bits,
 summed over its blocks. The unit is one block, or ``granularity`` tokens
@@ -88,10 +92,12 @@ def mode_names(residuals=RESIDUALS, modes='both', menu=None):
     if modes in ('both', 'quads'):
         names += [f'Q{r}' for r in residuals]
     if menu is not None:
-        unknown = set(menu) - set(names)
+        flagged = [name for name in menu if '/' in name]
+        valid = {f'P{a}/{b}' for a in labels for b in labels if a != b} if modes in ('both', 'pairs') else set()
+        unknown = (set(menu) - set(names) - valid) | (set(flagged) - valid)
         if unknown or 'D' not in menu or len(set(menu)) != len(menu):
             raise ValueError(f"menu must list distinct modes including 'D'; unknown: {sorted(unknown)}")
-        names = [name for name in names if name in set(menu)]
+        names = [name for name in names if name in set(menu)] + flagged
     return names
 
 
@@ -113,7 +119,7 @@ def _parse(name, residuals):
         return False, 0, 0, 0
     if name[0] == 'Q':
         return True, 0, 0, index[name[1:]]
-    first, second = name[1:].split('+')
+    first, second = name[1:].replace('/', '+').split('+')
     choice = lambda label: 0 if label == 'd' else index[label] + 1
     return False, choice(first), choice(second), 0
 
@@ -124,13 +130,19 @@ def mode_columns(names, residuals=RESIDUALS, device=None):
     return tuple(torch.tensor(column, device=device) for column in zip(*parsed))
 
 
+def mode_flags(names, device=None):
+    """Modes whose blocks carry a one-bit pair-orientation flag."""
+    return torch.tensor(['/' in name for name in names], device=device)
+
+
 def bit_table(names, residuals=RESIDUALS, dim=128, mask='bitmap', device=None):
     """Bits of one block in each mode, before mode codes and the slot header."""
     is_quad, first, second, quad = mode_columns(names, residuals, device)
     pair_bits, quad_bits = option_bits(residuals, dim, mask)
     pair_table = torch.tensor([2 * dim * 16] + pair_bits, dtype=torch.float64, device=device)
     quad_table = torch.tensor(quad_bits, dtype=torch.float64, device=device)
-    return torch.where(is_quad, quad_table[quad], pair_table[first] + pair_table[second])
+    flags = mode_flags(names, device).double()
+    return torch.where(is_quad, quad_table[quad], pair_table[first] + pair_table[second] + flags)
 
 
 @functools.lru_cache(maxsize=4)
@@ -159,6 +171,7 @@ class Menu:
     first: torch.Tensor       # [modes] pair choices
     second: torch.Tensor
     quad: torch.Tensor        # [modes] quad residual index
+    swap: torch.Tensor        # [1, H, blocks, modes] bool: flagged pair modes take the swapped orientation
     pair_recon: list          # per residual: aligned unit directions [1, H, blocks, 2, 2, D]
     quad_recon: list          # per residual: aligned unit directions [1, H, blocks, 4, D]
 
@@ -243,8 +256,19 @@ def build_menu(tensor, *, rope_tables, residuals=RESIDUALS, modes='both', menu=N
     bits = bit_table(names, residuals, dim, mask, device)
     pairs = torch.cat((torch.zeros(1, heads, blocks, 2, 1, device=device), torch.stack(pair_d, -1)), -1).double()
     quads = torch.stack(quad_d, -1).double()
-    table = torch.where(is_quad, quads[..., quad], pairs[..., 0, first] + pairs[..., 1, second])
-    return Menu(names, table, bits, is_quad, first, second, quad, pair_recon, quad_recon)
+    straight = pairs[..., 0, first] + pairs[..., 1, second]
+    swapped = pairs[..., 0, second] + pairs[..., 1, first]
+    swap = mode_flags(names, device) & (swapped < straight)
+    table = torch.where(is_quad, quads[..., quad], torch.where(swap, swapped, straight))
+    return Menu(names, table, bits, is_quad, first, second, quad, swap, pair_recon, quad_recon)
+
+
+def block_modes(menu, choice):
+    """Per block: (is_quad, first pair choice, second pair choice, quad index), flags applied."""
+    first, second = menu.first[choice], menu.second[choice]
+    swap = menu.swap.gather(-1, choice.unsqueeze(-1)).squeeze(-1)
+    return (menu.is_quad[choice], torch.where(swap, second, first), torch.where(swap, first, second),
+            menu.quad[choice])
 
 
 def _units(values, per_unit):
@@ -302,8 +326,7 @@ def reconstruct(tensor, menu, choice, rope_tables):
     blocks = length // BLOCK
     original = tensor.float()
     norms = original.norm(dim=-1, keepdim=True)
-    is_quad, first, second, quad = (menu.is_quad[choice], menu.first[choice],
-                                    menu.second[choice], menu.quad[choice])
+    is_quad, first, second, quad = block_modes(menu, choice)
     pair_choice = torch.stack((first, second), -1).masked_fill(is_quad.unsqueeze(-1), 0)
     chosen = torch.zeros(1, heads, blocks, 2, 2, dim, device=tensor.device)
     for index, direction in enumerate(menu.pair_recon):
@@ -445,13 +468,13 @@ def _record(target, layer_idx, body, restored, menu, choice, *, dense_bits, stor
         return
     dim = body.shape[-1]
     row['features'], row['modes'] = dim, len(menu.names)
-    is_quad = menu.is_quad[choice]
-    pair_choice = torch.stack((menu.first[choice], menu.second[choice]), -1).masked_fill(is_quad.unsqueeze(-1), 0)
+    is_quad, first, second, quad = block_modes(menu, choice)
+    pair_choice = torch.stack((first, second), -1).masked_fill(is_quad.unsqueeze(-1), 0)
     merged = is_quad | (pair_choice > 0).any(-1)
     cosine = torch.nn.functional.cosine_similarity(restored.float(), body.float(), dim=-1)
     block_min = cosine.reshape(merged.shape + (BLOCK,)).amin(-1)
     pair_counts = [int((pair_choice == index + 1).sum()) for index in range(len(residuals))]
-    quad_counts = [int((is_quad & (menu.quad[choice] == index)).sum()) for index in range(len(residuals))]
+    quad_counts = [int((is_quad & (quad == index)).sum()) for index in range(len(residuals))]
     row['metadata_bits'] += overhead
     row['norm_bits'] += 16 * (2 * sum(pair_counts) + BLOCK * sum(quad_counts))
     row['residual_mask_bits'] += sum(p * residual_mask_bits(r, dim, 1, mask) + q * residual_mask_bits(r, dim, BLOCK, mask)
