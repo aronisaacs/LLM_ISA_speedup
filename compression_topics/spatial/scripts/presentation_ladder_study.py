@@ -48,7 +48,7 @@ def sampling(plan, stage):
 
 
 def study_plan(out, *, layers=32, local_budgets=(.1, .25, .4, .49, .6, .7),
-               budgets=(.1, .2, .3, .4), residuals=(0, 8, 16, 32), screen_chunks=4,
+               budgets=(.1, .2, .3, .4, .5), residuals=(0, 8, 16, 32), screen_chunks=4,
                refine_chunks=12, validation_chunks=16, seed=29, model_args=LLAMA31_8B):
     return {'version': 1, 'accounting': kernel.ACCOUNTING, 'out': str(out), 'layers': layers,
             'head_dim': 128, 'model_args': model_args, 'local_budgets': list(local_budgets),
@@ -197,13 +197,28 @@ def winners(calibration, rung, *, by_size=False):
     return list(groups.values())
 
 
+
+def budget_cases(plan):
+    """Report impossible pair targets explicitly; never substitute best effort."""
+    cases = []
+    for rung in range(1, 5):
+        ceiling = kernel.maximum_saving(0, plan['head_dim'], 4 if rung == 4 else 2, rung != 1)
+        for budget in plan['global_budgets']:
+            cases.append({'rung': rung, 'label': LABELS[rung], 'budget': budget,
+                          'status': 'eligible' if budget < ceiling else 'unattainable',
+                          'reason': 'Target exceeds format storage ceiling including metadata.'
+                                    if budget >= ceiling else None})
+    return cases
+
+
 def select_allocations(plan, calibration):
     selections = []
     for rung in range(1, 5):
         selected = winners(calibration, rung)
         conservative = {**calibration, 'selected': [
             {**r, 'measured_calibration_compression': r['compression'], 'compression': r['budget']} for r in selected]}
-        for budget in plan['global_budgets']:
+        for budget in [c['budget'] for c in budget_cases(plan)
+                       if c['rung'] == rung and c['status'] == 'eligible']:
             assignment = allocate(conservative, plan['layers'], ('k', 'v'), budget)
             assignment.update(rung=rung, label=LABELS[rung], tag=f'rung{rung}_b{round(budget*100):02d}')
             selections.append(assignment)
@@ -212,7 +227,8 @@ def select_allocations(plan, calibration):
 
 def summary(plan):
     out = Path(plan['out'])
-    report = {'status': 'preliminary', 'protocol': plan['protocol'], 'labels': plan['labels'], 'rows': []}
+    report = {'status': 'preliminary', 'protocol': plan['protocol'], 'labels': plan['labels'], 'rows': [],
+              'unattainable': [c for c in budget_cases(plan) if c['status'] == 'unattainable']}
     dense_paths = {task: out / 'tasks' / f'dense_{task}.json' for task in ('ceval', 'wikitext')}
     dense = {task: load(path)['results']['ceval-valid' if task == 'ceval' else 'wikitext'][
         'acc,none' if task == 'ceval' else 'word_perplexity,none'] for task, path in dense_paths.items() if path.exists()}
@@ -236,7 +252,7 @@ def summary(plan):
                 if task in dense:
                     row[task + '_delta'] = metric - dense[task]
         report['rows'].append(row)
-    if len(report['rows']) == 4 * len(plan['global_budgets']) and all('ceval' in r and 'wikitext' in r for r in report['rows']):
+    if len(report['rows']) == sum(c['status'] == 'eligible' for c in budget_cases(plan)) and all('ceval' in r and 'wikitext' in r for r in report['rows']):
         report['status'] = 'complete'
     write_json(out / 'summary.json', report)
     if report['status'] == 'complete':
@@ -377,8 +393,10 @@ def main():
     count = len(candidates(plan, 'capture-pending'))
     print(f'Fresh four-rung study: {count} single-slot candidates on {args.screen_chunks} TRAIN chunks; '
           f'one finalist per rung/group-size/slot/budget refined on {args.refine_chunks} disjoint TRAIN chunks.', flush=True)
-    print(f'{args.validation_chunks} VALIDATION chunks; final 34 task configurations (dense + 4 rungs x 4 budgets x 2 tasks).', flush=True)
-    print('All key variants use RoPE. Global saving: 10/20/30/40% of whole KV. Fresh local ledger; no old results.', flush=True)
+    task_count = 2 + 2 * sum(c['status'] == 'eligible' for c in budget_cases(plan))
+    print(f'{args.validation_chunks} VALIDATION chunks; final {task_count} task configurations.', flush=True)
+    print('All key variants use RoPE. Whole-KV saving: 10/20/30/40% for all rungs; 50% for rung 4. '
+          '50% is unattainable for pair-only rungs 1–3. Fresh local ledger; no old results.', flush=True)
     if not args.execute:
         print('Plan only; add --execute on the DGX.', flush=True)
         return

@@ -76,7 +76,7 @@ class StudyTests(unittest.TestCase):
     def test_four_rungs_have_fresh_independent_allocation_and_consistent_rope(self):
         plan = study.study_plan(Path('/private/tmp/clean-ladder-plan'), layers=2)
         rows = study.candidates(plan, 'test-digest')
-        self.assertEqual(plan['global_budgets'], [.1, .2, .3, .4])
+        self.assertEqual(plan['global_budgets'], [.1, .2, .3, .4, .5])
         for rung in range(1, 5):
             selected = [r for r in rows if rung in r['rungs']]
             self.assertTrue(selected)
@@ -93,11 +93,24 @@ class StudyTests(unittest.TestCase):
                     self.assertEqual(step['group_size'], 2)
                 if rung >= 3 and row['target'] == 'k' and row['residual_entries']:
                     self.assertEqual(step['select_by'], 'query')
+        cases = study.budget_cases(plan)
+        self.assertEqual(len([c for c in cases if c['status'] == 'eligible']), 17)
+        self.assertEqual([c['rung'] for c in cases if c['status'] == 'unattainable'], [1, 2, 3])
+        self.assertTrue(all(c['budget'] == .5 for c in cases if c['status'] == 'unattainable'))
         screen, refine, val = (study.sampling(plan, stage) for stage in ('screen', 'refine', 'validate'))
         self.assertEqual(screen['split'], 'train')
         self.assertEqual(refine['split'], 'train')
         self.assertEqual(val['split'], 'validation')
         self.assertEqual(screen['offset'] + screen['chunks'], refine['offset'])
+
+    def test_fifty_percent_is_allocated_only_for_quad_rung(self):
+        plan = study.study_plan(Path('/private/tmp/clean-ladder-plan'), layers=2)
+        calibration = {'candidates': [], 'dense_ppl': 10.}
+        with patch.object(study, 'allocate', side_effect=lambda *args: {'budget': args[-1]}) as allocator:
+            selections = study.select_allocations(plan, calibration)
+        self.assertEqual(len(selections), 17)
+        self.assertEqual([s['rung'] for s in selections if s['tag'].endswith('b50')], [4])
+        self.assertEqual(sum(call.args[-1] == .5 for call in allocator.call_args_list), 1)
 
     def test_live_tiny_model_workflow_and_fresh_task_ledger(self):
         from transformers import LlamaConfig, LlamaForCausalLM
