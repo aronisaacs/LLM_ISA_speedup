@@ -10,11 +10,14 @@ A quad stores one mean direction, four norms and r residual entries per token.
               the 4 tokens are kept for every token (1 mask)
   shared_q    keys only: as shared, weighted by query energy
 Positions cost a D-bit mask, or r indices of ceil(log2 D) bits when smaller.
+``--value-bits`` sets the width of stored values (dense, means and residual
+entries) for a quantized cache; norms keep ``--norm-bits``. Only the storage
+changes: quantization error is not simulated, it adds to both variants alike.
 
 Two comparisons per slot (keys: query-weighted error; values: squared error):
   1. every block a quad with r entries: bits and error of both variants
-  2. a per-page menu {dense, quads with r in R}: error at equal stored bits,
-     with one price per layer (as group_rd), 64-token pages, 3-bit code
+  2. a menu {dense, quads with r in R}: error at equal stored bits, with one
+     price per layer (as group_rd), a format per --granularity tokens, 3-bit code
 
   python compression_topics/spatial/scripts/quad_shared_mask_test.py --captures <dir with plan.json>
 """
@@ -47,9 +50,14 @@ def position_bits(r, dim):
     return 0 if r == 0 else min(dim, r * math.ceil(math.log2(dim)))
 
 
+VALUE_BITS = 16
+NORM_BITS = 16
+GRANULARITY = 4
+
+
 def quad_bits(r, dim, shared):
-    """Mean + r entries per token + 4 norms, all 16-bit, plus residual positions."""
-    return 16 * (dim + 4 * r + 4) + (1 if shared else 4) * position_bits(r, dim)
+    """Mean + r entries per token + 4 norms, plus residual positions."""
+    return VALUE_BITS * (dim + 4 * r) + NORM_BITS * 4 + (1 if shared else 4) * position_bits(r, dim)
 
 
 def quad_errors(body, rope, kind, weights, residuals):
@@ -93,7 +101,13 @@ def main():
     parser.add_argument("--chunks", type=int, default=None, help="use only the first N captured chunks")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--out", type=Path, default=None, help="JSON output (default <captures>/quad_shared_mask.json)")
+    parser.add_argument("--value-bits", type=int, default=16, help="bits per stored value (quantized cache)")
+    parser.add_argument("--norm-bits", type=int, default=16)
+    parser.add_argument("--granularity", type=int, choices=(4, 16, 64), default=4, help="tokens per format decision")
     args = parser.parse_args()
+    parser_granularity = args.granularity
+    global VALUE_BITS, NORM_BITS, GRANULARITY
+    VALUE_BITS, NORM_BITS, GRANULARITY = args.value_bits, args.norm_bits, parser_granularity
     manifest = json.loads((args.captures / "plan.json").read_text())
     rope = offline.load_rope(manifest["rope"])
     weights = torch.load(manifest["query_weights"], weights_only=True)["weights"]
@@ -115,11 +129,11 @@ def main():
                 for variant, table in result.items():
                     errors[target, kind].setdefault(layer, {}).setdefault(variant, []).append(table)
         print(f"[quad mask] {path.name}", flush=True)
-    dense_block = 4 * dim * 16
+    dense_block = 4 * dim * VALUE_BITS
     report = {"model_args": manifest["model_args"], "chunks": len(files), "head_dim": dim, "layers": layers,
               "uniform": {}, "menu": {}}
     lines = [f"# Shared vs per-token quad masks ({manifest['model_args'].split(',')[0].split('=')[1]}, "
-             f"{len(files)} chunks, head dim {dim})", ""]
+             f"{len(files)} chunks, head dim {dim}, {VALUE_BITS}-bit values, {NORM_BITS}-bit norms)", ""]
     for target, kind in SLOTS:
         name = f"{'keys' if target == 'k' else 'values'} ({kind} error)"
         # 1. Uniform quads: every block in Qr.
@@ -146,13 +160,13 @@ def main():
         for layer, by in errors[target, kind].items():
             curves = {}
             for variant in variants:
-                bits = torch.tensor([dense_block] + [quad_bits(r, dim, variant == "shared") for r in MENU_R],
+                bits = torch.tensor([dense_block] + [quad_bits(r, dim, variant.startswith("shared")) for r in MENU_R],
                                     dtype=torch.float64)
                 tables = [torch.cat((torch.zeros_like(t[..., :1]), t[..., menu_idx]), -1) for t in by[variant]]
                 blocks = tables[0].shape[-2]
-                overhead = metadata_bits(heads * blocks // 16, 3)
+                overhead = metadata_bits(heads * blocks * 4 // GRANULARITY, 3)
                 lams = offline._lambdas(tables, bits, 1)
-                d, b = offline.curve(tables, bits, lams, 64, overhead)
+                d, b = offline.curve(tables, bits, lams, GRANULARITY, overhead)
                 dense = len(tables) * heads * blocks * dense_block
                 curves[variant] = ((1 - b / dense).tolist(), d.tolist())
             own = offline.envelope(*curves["own"], SAVINGS)
@@ -162,7 +176,7 @@ def main():
                         gains[v][s].append(1 - c / a)
         report["menu"][f"{target}/{kind}"] = {v: {str(s): statistics.median(g) if g else None for s, g in by_s.items()}
                                               for v, by_s in gains.items()}
-        lines += [f"## {name}: per-page menu dense + Q{{{', '.join(map(str, MENU_R))}}}, equal stored bits", "",
+        lines += [f"## {name}: menu dense + Q{{{', '.join(map(str, MENU_R))}}}, a format per {GRANULARITY} tokens, equal stored bits", "",
                   "Error reduction vs today's per-token masks, median over layers (layers improved).", "",
                   "| saving | " + " | ".join(others) + " |", "|---|" + "---|" * len(others)]
         for s in SAVINGS:
@@ -172,7 +186,7 @@ def main():
                 cells.append(f"{statistics.median(g):+.1%} ({sum(x > 0 for x in g)}/{len(g)})" if g else "–")
             lines.append(f"| {s:.0%} | " + " | ".join(cells) + " |")
         lines.append("")
-    out = args.out or args.captures / "quad_shared_mask.json"
+    out = args.out or args.captures / f"quad_shared_mask_v{VALUE_BITS}.json"
     out.write_text(json.dumps(report, indent=1))
     (out.with_suffix(".md")).write_text("\n".join(lines))
     print("\n".join(lines))

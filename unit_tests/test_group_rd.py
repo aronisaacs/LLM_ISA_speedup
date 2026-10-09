@@ -257,6 +257,55 @@ class FlaggedPairTests(unittest.TestCase):
         self.assertEqual(stats['stored_bits'], 64 * (2 * 128 * 16 + pair + 1) + metadata_bits(4, 1))
 
 
+class SharedMaskAndSelectionTests(unittest.TestCase):
+    def setUp(self):
+        pair_gate.reset_stats()
+
+    def test_shared_mask_quads_store_one_mask(self):
+        names = group_rd.mode_names(menu=['D', 'S16', 'Q16'])
+        self.assertEqual(names, ['D', 'Q16', 'S16'])
+        bits = group_rd.bit_table(names)
+        self.assertEqual(bits[2], bits[1] - 3 * 128)  # three fewer 128-bit masks
+        self.assertEqual(group_rd.bit_table(['D', 'S16'], mask='auto')[1], 16 * (128 + 64 + 4) + 16 * 7)
+        with self.assertRaises(ValueError):
+            group_rd.mode_names(modes='pairs', menu=['D', 'S16'])
+
+    def test_shared_mask_keeps_the_same_features_for_all_four_tokens(self):
+        x = correlated_keys(length=64, seed=10)
+        out = group_rd.apply(x, layer_idx=0, target='v', lam=1e9, menu=['D', 'S8'])
+        stats = pair_gate.pop_stats()['v_layer_0']
+        self.assertEqual(stats['shared_r8'], 2 * 16)
+        self.assertEqual(stats['residual_mask_bits'], 2 * 16 * 128)
+        self.assertEqual(stats['stored_bits'], 2 * 16 * (16 * (128 + 32 + 4) + 128) + metadata_bits(32, 1))
+        # Reconstruct by hand: mean direction plus the 8 shared features of largest summed deviation.
+        unit = torch.nn.functional.normalize(x, dim=-1).reshape(1, 2, 16, 4, 128)
+        mean = unit.mean(-2, keepdim=True)
+        spread = unit - mean
+        index = spread.square().sum(-2, keepdim=True).topk(8, dim=-1).indices.expand(1, 2, 16, 4, 8)
+        recon = mean + torch.zeros_like(spread).scatter(-1, index, spread.gather(-1, index))
+        expected = torch.nn.functional.normalize(recon, dim=-1).reshape(1, 2, 64, 128) * x.norm(dim=-1, keepdim=True)
+        torch.testing.assert_close(out, expected, atol=1e-5, rtol=1e-5)
+
+    def test_query_selection_lowers_query_weighted_error(self):
+        x = correlated_keys(length=128, seed=11)
+        weights = torch.rand(2, 128) ** 4 + .01  # a few dimensions dominate attention
+        common = dict(rope_tables=ROPE, menu=['D', 'Q8', 'P8+8', 'S8'], distortion='query', weights=weights)
+        plain = group_rd.build_menu(x, **common)
+        aware = group_rd.build_menu(x, select_by='query', **common)
+        for column in range(1, 4):
+            self.assertLess(float(aware.distortion[..., column].sum()), float(plain.distortion[..., column].sum()))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'w.pt'
+            torch.save({'weights': weights.expand(3, 2, 128).clone()}, path)
+            group_rd._load_weights.cache_clear()
+            group_rd.apply(x, layer_idx=1, target='k', saving=.5, select_by='query', query_weights=str(path),
+                           rope_tables=ROPE)
+            with self.assertRaisesRegex(ValueError, 'values have no query'):
+                group_rd.apply(x, layer_idx=1, target='v', saving=.5, select_by='query', query_weights=str(path))
+            with self.assertRaisesRegex(ValueError, 'needs query_weights'):
+                group_rd.apply(x, layer_idx=1, target='k', saving=.5, select_by='query', rope_tables=ROPE)
+
+
 class ValueTests(unittest.TestCase):
     def setUp(self):
         pair_gate.reset_stats()

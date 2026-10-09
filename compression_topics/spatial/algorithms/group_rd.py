@@ -16,6 +16,14 @@ A menu may also list ``P<a>/<b>`` (a != b): one format covering ``P<a>+<b>``
 and ``P<b>+<a>``, the same size, plus one flag bit per block saying which pair
 takes which side, so every block can choose its own orientation even when one
 format covers a whole page (e.g. ``P32/d``: either pair merged with 32 entries).
+A menu may also list ``S<r>``: a quad whose four tokens share one residual
+mask, the r features with the largest squared deviation summed over the
+block. It stores one position mask instead of four, which pays off when
+stored values are narrow (quantized caches).
+
+Residual entries are the largest deviations (``select_by='deviation'``), or for
+keys the largest deviations weighted by query energy (``select_by='query'``,
+needs ``query_weights``): the entries that move attention scores most.
 
 Each decision unit takes the mode with the smallest distortion + lam * bits,
 summed over its blocks. The unit is one block, or ``granularity`` tokens
@@ -92,12 +100,13 @@ def mode_names(residuals=RESIDUALS, modes='both', menu=None):
     if modes in ('both', 'quads'):
         names += [f'Q{r}' for r in residuals]
     if menu is not None:
-        flagged = [name for name in menu if '/' in name]
+        extra = [name for name in menu if '/' in name or name[:1] == 'S']
         valid = {f'P{a}/{b}' for a in labels for b in labels if a != b} if modes in ('both', 'pairs') else set()
-        unknown = (set(menu) - set(names) - valid) | (set(flagged) - valid)
+        valid |= {f'S{r}' for r in residuals} if modes in ('both', 'quads') else set()
+        unknown = (set(menu) - set(names) - valid) | (set(extra) - valid)
         if unknown or 'D' not in menu or len(set(menu)) != len(menu):
             raise ValueError(f"menu must list distinct modes including 'D'; unknown: {sorted(unknown)}")
-        names = [name for name in names if name in set(menu)] + flagged
+        names = [name for name in names if name in set(menu)] + extra
     return names
 
 
@@ -105,20 +114,30 @@ def mode_bits(count):
     return max(1, math.ceil(math.log2(count)))
 
 
-def option_bits(residuals=RESIDUALS, dim=128, mask='bitmap'):
-    """Bits of a merged pair and a merged quad for each residual size."""
-    pair = [vector_group_bits(r, dim, 2, include_norms=True, mask=mask) for r in residuals]
-    quad = [vector_group_bits(r, dim, 4, include_norms=True, mask=mask) for r in residuals]
-    return pair, quad
+def option_bits(residuals=RESIDUALS, dim=128, mask='bitmap', value_bits=16):
+    """Bits of a merged pair and of a quad (per-token masks, then shared mask) for each residual size.
+
+    ``value_bits`` is the width of stored vector entries (16 in the simulation; smaller values only
+    model a quantized cache's storage); norms stay 16-bit.
+    """
+    pair = [value_bits * (dim + r) + 16 * 2 + residual_mask_bits(r, dim, 1, mask) for r in residuals]
+    quad = [value_bits * (dim + BLOCK * r) + 16 * BLOCK + residual_mask_bits(r, dim, BLOCK, mask) for r in residuals]
+    shared = [value_bits * (dim + BLOCK * r) + 16 * BLOCK + residual_mask_bits(r, dim, 1, mask) for r in residuals]
+    return pair, quad + shared
 
 
 def _parse(name, residuals):
-    """(is_quad, first pair choice, second pair choice, quad index) of a mode name."""
+    """(is_quad, first pair choice, second pair choice, quad index) of a mode name.
+
+    Quad indices run over per-token-mask quads, then shared-mask quads.
+    """
     index = {str(r): i for i, r in enumerate(residuals)}
     if name == 'D':
         return False, 0, 0, 0
     if name[0] == 'Q':
         return True, 0, 0, index[name[1:]]
+    if name[0] == 'S':
+        return True, 0, 0, len(residuals) + index[name[1:]]
     first, second = name[1:].replace('/', '+').split('+')
     choice = lambda label: 0 if label == 'd' else index[label] + 1
     return False, choice(first), choice(second), 0
@@ -135,11 +154,11 @@ def mode_flags(names, device=None):
     return torch.tensor(['/' in name for name in names], device=device)
 
 
-def bit_table(names, residuals=RESIDUALS, dim=128, mask='bitmap', device=None):
+def bit_table(names, residuals=RESIDUALS, dim=128, mask='bitmap', device=None, value_bits=16):
     """Bits of one block in each mode, before mode codes and the slot header."""
     is_quad, first, second, quad = mode_columns(names, residuals, device)
-    pair_bits, quad_bits = option_bits(residuals, dim, mask)
-    pair_table = torch.tensor([2 * dim * 16] + pair_bits, dtype=torch.float64, device=device)
+    pair_bits, quad_bits = option_bits(residuals, dim, mask, value_bits)
+    pair_table = torch.tensor([2 * dim * value_bits] + pair_bits, dtype=torch.float64, device=device)
     quad_table = torch.tensor(quad_bits, dtype=torch.float64, device=device)
     flags = mode_flags(names, device).double()
     return torch.where(is_quad, quad_table[quad], pair_table[first] + pair_table[second] + flags)
@@ -207,7 +226,7 @@ def _aligned(original, group, rope_tables):
 
 
 def build_menu(tensor, *, rope_tables, residuals=RESIDUALS, modes='both', menu=None,
-               mask='bitmap', distortion='cosine', weights=None):
+               mask='bitmap', distortion='cosine', weights=None, select_by='deviation'):
     """Distortion of every mode; ``tensor`` is [1, H, T, D], T a multiple of 4.
 
     Keys pass ``rope_tables`` (aligned to each group's first token); values pass ``None``.
@@ -216,7 +235,10 @@ def build_menu(tensor, *, rope_tables, residuals=RESIDUALS, modes='both', menu=N
     blocks = length // BLOCK
     original = tensor.float()
     norms = original.norm(dim=-1, keepdim=True)
-    weights = plane_tied(weights.float()).to(original.device) if distortion == 'query' else None
+    tied = plane_tied(weights.float()).to(original.device) if weights is not None else None
+    weights = tied if distortion == 'query' else None
+    rank = (lambda deviation, shape: deviation.square() * tied.reshape(shape)) if select_by == 'query' else \
+        (lambda deviation, shape: deviation.square())
     top = max(residuals)
     # Pairs: one half-difference and one mask; the second residual is its negative.
     unit = torch.nn.functional.normalize(_aligned(original, 2, rope_tables), dim=-1)
@@ -224,7 +246,7 @@ def build_menu(tensor, *, rope_tables, residuals=RESIDUALS, modes='both', menu=N
     scale = norms.reshape(1, heads, blocks, 2, 2, 1)
     mean = unit.mean(-2)
     delta = (unit[..., 0, :] - unit[..., 1, :]) / 2
-    index = delta.abs().topk(top, dim=-1).indices if top else None
+    index = rank(delta, (1, heads, 1, 1, dim)).topk(top, dim=-1).indices if top else None
     pair_d, pair_recon = [], []
     for r in residuals:
         residual = torch.zeros_like(delta)
@@ -240,16 +262,19 @@ def build_menu(tensor, *, rope_tables, residuals=RESIDUALS, modes='both', menu=N
     scale = norms.reshape(1, heads, blocks, BLOCK, 1)
     mean = unit.mean(-2, keepdim=True)
     spread = unit - mean
-    index = spread.abs().topk(top, dim=-1).indices if top else None
+    score = rank(spread, (1, heads, 1, 1, dim))
+    own = score.topk(top, dim=-1).indices if top else None
+    shared = score.sum(-2, keepdim=True).topk(top, dim=-1).indices.expand(*spread.shape[:-1], top) if top else None
     quad_d, quad_recon = [], []
-    for r in residuals:
-        residual = torch.zeros_like(spread)
-        if r:
-            residual.scatter_(-1, index[..., :r], spread.gather(-1, index[..., :r]))
-        error, direction = _distortion(mean + residual, unit, scale, distortion,
-                                       None if weights is None else weights.reshape(1, heads, 1, 1, dim))
-        quad_d.append(error.sum(-1))
-        quad_recon.append(direction)
+    for index in (own, shared):  # per-token masks, then one shared mask per block
+        for r in residuals:
+            residual = torch.zeros_like(spread)
+            if r:
+                residual.scatter_(-1, index[..., :r], spread.gather(-1, index[..., :r]))
+            error, direction = _distortion(mean + residual, unit, scale, distortion,
+                                           None if weights is None else weights.reshape(1, heads, 1, 1, dim))
+            quad_d.append(error.sum(-1))
+            quad_recon.append(direction)
     names = mode_names(residuals, modes, menu)
     device = tensor.device
     is_quad, first, second, quad = mode_columns(names, residuals, device)
@@ -343,7 +368,7 @@ def reconstruct(tensor, menu, choice, rope_tables):
 
 
 def _check(target, residuals, modes, mask, distortion, query_weights, saving, lam,
-           granularity, accounting):
+           granularity, accounting, select_by='deviation'):
     if accounting != ACCOUNTING:
         raise ValueError("unsupported rate-distortion storage accounting version")
     if target not in ('k', 'v'):
@@ -365,17 +390,22 @@ def _check(target, residuals, modes, mask, distortion, query_weights, saving, la
         raise ValueError(f"modes in {MODES}, mask in {MASKS}, distortion in {DISTORTIONS}")
     if granularity not in GRANULARITIES:
         raise ValueError(f"granularity must be one of {GRANULARITIES} tokens")
-    if (distortion == 'query') != (query_weights is not None):
-        raise ValueError("distortion 'query' needs query_weights, and only it uses them")
+    if select_by not in ('deviation', 'query'):
+        raise ValueError("select_by must be 'deviation' or 'query'")
+    if target == 'v' and select_by == 'query':
+        raise ValueError("values have no query weighting; use select_by='deviation'")
+    if ('query' in (distortion, select_by)) != (query_weights is not None):
+        raise ValueError("distortion or select_by 'query' needs query_weights, and only they use them")
 
 
 def apply(tensor, *, layer_idx, target, saving=None, lam=None, residuals=RESIDUALS,
           modes='both', menu=DEFAULT_MENU, granularity=BLOCK, mask='bitmap', distortion='cosine',
-          query_weights=None, decode=True, seq_start=0, rope_tables=None, accounting=ACCOUNTING,
+          query_weights=None, select_by='deviation', decode=True, seq_start=0, rope_tables=None,
+          accounting=ACCOUNTING,
           **unused):
     residuals = tuple(residuals)
     _check(target, residuals, modes, mask, distortion, query_weights, saving, lam,
-           granularity, accounting)
+           granularity, accounting, select_by)
     names = mode_names(residuals, modes, menu)
     if seq_start != 0 or saving == 0 or lam == 0:
         return tensor
@@ -386,7 +416,8 @@ def apply(tensor, *, layer_idx, target, saving=None, lam=None, residuals=RESIDUA
         return tensor
     body = tensor[..., :full, :]
     table = build_menu(body, rope_tables=rope_tables, residuals=residuals, modes=modes, menu=menu,
-                       mask=mask, distortion=distortion, weights=_weights(query_weights, layer_idx))
+                       mask=mask, distortion=distortion, weights=_weights(query_weights, layer_idx),
+                       select_by=select_by)
     overhead = metadata_bits(units(table, granularity), mode_bits(len(names)))
     dense_bits = tensor.numel() * 16
     tail_bits = (tensor.shape[-2] - full) * tensor.shape[1] * tensor.shape[-1] * 16
@@ -404,13 +435,14 @@ def apply(tensor, *, layer_idx, target, saving=None, lam=None, residuals=RESIDUA
 
 def after_append(tensor, *, target, layer_idx, start, end, rope_tables=None, saving=None, lam=None,
                  residuals=RESIDUALS, modes='both', menu=DEFAULT_MENU, granularity=BLOCK, mask='bitmap',
-                 distortion='cosine', query_weights=None, decode=True, accounting=ACCOUNTING, **unused):
+                 distortion='cosine', query_weights=None, select_by='deviation', decode=True,
+                 accounting=ACCOUNTING, **unused):
     """Compress the units that the tokens ``[start, end)`` of the stored tensor complete."""
     if start == 0 or not decode or saving == 0 or lam == 0:
         return  # Prefill (start 0) is compressed by ``apply``.
     residuals = tuple(residuals)
     _check(target, residuals, modes, mask, distortion, query_weights, saving, lam,
-           granularity, accounting)
+           granularity, accounting, select_by)
     rope_tables = _check_tensor(tensor, target, rope_tables, residuals)
     if lam is None:
         if (target, layer_idx) not in PRICES:
@@ -425,7 +457,8 @@ def after_append(tensor, *, target, layer_idx, start, end, rope_tables=None, sav
         return
     body = tensor[..., first:last, :]
     table = build_menu(body, rope_tables=rope_tables, residuals=residuals, modes=modes, menu=menu,
-                       mask=mask, distortion=distortion, weights=_weights(query_weights, layer_idx))
+                       mask=mask, distortion=distortion, weights=_weights(query_weights, layer_idx),
+                       select_by=select_by)
     choice = select(table, lam, granularity)
     restored = reconstruct(body, table, choice, rope_tables).to(tensor.dtype)
     tensor[..., first:last, :] = restored
@@ -461,7 +494,8 @@ def _record(target, layer_idx, body, restored, menu, choice, *, dense_bits, stor
         'cosine_sum': 0., 'cosine_min': 1., 'cutoff_sum': 0., 'updates': 0,
         'shortfall_updates': 0, 'lambda_sum': 0., 'distortion_sum': 0.,
         'dense_blocks': 0, 'quad_blocks': 0, 'merged_pairs': 0,
-        **{f'pair_r{r}': 0 for r in residuals}, **{f'quad_r{r}': 0 for r in residuals}})
+        **{f'pair_r{r}': 0 for r in residuals}, **{f'quad_r{r}': 0 for r in residuals},
+        **{f'shared_r{r}': 0 for r in residuals}})
     row['dense_bits'] += dense_bits
     row['stored_bits'] += int(stored_bits)
     if menu is None:
@@ -475,21 +509,24 @@ def _record(target, layer_idx, body, restored, menu, choice, *, dense_bits, stor
     block_min = cosine.reshape(merged.shape + (BLOCK,)).amin(-1)
     pair_counts = [int((pair_choice == index + 1).sum()) for index in range(len(residuals))]
     quad_counts = [int((is_quad & (quad == index)).sum()) for index in range(len(residuals))]
+    shared_counts = [int((is_quad & (quad == len(residuals) + index)).sum()) for index in range(len(residuals))]
     row['metadata_bits'] += overhead
-    row['norm_bits'] += 16 * (2 * sum(pair_counts) + BLOCK * sum(quad_counts))
+    row['norm_bits'] += 16 * (2 * sum(pair_counts) + BLOCK * (sum(quad_counts) + sum(shared_counts)))
     row['residual_mask_bits'] += sum(p * residual_mask_bits(r, dim, 1, mask) + q * residual_mask_bits(r, dim, BLOCK, mask)
-                                     for r, p, q in zip(residuals, pair_counts, quad_counts))
+                                     + c * residual_mask_bits(r, dim, 1, mask)
+                                     for r, p, q, c in zip(residuals, pair_counts, quad_counts, shared_counts))
     row['pairs'] += merged.numel()  # Existing measurement schema; these are blocks.
     row['merged'] += int(merged.sum())
     row['updates'] += 1
     row['lambda_sum'] += float(lam)
     row['distortion_sum'] += float(menu.distortion.gather(-1, choice.unsqueeze(-1)).sum())
     row['dense_blocks'] += int((~merged).sum())
-    row['quad_blocks'] += sum(quad_counts)
+    row['quad_blocks'] += sum(quad_counts) + sum(shared_counts)
     row['merged_pairs'] += sum(pair_counts)
-    for r, p, q in zip(residuals, pair_counts, quad_counts):
+    for r, p, q, c in zip(residuals, pair_counts, quad_counts, shared_counts):
         row[f'pair_r{r}'] += p
         row[f'quad_r{r}'] += q
+        row[f'shared_r{r}'] += c
     if merged.any():
         chosen = block_min[merged]
         row['cosine_sum'] += float(chosen.sum())
