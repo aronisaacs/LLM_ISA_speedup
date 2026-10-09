@@ -1,0 +1,182 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 6.07148844415645,
+      "mean_nll,none": 1.8036037882169087
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 127,
+      "nll": 1.7407325506210327,
+      "tokens": 512
+    },
+    {
+      "chunk": 102,
+      "nll": 1.4393281936645508,
+      "tokens": 512
+    },
+    {
+      "chunk": 81,
+      "nll": 1.4649465084075928,
+      "tokens": 512
+    },
+    {
+      "chunk": 134,
+      "nll": 2.16979718208313,
+      "tokens": 512
+    },
+    {
+      "chunk": 70,
+      "nll": 1.967879295349121,
+      "tokens": 512
+    },
+    {
+      "chunk": 90,
+      "nll": 2.117163896560669,
+      "tokens": 512
+    },
+    {
+      "chunk": 17,
+      "nll": 1.545836329460144,
+      "tokens": 512
+    },
+    {
+      "chunk": 133,
+      "nll": 1.6721235513687134,
+      "tokens": 512
+    },
+    {
+      "chunk": 106,
+      "nll": 1.6181596517562866,
+      "tokens": 512
+    },
+    {
+      "chunk": 77,
+      "nll": 1.931420087814331,
+      "tokens": 512
+    },
+    {
+      "chunk": 63,
+      "nll": 1.9938772916793823,
+      "tokens": 512
+    },
+    {
+      "chunk": 19,
+      "nll": 1.9819809198379517,
+      "tokens": 512
+    }
+  ],
+  "gate_stats": {
+    "k_layer_8": {
+      "dense_bits": 301989888,
+      "stored_bits": 226484920,
+      "pairs": 36864,
+      "merged": 29691,
+      "features": 128,
+      "accounting": "fp16_rd_block_modes_norms_header_v1",
+      "mask": "bitmap",
+      "granularity": 4,
+      "modes": 8,
+      "metadata_bits": 110784,
+      "norm_bits": 1560288,
+      "residual_mask_bits": 8321024,
+      "cosine_sum": 29226.480712890625,
+      "cosine_min": 0.8512144088745117,
+      "cutoff_sum": 10.818697452545166,
+      "updates": 12,
+      "shortfall_updates": 0,
+      "lambda_sum": 0.351397628887729,
+      "distortion_sum": 1026280.2044641376,
+      "dense_blocks": 7173,
+      "quad_blocks": 8283,
+      "merged_pairs": 32193,
+      "pair_r0": 153,
+      "pair_r4": 0,
+      "pair_r8": 0,
+      "pair_r16": 153,
+      "pair_r32": 31887,
+      "quad_r0": 41,
+      "quad_r4": 0,
+      "quad_r8": 205,
+      "quad_r16": 1578,
+      "quad_r32": 6459,
+      "shared_r0": 0,
+      "shared_r4": 0,
+      "shared_r8": 0,
+      "shared_r16": 0,
+      "shared_r32": 0
+    }
+  },
+  "storage": {
+    "scope": "simulated_prefill_cache_storage",
+    "targets": {
+      "k": {
+        "dense_bits": 9663676416,
+        "stored_bits": 9588171448,
+        "compression": 0.00781327568822432
+      },
+      "v": {
+        "dense_bits": 9663676416,
+        "stored_bits": 9663676416,
+        "compression": 0.0
+      },
+      "kv": {
+        "dense_bits": 19327352832,
+        "stored_bits": 19251847864,
+        "compression": 0.00390663784411216
+      }
+    }
+  },
+  "scoring": {
+    "prefix_tokens": 1536,
+    "definition": "continuation token NLL only; prefix logits excluded"
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "group_rd",
+          "k_layers": [
+            8
+          ],
+          "v_layers": [],
+          "accounting": "fp16_rd_block_modes_norms_header_v1",
+          "saving": 0.25,
+          "menu": [
+            "D",
+            "P32/d",
+            "P32+32",
+            "P16/0",
+            "Q32",
+            "Q16",
+            "Q8",
+            "Q0"
+          ],
+          "granularity": 4,
+          "importance": "prefill_attention",
+          "decode": false,
+          "distortion": "query",
+          "select_by": "query",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+          "query_weights_sha256": "66525f913254601be36d94934e30a88d8f9ec4615474c37263e7881d182c391e"
+        }
+      ]
+    },
+    "sampling": {
+      "pool_chunks": 36,
+      "offset": 8,
+      "chunks": 12,
+      "seed": 17,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  }
+}
