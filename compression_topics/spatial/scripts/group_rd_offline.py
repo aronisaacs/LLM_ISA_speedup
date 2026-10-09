@@ -134,7 +134,7 @@ def capture(manifest, device=None):
     keys_dir.mkdir(parents=True, exist_ok=True)
     Path(manifest["rope"]).write_text(json.dumps({"rope_theta": rope.rope_theta, "head_dim": rope.head_dim,
         "inv_freq": list(rope.inv_freq) if rope.inv_freq else None, "attention_scaling": rope.attention_scaling}))
-    layers, values, pending, sums, counts = {}, {}, {}, {}, {}
+    layers, values, received, pending, sums, counts = {}, {}, {}, {}, {}, {}
     original_update, original_rotary = Cache.update, llama.apply_rotary_pos_emb
 
     def rotary(query, key, *args, **kwargs):
@@ -149,6 +149,7 @@ def capture(manifest, device=None):
         kv_heads = key_states.shape[1]
         grouped = query[0].reshape(kv_heads, -1, *query.shape[-2:])
         sums[layer_idx] = sums.get(layer_idx, 0) + grouped.square().sum((1, 2)).cpu()
+        received[layer_idx] = attention_received(query, key_states.float()).cpu()
         counts[layer_idx] = counts.get(layer_idx, 0) + query.shape[-2]
         return original_update(self, key_states, value_states, layer_idx, *args, **kwargs)
 
@@ -160,9 +161,12 @@ def capture(manifest, device=None):
                 model(input_ids=batch, attention_mask=torch.ones_like(batch), use_cache=True)
             keys = torch.stack([layers[i] for i in sorted(layers)])  # [L, Hkv, T, D]
             stored = torch.stack([values[i] for i in sorted(values)])
-            torch.save({"keys": keys, "values": stored, "chunk": chunk}, keys_dir / f"chunk_{chunk:05d}.pt")
+            importance = torch.stack([received[i] for i in sorted(received)])  # [L, 3, Hkv, T]: all, even, odd queries
+            torch.save({"keys": keys, "values": stored, "importance": importance, "chunk": chunk},
+                       keys_dir / f"chunk_{chunk:05d}.pt")
             layers.clear()
             values.clear()
+            received.clear()
             print(f"[capture {number + 1}/{len(prompts)}] chunk {chunk}: keys {tuple(keys.shape)}", flush=True)
     finally:
         Cache.update, llama.apply_rotary_pos_emb = original_update, original_rotary
@@ -170,6 +174,31 @@ def capture(manifest, device=None):
     torch.save({"weights": weights, "chunks": chosen, "model": name,
                 "definition": "mean over positions of squared post-RoPE query, summed over each KV group"},
                manifest["query_weights"])
+
+
+def attention_received(query, keys, block=256):
+    """Mean causal attention each key receives per query that can see it, summed over its query heads.
+
+    ``query`` [1, Hq, T, D] and ``keys`` [1, Hkv, T, D], both with RoPE applied. Returns
+    [3, Hkv, T]: from all queries, from even query positions only, from odd ones only.
+    """
+    heads, length, dim = query.shape[1:]
+    kv_heads = keys.shape[1]
+    expanded = keys[0].repeat_interleave(heads // kv_heads, dim=0)  # [Hq, T, D]
+    total = torch.zeros(2, heads, length, device=query.device)  # even, odd query positions
+    columns = torch.arange(length, device=query.device)
+    for start in range(0, length, block):
+        rows = torch.arange(start, min(start + block, length), device=query.device)
+        scores = query[0, :, rows] @ expanded.transpose(-1, -2) / dim ** .5  # [Hq, b, T]
+        probs = scores.masked_fill(columns > rows[:, None], float("-inf")).softmax(-1)
+        for parity in (0, 1):
+            total[parity] += probs[:, rows % 2 == parity].sum(1)
+    later = (length - columns).float()  # queries at or after each key
+    odd = (length - columns) // 2 + ((length - columns) % 2) * (columns % 2)  # odd positions >= key
+    counts = torch.stack((later - odd, odd.float())).clamp_min(1)
+    split = (total / counts[:, None]).reshape(2, kv_heads, heads // kv_heads, length).sum(2)
+    whole = (total.sum(0) / later).reshape(kv_heads, heads // kv_heads, length).sum(1)
+    return torch.cat((whole[None], split))
 
 
 def load_rope(path):
@@ -442,11 +471,15 @@ def menu_columns(menu, names):
     return lambda table: torch.stack([column(table, name) for name in group_rd.mode_names(menu=menu)], -1)
 
 
-def fast_curve(table, bits, lams, granularity, overhead, batch=16):
-    """Total distortion and bits per price; ``table`` is [chunks, H, blocks, modes] on any device."""
+def fast_curve(table, bits, lams, granularity, overhead, batch=16, measure=None):
+    """Total distortion and bits per price; ``table`` is [chunks, H, blocks, modes] on any device.
+
+    Formats are chosen by ``table``; the reported distortion comes from ``measure`` when given.
+    """
     per = granularity // group_rd.BLOCK
     chunks, heads, blocks, modes = table.shape
     units = table.reshape(chunks, heads, blocks // per, per, modes).sum(-2)
+    scored = units if measure is None else measure.reshape(chunks, heads, blocks // per, per, modes).sum(-2)
     finite = torch.isfinite(units)
     unit_bits = bits.to(table) * per
     distortion, stored = [], []
@@ -458,7 +491,7 @@ def fast_curve(table, bits, lams, granularity, overhead, batch=16):
                         else units + lam * unit_bits)
         cost = torch.stack(rows)
         choice = cost.argmin(-1)
-        d = units.unsqueeze(0).expand_as(cost).gather(-1, choice.unsqueeze(-1)).squeeze(-1)
+        d = scored.unsqueeze(0).expand_as(cost).gather(-1, choice.unsqueeze(-1)).squeeze(-1)
         distortion += d.flatten(1).sum(-1).tolist()
         stored += (unit_bits[choice].flatten(1).sum(-1) + overhead * chunks).tolist()
     return distortion, stored
@@ -527,6 +560,97 @@ def menu_check(manifest, device="cpu", menus=None, savings=MENU_SAVINGS, granula
     print(text)
 
 
+def importance_check(manifest, device="cpu", menu_name="flag_d", savings=MENU_SAVINGS):
+    """Does weighting each token's error by the attention it receives improve format decisions?
+
+    Attention received is split by query position: decisions use the attention from even-position
+    queries, and every arm is scored by the error weighted with the attention from odd-position
+    queries, which the decisions never saw (query-weighted error for keys, squared for values).
+    Arms: today's best fixed format per layer, per-block choice by unweighted error, per-block
+    choice by importance-weighted error, and an oracle that decides with the scoring weights.
+    Keys keep attention-aware residuals throughout.
+    """
+    out = Path(manifest["query_weights"]).parent
+    rope = load_rope(manifest["rope"])
+    weights = torch.load(manifest["query_weights"], weights_only=True)["weights"]
+    residuals = tuple(manifest["residuals"])
+    every = group_rd.mode_names(residuals)
+    menu = CANDIDATE_MENUS[menu_name]
+    files = sorted(Path(manifest["keys_dir"]).glob("chunk_*.pt"))
+    if not files:
+        raise SystemExit("no captured keys; run --stage capture first")
+    plain, weighted, scoring, sink = {}, {}, {}, {}
+    for path in files:
+        captured = torch.load(path, weights_only=True)
+        if "importance" not in captured:
+            raise SystemExit(f"{path.name} has no attention importance; rerun --stage capture with this version")
+        layers, heads, length, dim = captured["keys"].shape
+        full = length // 64 * 64
+        for target, kind in MENU_SLOTS:
+            source = captured["keys" if target == "k" else "values"]
+            for layer in range(layers):
+                body = source[layer, :, :full].unsqueeze(0).to(device).float()
+                seen, unseen = (captured["importance"][layer, part, :, :full].unsqueeze(0).to(device).float()
+                                for part in (1, 2))
+                options = dict(rope_tables=rope if target == "k" else None, residuals=residuals, menu=every,
+                               distortion=kind, weights=weights[layer] if target == "k" else None,
+                               select_by="query" if target == "k" else "deviation")
+                first = torch.ones_like(seen)
+                first[..., :group_rd.BLOCK] = 1e6  # only the first block (attention sink) is protected
+                for store, token_weights in ((plain, None), (weighted, seen / seen.mean()),
+                                             (scoring, unseen / unseen.mean()), (sink, first)):
+                    store.setdefault((target, kind), {}).setdefault(layer, []).append(
+                        group_rd.build_menu(body, token_weights=token_weights, **options).distortion[0].float())
+        print(f"[importance] built {path.name}", flush=True)
+    blocks = full // group_rd.BLOCK
+    dense = len(files) * heads * blocks * group_rd.BLOCK * dim * 16
+    menu_names = group_rd.mode_names(residuals, menu=menu)
+    pick = menu_columns(menu_names, every)
+    bits = group_rd.bit_table(menu_names, residuals, dim)
+    overhead = metadata_bits(heads * blocks, group_rd.mode_bits(len(menu_names)))
+    report = {"savings": list(savings), "menu": menu, "slots": {}}
+    for slot in plain:
+        rows = {}
+        for layer in plain[slot]:
+            u, e, w, f = (torch.stack(store[slot][layer]) for store in (plain, weighted, scoring, sink))
+            lams = _lambdas([u.cpu()], group_rd.bit_table(every, residuals, dim), every.index(f"Q{residuals[0]}"))
+            row = {}
+            for arm, decide in (("uniform", u), ("sink", f), ("importance", e), ("oracle", w)):
+                d, b = fast_curve(pick(decide), bits, lams, 4, overhead, measure=pick(w))
+                row[arm] = envelope([1 - x / dense for x in b], d, savings)
+            fixed = []
+            for r in residuals:
+                for modes in ("pairs", "quads"):
+                    names = group_rd.mode_names((r,), modes)
+                    columns = [every.index(n) for n in names]
+                    fixed_bits = group_rd.bit_table(names, residuals, dim)
+                    d, b = fast_curve(u[..., columns], fixed_bits, lams, 4,
+                                      metadata_bits(heads * blocks, group_rd.mode_bits(len(names))), measure=w[..., columns])
+                    fixed.append(envelope([1 - x / dense for x in b], d, savings))
+            row["best_fixed"] = [min((f[i] for f in fixed if f[i] is not None), default=None) for i in range(len(savings))]
+            rows[str(layer)] = row
+        report["slots"]["/".join(slot)] = rows
+    lines = [f"# Token importance in format decisions (menu `{menu_name}`, a format per 4 tokens)", "",
+             "Decisions use attention received from even-position queries; all arms are scored by each token's",
+             "error times the attention it receives from odd-position queries (held out). Median over layers;",
+             "positive = less error. Oracle decides with the scoring weights themselves (upper bound).",
+             "\"First block dense\" ignores importance except that the first 4 tokens (the attention sink) stay exact.", ""]
+    for label, rows in report["slots"].items():
+        lines += [f"## {'keys' if label.startswith('k') else 'values'} ({label.split('/')[1]} error)", "",
+                  "| saving | uniform vs fixed | importance vs fixed | first block dense vs uniform | importance vs uniform | oracle vs uniform |",
+                  "|---|---|---|---|---|---|"]
+        for i, saving in enumerate(savings):
+            def gain(a, b):
+                values = [1 - row[a][i] / row[b][i] for row in rows.values() if row[a][i] is not None and row[b][i]]
+                return f"{_median(values):+.1%}" if values else "–"
+            lines.append(f"| {saving:.0%} | {gain('uniform', 'best_fixed')} | {gain('importance', 'best_fixed')} | "
+                         f"{gain('sink', 'uniform')} | {gain('importance', 'uniform')} | {gain('oracle', 'uniform')} |")
+        lines.append("")
+    write_json(out / "importance.json", report)
+    (out / "importance.md").write_text("\n".join(lines))
+    print("\n".join(lines))
+
+
 def menu_summary(report):
     savings = report["savings"]
     lines = [f"# group_rd menu re-check (a format per {report['granularity']} tokens)", "",
@@ -564,7 +688,7 @@ def main():
     parser.add_argument("--model-args", default=LLAMA31_8B)
     parser.add_argument("--top", type=int, nargs="+", default=[6, 8], help="sizes of data-driven menus, D included")
     parser.add_argument("--menu-saving", type=float, default=.5, help="saving at which mode usage picks those menus")
-    parser.add_argument("--stage", choices=("capture", "analyze", "all", "menus"), default="all")
+    parser.add_argument("--stage", choices=("capture", "analyze", "all", "menus", "importance"), default="all")
     parser.add_argument("--menus", type=json.loads, default=None, help="JSON object: menu name -> list of formats")
     parser.add_argument("--granularity", type=int, choices=(4, 16, 64), default=4, help="tokens per format decision (menus stage)")
     parser.add_argument("--value-bits", type=int, nargs="+", default=[16, 8, 4],
@@ -588,10 +712,13 @@ def main():
           f"savings {TARGETS[0]:.0%}..{TARGETS[-1]:.0%}.")
     print(f"Keys: {manifest['keys_dir']} (~{manifest['keys_bytes_estimate'] / 1e9:.1f} GB). Output: {out}")
     if not args.execute:
-        print("Plan only. Add --execute (with --stage capture | analyze | all | menus) when ready to run.")
+        print("Plan only. Add --execute (with --stage capture | analyze | all | menus | importance) when ready to run.")
         return
     if args.stage in ("capture", "all"):
         capture(manifest, args.device)
+    if args.stage == "importance":
+        importance_check(manifest, args.device or "cpu")
+        return
     if args.stage == "menus":
         menu_check(manifest, args.device or "cpu", args.menus, granularity=args.granularity,
                    value_bits=tuple(args.value_bits))

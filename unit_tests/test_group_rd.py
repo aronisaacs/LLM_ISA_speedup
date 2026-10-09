@@ -486,5 +486,56 @@ class OfflineAnalysisTests(unittest.TestCase):
             self.assertIn('## values, distortion squared', text)
 
 
+
+class TaskStudyTests(unittest.TestCase):
+    def test_plan_arms_differ_only_in_key_residual_selection(self):
+        from compression_topics.spatial.scripts import group_rd_tasks_study as study
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = study.plan(Path(tmp))
+        configs = manifest['run']['configurations']
+        self.assertEqual(len(configs), 2 + 2 * 3 * 2)
+        by_name = {c['name']: c for c in configs}
+        for budget in (30, 40, 50):
+            plain = by_name[f'plain_b{budget}_ceval']['kv']['pipeline']
+            attention = by_name[f'attention_b{budget}_ceval']['kv']['pipeline']
+            parse_kv_spec({'pipeline': plain})
+            self.assertEqual(plain[0]['select_by'], 'deviation')
+            self.assertEqual(attention[0]['select_by'], 'query')
+            self.assertEqual({**plain[0], 'select_by': None}, {**attention[0], 'select_by': None})
+            self.assertEqual(plain[1], attention[1])
+            self.assertEqual((plain[0]['k_layers'], plain[0]['v_layers']), ('all', []))
+            self.assertEqual((plain[1]['k_layers'], plain[1]['v_layers']), ([], 'all'))
+            self.assertEqual(plain[1]['distortion'], 'squared')
+            self.assertAlmostEqual(plain[0]['saving'], budget / 100)
+
+
+
+class ImportanceTests(unittest.TestCase):
+    def test_attention_received_matches_dense_softmax_and_query_split(self):
+        torch.manual_seed(12)
+        length = 101
+        q, k = torch.randn(1, 8, length, 16), torch.randn(1, 2, length, 16)
+        got = offline.attention_received(q, k, block=32)
+        scores = q[0] @ k[0].repeat_interleave(4, 0).transpose(-1, -2) / 4
+        probs = scores.masked_fill(torch.triu(torch.ones(length, length, dtype=torch.bool), 1), float('-inf')).softmax(-1)
+        visible = torch.tril(torch.ones(length, length))
+        for part, rows in enumerate((torch.ones(length, dtype=torch.bool), torch.arange(length) % 2 == 0,
+                                     torch.arange(length) % 2 == 1)):
+            expected = (probs[:, rows].sum(1) / visible[rows].sum(0).clamp_min(1)).reshape(2, 4, length).sum(1)
+            torch.testing.assert_close(got[part], expected, atol=1e-5, rtol=1e-5)
+
+    def test_token_weights_scale_each_tokens_error(self):
+        x = correlated_keys(length=64, seed=13)
+        weights = torch.rand(1, 2, 64) + .5
+        plain = group_rd.build_menu(x, rope_tables=None, distortion='squared', menu=['D', 'Q8', 'P8+8'])
+        weighted = group_rd.build_menu(x, rope_tables=None, distortion='squared', menu=['D', 'Q8', 'P8+8'],
+                                       token_weights=weights)
+        ones = group_rd.build_menu(x, rope_tables=None, distortion='squared', menu=['D', 'Q8', 'P8+8'],
+                                   token_weights=torch.ones(1, 2, 64))
+        torch.testing.assert_close(ones.distortion, plain.distortion)
+        self.assertFalse(torch.allclose(weighted.distortion, plain.distortion))
+        self.assertTrue(torch.equal(weighted.distortion[..., 0], plain.distortion[..., 0]))  # dense stays exact
+
+
 if __name__ == '__main__':
     unittest.main()

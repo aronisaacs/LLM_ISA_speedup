@@ -226,10 +226,12 @@ def _aligned(original, group, rope_tables):
 
 
 def build_menu(tensor, *, rope_tables, residuals=RESIDUALS, modes='both', menu=None,
-               mask='bitmap', distortion='cosine', weights=None, select_by='deviation'):
+               mask='bitmap', distortion='cosine', weights=None, select_by='deviation',
+               token_weights=None):
     """Distortion of every mode; ``tensor`` is [1, H, T, D], T a multiple of 4.
 
     Keys pass ``rope_tables`` (aligned to each group's first token); values pass ``None``.
+    ``token_weights`` [1, H, T] scales each token's error (e.g. the attention it receives).
     """
     _, heads, length, dim = tensor.shape
     blocks = length // BLOCK
@@ -254,6 +256,8 @@ def build_menu(tensor, *, rope_tables, residuals=RESIDUALS, modes='both', menu=N
             residual.scatter_(-1, index[..., :r], delta.gather(-1, index[..., :r]))
         error, direction = _distortion(torch.stack((mean + residual, mean - residual), dim=-2), unit, scale,
                                        distortion, None if weights is None else weights.reshape(1, heads, 1, 1, 1, dim))
+        if token_weights is not None:
+            error = error * token_weights.clamp_min(1e-12).reshape(1, heads, blocks, 2, 2)
         pair_d.append(error.sum(-1))
         pair_recon.append(direction)
     # Quads: one mean and a separate residual per token.
@@ -273,6 +277,8 @@ def build_menu(tensor, *, rope_tables, residuals=RESIDUALS, modes='both', menu=N
                 residual.scatter_(-1, index[..., :r], spread.gather(-1, index[..., :r]))
             error, direction = _distortion(mean + residual, unit, scale, distortion,
                                            None if weights is None else weights.reshape(1, heads, 1, 1, dim))
+            if token_weights is not None:
+                error = error * token_weights.clamp_min(1e-12).reshape(1, heads, blocks, BLOCK)
             quad_d.append(error.sum(-1))
             quad_recon.append(direction)
     names = mode_names(residuals, modes, menu)
