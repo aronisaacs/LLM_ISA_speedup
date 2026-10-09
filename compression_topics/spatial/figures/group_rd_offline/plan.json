@@ -1,0 +1,140 @@
+{
+  "stage": "A",
+  "model_args": "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16",
+  "chunks": 16,
+  "seq_len": 2048,
+  "sampling": {
+    "pool_chunks": 80,
+    "offset": 0,
+    "chunks": 16,
+    "seed": 0,
+    "seq_len": 2048
+  },
+  "residuals": [
+    0,
+    4,
+    8,
+    16,
+    32
+  ],
+  "modes": [
+    "D",
+    "Pd+0",
+    "Pd+4",
+    "Pd+8",
+    "Pd+16",
+    "Pd+32",
+    "P0+d",
+    "P0+0",
+    "P0+4",
+    "P0+8",
+    "P0+16",
+    "P0+32",
+    "P4+d",
+    "P4+0",
+    "P4+4",
+    "P4+8",
+    "P4+16",
+    "P4+32",
+    "P8+d",
+    "P8+0",
+    "P8+4",
+    "P8+8",
+    "P8+16",
+    "P8+32",
+    "P16+d",
+    "P16+0",
+    "P16+4",
+    "P16+8",
+    "P16+16",
+    "P16+32",
+    "P32+d",
+    "P32+0",
+    "P32+4",
+    "P32+8",
+    "P32+16",
+    "P32+32",
+    "Q0",
+    "Q4",
+    "Q8",
+    "Q16",
+    "Q32"
+  ],
+  "default_menu": [
+    "D",
+    "Pd+32",
+    "P32+32",
+    "P8+8",
+    "P0+0",
+    "Q16",
+    "Q8",
+    "Q0"
+  ],
+  "configs": [
+    "full_g4",
+    "full_g16",
+    "full_g64",
+    "default_g4",
+    "default_g16",
+    "default_g64",
+    "full_auto",
+    "default_auto",
+    "top6",
+    "top8",
+    "pairs_r0",
+    "pairs_r4",
+    "pairs_r8",
+    "pairs_r16",
+    "pairs_r32",
+    "quads_r0",
+    "quads_r4",
+    "quads_r8",
+    "quads_r16",
+    "quads_r32"
+  ],
+  "granularities": [
+    4,
+    16,
+    64
+  ],
+  "distortions": {
+    "k": [
+      "cosine",
+      "query"
+    ],
+    "v": [
+      "cosine",
+      "squared"
+    ]
+  },
+  "targets": [
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3,
+    0.35,
+    0.4,
+    0.45,
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7,
+    0.75
+  ],
+  "page_tokens": 64,
+  "top_menus": {
+    "sizes": [
+      6,
+      8
+    ],
+    "chosen_at_saving": 0.5
+  },
+  "keys_dir": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_offline/keys",
+  "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_offline/query_weights.pt",
+  "rope": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_offline/rope.json",
+  "accounting": "fp16_rd_block_modes_norms_header_v1",
+  "keys_bytes_estimate": 4294967296
+}
