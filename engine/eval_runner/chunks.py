@@ -24,6 +24,7 @@ from engine.eval_runner.text_chunks import wikitext_chunks
 from engine.eval_runner.execute import load_model_if_needed
 from engine.eval_runner.cache import simulation_identity, identities_match
 from engine.eval_runner.files import write_json
+from engine.eval_runner.workers import exit_with_parent
 from engine.kv_compress import install, parse_kv_spec
 from engine.multi_run import visible_cuda_devices
 
@@ -109,6 +110,7 @@ def combine(prefix, additional):
 
 
 def main():
+    exit_with_parent()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True)
     parser.add_argument("--worker", type=int, default=None, help=argparse.SUPPRESS)

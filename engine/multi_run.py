@@ -40,10 +40,12 @@ from engine.eval_runner import (  # noqa: E402
 from engine.eval_runner.cache import reuse_cached_result, simulation_identity, identities_match
 from engine.eval_runner.index import record_simulation
 from engine.eval_runner.progress import format_hms, kv_brief, mirror_terminal, say, summarize_scores
+from engine.eval_runner.workers import exit_with_parent
 from engine.kv_compress import install, parse_kv_spec
 
 
 def main() -> None:
+    exit_with_parent()
     args = _parse_args()
     mirror_terminal(args.results_root or _ROOT)
     if args.worker is None:

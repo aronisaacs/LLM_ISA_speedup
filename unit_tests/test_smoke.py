@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,7 @@ import unittest
 from pathlib import Path
 
 from engine.eval_runner.index import index_path, simulations
+from engine.eval_runner.workers import PARENT_ENV
 
 _ROOT = Path(__file__).resolve().parents[1]
 _MULTI_RUN = _ROOT / "engine" / "multi_run.py"
@@ -71,6 +73,7 @@ def _multi_run(test: unittest.TestCase, *args: str) -> None:
     completed = subprocess.run(
         [sys.executable, str(_MULTI_RUN), *args],
         cwd=_ROOT,
+        env=dict(os.environ, **{PARENT_ENV: str(os.getpid())}),  # dies with this test process
         capture_output=True,
         text=True,
         timeout=900,

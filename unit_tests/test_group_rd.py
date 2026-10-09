@@ -537,5 +537,37 @@ class ImportanceTests(unittest.TestCase):
         self.assertTrue(torch.equal(weighted.distortion[..., 0], plain.distortion[..., 0]))  # dense stays exact
 
 
+
+class OrphanTests(unittest.TestCase):
+    def test_child_exits_when_its_launcher_dies(self):
+        import os
+        import signal
+        import subprocess
+        import sys
+        import time
+        from engine.eval_runner.workers import PARENT_ENV
+        child = ("import os,sys,time;sys.path.insert(0,os.getcwd());"
+                 "from engine.eval_runner.workers import exit_with_parent;"
+                 "exit_with_parent(.1);time.sleep(30)")
+        launcher = ("import os,subprocess,sys,time;"
+                    f"p=subprocess.Popen([sys.executable,'-c',{child!r}],env=dict(os.environ,{PARENT_ENV}=str(os.getpid())));"
+                    "print(p.pid,flush=True);time.sleep(30)")
+        parent = subprocess.Popen([sys.executable, '-c', launcher], stdout=subprocess.PIPE, text=True,
+                                  cwd=str(Path(__file__).resolve().parents[1]))
+        pid = int(parent.stdout.readline())
+        os.kill(parent.pid, signal.SIGKILL)  # like pkill on a test runner
+        parent.wait()
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(.1)
+        else:
+            os.kill(pid, signal.SIGKILL)
+            self.fail("orphaned child kept running")
+
+
 if __name__ == '__main__':
     unittest.main()
