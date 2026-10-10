@@ -1,0 +1,76 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 6.352288698391588,
+      "mean_nll,none": 1.8488151729106903
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 61,
+      "nll": 2.0967626571655273,
+      "tokens": 512
+    },
+    {
+      "chunk": 64,
+      "nll": 2.065345287322998,
+      "tokens": 512
+    },
+    {
+      "chunk": 35,
+      "nll": 1.7553819417953491,
+      "tokens": 512
+    },
+    {
+      "chunk": 15,
+      "nll": 1.4777708053588867,
+      "tokens": 512
+    }
+  ],
+  "gate_stats": {},
+  "storage": {
+    "scope": "simulated_prefill_cache_storage",
+    "targets": {
+      "k": {
+        "dense_bits": 3221225472,
+        "stored_bits": 3221225472,
+        "compression": 0.0
+      },
+      "v": {
+        "dense_bits": 3221225472,
+        "stored_bits": 3221225472,
+        "compression": 0.0
+      },
+      "kv": {
+        "dense_bits": 6442450944,
+        "stored_bits": 6442450944,
+        "compression": 0.0
+      }
+    }
+  },
+  "scoring": {
+    "prefix_tokens": 1536,
+    "definition": "continuation token NLL only; prefix logits excluded"
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": []
+    },
+    "sampling": {
+      "split": "validation",
+      "pool_chunks": 4,
+      "offset": 0,
+      "chunks": 4,
+      "seed": 73,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  }
+}

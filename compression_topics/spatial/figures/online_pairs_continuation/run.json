@@ -1,0 +1,3928 @@
+{
+  "model": "hf",
+  "model_args": "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16",
+  "batch_size": 1,
+  "preliminary_results": true,
+  "model_shape": {
+    "layers": 32,
+    "head_dim": 128
+  },
+  "configurations": [
+    {
+      "name": "dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/online_pairs_continuation/tasks/dense.json",
+      "metadata": {},
+      "tasks": [
+        "wikitext"
+      ],
+      "num_fewshot": 0,
+      "apply_chat_template": false
+    },
+    {
+      "name": "fixed_residual_b30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              0
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 16
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              0
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              1
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              2
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              2
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              3
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              3
+            ],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              4
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              4
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              5
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              5
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              6
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              6
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 16
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              7
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              7
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              8
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              8
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              9
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              9
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              10
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              10
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 16
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              11
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              11
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              12
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 16
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              12
+            ],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 16
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              13
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              13
+            ],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              14
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              14
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              15
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 16
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              16
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              17
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              17
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              18
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              18
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              19
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 16
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              19
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              20
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              20
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              21
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              21
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              22
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              22
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              23
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              23
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              24
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              24
+            ],
+            "saving": 0.49,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              25
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              25
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              26
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              26
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              27
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              27
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              28
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              28
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              29
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 32
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              29
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              30
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 8
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              30
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              31
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              31
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": 0
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/online_pairs_continuation/tasks/fixed_residual_b30.json",
+      "metadata": {
+        "arm": "fixed_residual",
+        "global_budget": 0.3
+      },
+      "tasks": [
+        "wikitext"
+      ],
+      "num_fewshot": 0,
+      "apply_chat_template": false
+    },
+    {
+      "name": "adaptive_fixed_price_b30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              0
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              0
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              1
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              2
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              2
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              3
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              3
+            ],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              4
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              4
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              5
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              5
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              6
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              6
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              7
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              7
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              8
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              8
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              9
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              9
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              10
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              10
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              11
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              11
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              12
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              12
+            ],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              13
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              13
+            ],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              14
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              14
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              15
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              16
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              17
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              17
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              18
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              18
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              19
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              19
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              20
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              20
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              21
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              21
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              22
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              22
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              23
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              23
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              24
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              24
+            ],
+            "saving": 0.49,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              25
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              25
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              26
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              26
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              27
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              27
+            ],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              28
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              28
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              29
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              29
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              30
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              30
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              31
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              31
+            ],
+            "saving": 0.4,
+            "feedback": false,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/online_pairs_continuation/tasks/adaptive_fixed_price_b30.json",
+      "metadata": {
+        "arm": "adaptive_fixed_price",
+        "global_budget": 0.3
+      },
+      "tasks": [
+        "wikitext"
+      ],
+      "num_fewshot": 0,
+      "apply_chat_template": false
+    },
+    {
+      "name": "adaptive_feedback_b30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              0
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              0
+            ],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              1
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              2
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              2
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              3
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              3
+            ],
+            "saving": 0.1,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              4
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              4
+            ],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              5
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              5
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              6
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              6
+            ],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              7
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              7
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              8
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              8
+            ],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              9
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              9
+            ],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              10
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              10
+            ],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              11
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              11
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              12
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              12
+            ],
+            "saving": 0.1,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              13
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              13
+            ],
+            "saving": 0.1,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              14
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              14
+            ],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              15
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              16
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              17
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              17
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              18
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              18
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              19
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              19
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              20
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              20
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              21
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              21
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              22
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              22
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              23
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              23
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              24
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              24
+            ],
+            "saving": 0.49,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              25
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              25
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              26
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              26
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              27
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              27
+            ],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              28
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              28
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              29
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              29
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              30
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              30
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [
+              31
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          },
+          {
+            "method": "online_pairs",
+            "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+            "k_layers": [],
+            "v_layers": [
+              31
+            ],
+            "saving": 0.4,
+            "feedback": true,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "fixed_residual": null
+          }
+        ]
+      },
+      "output_path": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/online_pairs_continuation/tasks/adaptive_feedback_b30.json",
+      "metadata": {
+        "arm": "adaptive_feedback",
+        "global_budget": 0.3
+      },
+      "tasks": [
+        "wikitext"
+      ],
+      "num_fewshot": 0,
+      "apply_chat_template": false
+    }
+  ],
+  "sampling": {
+    "split": "validation",
+    "pool_chunks": 4,
+    "offset": 0,
+    "chunks": 4,
+    "seed": 73,
+    "seq_len": 2048,
+    "scoring_prefix": 1536
+  }
+}
