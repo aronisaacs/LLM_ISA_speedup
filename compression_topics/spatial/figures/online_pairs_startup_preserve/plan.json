@@ -1,0 +1,39 @@
+{
+  "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+  "control": {
+    "startup_tokens": 32,
+    "memory_pairs": 10.0,
+    "recent_deadband": 0.02,
+    "cumulative_deadband": 0.03,
+    "recent_gain": 4.0,
+    "cumulative_gain": 8.0,
+    "max_log_step": 0.2,
+    "price_span": 10000.0
+  },
+  "capture_files": [
+    "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_offline/keys/chunk_00007.pt",
+    "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_offline/keys/chunk_00009.pt"
+  ],
+  "selections": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/presentation_ladder_clean_50/selections.json",
+  "layers": [
+    4,
+    12,
+    20,
+    28
+  ],
+  "global_budgets": [
+    0.2,
+    0.3,
+    0.4
+  ],
+  "scope": "sampled slots at saved layer budgets; not a whole-model accuracy or global-allocation test",
+  "arms": [
+    "fixed_residual",
+    "adaptive_fixed_price",
+    "adaptive_feedback"
+  ],
+  "decision": "one dense/0/8/16/32-residual format across KV heads; head-local residuals; no query or importance weighting",
+  "error": "mean per-token relative squared error across heads; bf16 means/residuals/restoration scales",
+  "feedback": "v3: one-pair startup slack only for undercompression; overcompression bands unchanged; startup selects at/below target saving",
+  "startup": "first 32 tokens price search only; subsequent decisions see current pair and controller state"
+}
