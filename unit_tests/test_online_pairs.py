@@ -1,0 +1,72 @@
+import unittest
+import torch
+from compression_topics.spatial.algorithms import online_pairs as online
+from engine.kv_compress.rope import RopeTables,apply_rope
+
+class OnlinePairTests(unittest.TestCase):
+    def setUp(self):
+        torch.set_num_threads(2);torch.manual_seed(41)
+
+    def test_rope_alignment_and_head_local_reconstruction(self):
+        rope=RopeTables(10000.,128)
+        x=torch.randn(1,2,1,128).expand(1,2,64,128).clone()
+        cos,sin=rope.cos_sin(torch.arange(64),torch.float32)
+        rotated=apply_rope(x,cos,sin,inverse=False)
+        a=online.pair_table(rotated,target='k',rope_tables=rope)
+        b=online.pair_table(x,target='v')
+        torch.testing.assert_close(torch.tensor(a.errors),torch.tensor(b.errors),atol=1e-5,rtol=1e-3)
+        self.assertLess(max(e[1] for e in b.errors),1e-4)
+        self.assertEqual(b.payload_bits[1],2*(16*(128+2)))
+        with self.assertRaisesRegex(ValueError,'RoPE'):online.pair_table(x,target='k')
+
+    def test_startup_and_budget_account_for_tags_and_dense_tail(self):
+        x=torch.randn(1,2,129,128)
+        table=online.pair_table(x,target='v')
+        result=online.run(table,.3)
+        self.assertGreaterEqual(result['startup_saving'],.3)
+        self.assertEqual(result['history'][15]['price_used'],result['initial_price'])
+        self.assertEqual(result['stored_bits'],result['history'][-1]['stored_bits']+2*128*16)
+        self.assertEqual(result['dense_bits'],x.numel()*16)
+        self.assertEqual(sum(result['formats'].values()),64)
+        self.assertEqual(result['history'][15]['recent_saving'],result['startup_saving'])
+
+    def test_future_pairs_cannot_change_post_startup_decisions(self):
+        x=torch.randn(1,2,128,128)
+        a=online.pair_table(x,target='v')
+        changed=x.clone();changed[...,96:,:]=torch.randn_like(changed[...,96:,:])*4
+        b=online.pair_table(changed,target='v')
+        ra,rb=online.run(a,.3),online.run(b,.3)
+        self.assertEqual(ra['history'][:48],rb['history'][:48])
+
+    def test_feedback_direction_and_bounds_on_changing_difficulty(self):
+        # Warmup supports a .3 target. Later extreme errors forbid worthwhile merging,
+        # so undercompression must drive the price upward; no future-price search occurs.
+        errors=[[0.,.1,.06,.03,.01] for _ in range(16)]
+        errors += [[0.,1e8,1e8,1e8,1e8] for _ in range(128)]
+        table=online.PairTable(errors,[4096,2080,2336,2464,2720],4096,0)
+        result=online.run(table,.3,control=online.Control(price_span=10))
+        fixed=online.run(table,.3,feedback=False)
+        self.assertGreater(result['history'][-1]['price_next'],result['initial_price'])
+        self.assertLessEqual(result['history'][-1]['price_next'],result['initial_price']*10)
+        self.assertGreater(result['price_bound_hits'],0)
+        self.assertTrue(all(r['price_used']==fixed['initial_price'] for r in fixed['history']))
+        self.assertEqual(online.outside(.01,.02),0.)
+        self.assertAlmostEqual(online.outside(-.05,.02),-.03)
+
+    def test_stationary_sequence_tracks_targets_after_startup(self):
+        torch.manual_seed(44)
+        table=online.pair_table(torch.randn(1,2,2048,128),target='v')
+        for target in (.1,.25,.4,.49):
+            result=online.run(table,target)
+            self.assertLess(abs(result['measured_saving']-target),.03)
+            self.assertGreater(result['fraction_post_startup_within_three_points'],.9)
+            self.assertEqual(result['price_bound_hits'],0)
+
+    def test_pair_only_targets_and_invalid_configuration_rejected(self):
+        table=online.pair_table(torch.randn(1,1,32,128),target='v')
+        with self.assertRaises(ValueError):online.run(table,.5)
+        with self.assertRaises(ValueError):online.Control(startup_tokens=31)
+        with self.assertRaises(ValueError):online.Control(memory_pairs=0)
+        with self.assertRaisesRegex(ValueError,'cannot meet'):online.run(table,.45,fixed_residual=32)
+
+if __name__=='__main__':unittest.main()

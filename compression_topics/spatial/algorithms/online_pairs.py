@@ -1,0 +1,162 @@
+"""Pair-local reconstruction/storage prototype with a feedback price controller.
+
+No registration in the model pipeline yet. Each choice applies across KV heads,
+but means/residuals remain within heads. Only the initial 32-token window uses
+a shared price search. Afterward decisions inspect the current pair and state.
+"""
+from dataclasses import dataclass
+import math
+import torch
+from compression_topics.spatial.algorithms.storage import vector_group_bits, metadata_bits
+from engine.kv_compress.rope import apply_rope
+
+RESIDUALS = (0, 8, 16, 32)
+ACCOUNTING = 'online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1'
+
+@dataclass(frozen=True)
+class Control:
+    startup_tokens: int = 32
+    memory_pairs: float = 10.
+    recent_deadband: float = .02
+    cumulative_deadband: float = .03
+    recent_gain: float = 4.
+    cumulative_gain: float = 8.
+    max_log_step: float = .2
+    price_span: float = 1e4
+
+    def __post_init__(self):
+        if self.startup_tokens < 2 or self.startup_tokens % 2:
+            raise ValueError('startup must contain complete pairs')
+        values = (self.memory_pairs, self.max_log_step, self.price_span)
+        if any(not math.isfinite(x) or x <= 0 for x in values) or self.price_span <= 1:
+            raise ValueError('invalid controller memory/bounds')
+        if any(not math.isfinite(x) or x < 0 for x in
+               (self.recent_deadband, self.cumulative_deadband, self.recent_gain, self.cumulative_gain)):
+            raise ValueError('invalid feedback parameters')
+
+@dataclass
+class PairTable:
+    errors: list  # [pair, option], mean relative squared reconstruction error across heads/tokens
+    payload_bits: list  # dense, merged 0/8/16/32, excludes shared tags and header
+    dense_pair_bits: int
+    tail_bits: int
+
+
+def pair_table(tensor, *, target, rope_tables=None):
+    """Vectorized option preparation; every row depends on its own pair only."""
+    if tensor.ndim != 4 or tensor.shape[0] != 1 or tensor.shape[-1] < max(RESIDUALS):
+        raise ValueError('need batch-one [1, KV heads, tokens, head_dim >= 32]')
+    if target not in ('k', 'v') or (target == 'k' and
+            (rope_tables is None or rope_tables.attention_scaling != 1.)):
+        raise ValueError('keys require pure-rotation RoPE; target must be k/v')
+    heads, length, dim = tensor.shape[1:]
+    full = length // 2 * 2
+    if not full:
+        raise ValueError('need at least one complete pair')
+    source = tensor[..., :full, :].float()
+    if target == 'k':
+        cos, sin = rope_tables.cos_sin(torch.arange(full, device=tensor.device) % 2, torch.float32)
+        source = apply_rope(source, cos, sin, inverse=True)
+    grouped = source.reshape(1, heads, full // 2, 2, dim)
+    norms = grouped.norm(dim=-1, keepdim=True)
+    unit = torch.nn.functional.normalize(grouped, dim=-1)
+    mean = unit.mean(-2, keepdim=True).to(torch.bfloat16).float()
+    delta = (unit[..., 0, :] - unit[..., 1, :]) / 2
+    indices = delta.square().topk(max(RESIDUALS), dim=-1).indices
+    errors = [torch.zeros(full // 2, device=tensor.device)]
+    for residual_count in RESIDUALS:
+        residual = torch.zeros_like(delta)
+        if residual_count:
+            selected = indices[..., :residual_count]
+            residual.scatter_(-1, selected, delta.gather(-1, selected))
+        residual = residual.to(torch.bfloat16).float()
+        direction = torch.cat((mean + residual.unsqueeze(-2), mean - residual.unsqueeze(-2)), -2)
+        size = direction.norm(dim=-1, keepdim=True)
+        scales = (norms / size.clamp_min(1e-12)).to(torch.bfloat16).float()
+        restored = direction * scales
+        error = ((restored-grouped).square().sum(-1) / grouped.square().sum(-1).clamp_min(1e-12)).mean((0,1,3))
+        valid = ((size.squeeze(-1) > 1e-6) & (norms.squeeze(-1) > 1e-12)).all(-1).all((0,1))
+        error = error.masked_fill(~valid, float('inf'))
+        errors.append(error)
+    dense = heads * 2 * dim * 16
+    return PairTable(torch.stack(errors,-1).cpu().tolist(),
+                     [dense] + [heads * vector_group_bits(r, dim, 2, include_norms=True) for r in RESIDUALS],
+                     dense, (length-full)*heads*dim*16)
+
+
+def select(error, rates, price, allowed):
+    return min(allowed, key=lambda i: (error[i] + price*rates[i], i))
+
+
+def initial_price(table, rows, target_saving, allowed):
+    """Search the smallest feasible shared price, only over supplied startup rows."""
+    dense = len(rows)*table.dense_pair_bits
+    ceiling_bits = sum(min(table.payload_bits[i] for i in allowed if math.isfinite(e[i])) for e in rows)
+    overhead = metadata_bits(len(rows), 3)
+    if ceiling_bits + overhead > dense*(1-target_saving)+1e-8:
+        raise ValueError('startup cannot meet target with available pair formats')
+    rates = [b/table.dense_pair_bits for b in table.payload_bits]
+    def stored(price):
+        return sum(table.payload_bits[select(e,rates,price,allowed)] for e in rows)+overhead
+    high=1e-6
+    while stored(high)>dense*(1-target_saving):
+        high*=4
+        if high>1e12:
+            raise ValueError('cannot initialize price')
+    low=0.
+    for _ in range(60):
+        middle=(low+high)/2
+        if stored(middle)<=dense*(1-target_saving):high=middle
+        else:low=middle
+    return max(high,1e-12)
+
+
+def outside(error, band):
+    return math.copysign(max(abs(error)-band, 0.), error)
+
+
+def run(table, target_saving, *, feedback=True, fixed_residual=None, control=Control()):
+    if not math.isfinite(target_saving) or not 0<target_saving<.5:
+        raise ValueError('pair target must be positive and below 50%')
+    allowed = list(range(5)) if fixed_residual is None else [0, RESIDUALS.index(fixed_residual)+1]
+    warmup=min(control.startup_tokens//2,len(table.errors))
+    price=initial_price(table,table.errors[:warmup],target_saving,allowed)
+    initial=price
+    rates=[b/table.dense_pair_bits for b in table.payload_bits]
+    target=1-target_saving
+    alpha=1-math.exp(-1/control.memory_pairs)
+    payload=0;previous_stored=0;ema=target;history=[];total_error=0.;hits=0
+    for n,error in enumerate(table.errors,1):
+        # No access to any later row: the only exception is the explicit startup initialization above.
+        used_price=price
+        choice=select(error,rates,used_price,allowed)
+        payload+=table.payload_bits[choice]
+        stored=payload+metadata_bits(n,3)
+        total_error+=error[choice]
+        fraction=stored/(n*table.dense_pair_bits)
+        increment=(stored-previous_stored)/table.dense_pair_bits
+        if n==warmup:
+            ema=fraction  # Initialize from the actual committed 32-token window.
+        elif n>warmup:
+            ema=(1-alpha)*ema+alpha*increment
+            if feedback:
+                correction=control.recent_gain*outside(ema-target,control.recent_deadband)
+                correction+=control.cumulative_gain*outside(fraction-target,control.cumulative_deadband)
+                change=max(-control.max_log_step,min(control.max_log_step,correction))
+                new=price*math.exp(change)
+                price=max(initial/control.price_span,min(initial*control.price_span,new))
+                hits+=int(price!=new)
+        history.append({'tokens':2*n,'format':'dense' if choice==0 else f'r{RESIDUALS[choice-1]}',
+                        'price_used':used_price,'price_next':price,'stored_bits':stored,
+                        'cumulative_saving':1-fraction,'recent_saving':1-ema,
+                        'pair_relative_error':error[choice], 'running_relative_error':total_error/n})
+        previous_stored=stored
+    final_stored=stored+table.tail_bits
+    final_dense=len(table.errors)*table.dense_pair_bits+table.tail_bits
+    settled=history[warmup:]
+    return {'target_saving':target_saving,'measured_saving':1-final_stored/final_dense,
+            'mean_relative_squared_error':total_error/len(table.errors),'initial_price':initial,
+            'price_bound_hits':hits,'startup_saving':history[warmup-1]['cumulative_saving'],
+            'fraction_post_startup_within_three_points':sum(abs(r['cumulative_saving']-target_saving)<=.03 for r in settled)/len(settled) if settled else None,
+            'formats':{name:sum(r['format']==name for r in history) for name in ['dense','r0','r8','r16','r32']},
+            'stored_bits':final_stored,'dense_bits':final_dense,'history':history}
