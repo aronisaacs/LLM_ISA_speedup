@@ -22,3 +22,5 @@ from compression_topics.vector.algorithms import vector_compress_pair as _vector
 from compression_topics.spatial.algorithms import group_calibrated as _group_calibrated  # noqa: F401
 from compression_topics.spatial.algorithms import group_rd as _group_rd  # noqa: F401
 from compression_topics.spatial.algorithms import presentation_spatial as _presentation_spatial  # noqa: F401
+
+from compression_topics.spatial.algorithms import online_pairs as _online_pairs  # noqa: F401

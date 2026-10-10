@@ -1,6 +1,6 @@
 """Pair-local reconstruction/storage prototype with a feedback price controller.
 
-No registration in the model pipeline yet. Each choice applies across KV heads,
+Registered for prefill reconstruction in the model pipeline; decode appends stay dense. Each choice applies across KV heads,
 but means/residuals remain within heads. Only the initial 32-token window uses
 a shared price search. Afterward decisions inspect the current pair and state.
 """
@@ -42,7 +42,7 @@ class PairTable:
     tail_bits: int
 
 
-def pair_table(tensor, *, target, rope_tables=None):
+def pair_table(tensor, *, target, rope_tables=None, return_reconstruction=False):
     """Vectorized option preparation; every row depends on its own pair only."""
     if tensor.ndim != 4 or tensor.shape[0] != 1 or tensor.shape[-1] < max(RESIDUALS):
         raise ValueError('need batch-one [1, KV heads, tokens, head_dim >= 32]')
@@ -64,6 +64,7 @@ def pair_table(tensor, *, target, rope_tables=None):
     delta = (unit[..., 0, :] - unit[..., 1, :]) / 2
     indices = delta.square().topk(max(RESIDUALS), dim=-1).indices
     errors = [torch.zeros(full // 2, device=tensor.device)]
+    reconstructions = [grouped] if return_reconstruction else None
     for residual_count in RESIDUALS:
         residual = torch.zeros_like(delta)
         if residual_count:
@@ -78,10 +79,12 @@ def pair_table(tensor, *, target, rope_tables=None):
         valid = ((size.squeeze(-1) > 1e-6) & (norms.squeeze(-1) > 1e-12)).all(-1).all((0,1))
         error = error.masked_fill(~valid, float('inf'))
         errors.append(error)
+        if return_reconstruction:reconstructions.append(restored)
     dense = heads * 2 * dim * 16
-    return PairTable(torch.stack(errors,-1).cpu().tolist(),
+    table = PairTable(torch.stack(errors,-1).cpu().tolist(),
                      [dense] + [heads * vector_group_bits(r, dim, 2, include_norms=True) for r in RESIDUALS],
                      dense, (length-full)*heads*dim*16)
+    return (table,reconstructions) if return_reconstruction else table
 
 
 def select(error, rates, price, allowed):
@@ -196,3 +199,55 @@ def run(table, target_saving, *, feedback=True, fixed_residual=None, control=Con
             'fraction_post_startup_within_effective_band':sum(r['allowed_saving_min']<=r['cumulative_saving']<=r['allowed_saving_max'] for r in settled)/len(settled) if settled else None,
             'formats':{name:sum(r['format']==name for r in history) for name in ['dense','r0','r8','r16','r32']},
             'stored_bits':final_stored,'dense_bits':final_dense,'history':history}
+
+
+def apply(tensor, *, layer_idx, target, saving, feedback=True, fixed_residual=None,
+          control=None, seq_start=0, rope_tables=None, accounting=ACCOUNTING):
+    """Compress prefill using local controller choices; no new decode compression."""
+    from engine.kv_compress.metrics import STATS
+    if accounting != ACCOUNTING:
+        raise ValueError('unsupported online-pair accounting')
+    if not isinstance(feedback,bool):
+        raise ValueError('feedback must be boolean')
+    settings=Control(**(control or {}))
+    if seq_start:
+        return tensor
+    table,reconstructions=pair_table(tensor,target=target,rope_tables=rope_tables,return_reconstruction=True)
+    result=run(table,saving,feedback=feedback,fixed_residual=fixed_residual,control=settings)
+    names=['dense']+[f'r{r}' for r in RESIDUALS]
+    choice=torch.tensor([names.index(r['format']) for r in result['history']],device=tensor.device)
+    selected=torch.zeros_like(reconstructions[0])
+    for i,option in enumerate(reconstructions):
+        selected=torch.where((choice==i).reshape(1,1,-1,1,1),option,selected)
+    full=2*len(table.errors)
+    restored=selected.reshape(1,tensor.shape[1],full,tensor.shape[-1])
+    if target=='k':
+        cos,sin=rope_tables.cos_sin(torch.arange(full,device=tensor.device)%2,torch.float32)
+        restored=apply_rope(restored,cos,sin,inverse=False)
+    merged=(choice>0).repeat_interleave(2).reshape(1,1,full,1)
+    out=tensor.clone()
+    out[...,:full,:]=torch.where(merged,restored.to(tensor.dtype),tensor[...,:full,:])
+    heads,dim=tensor.shape[1],tensor.shape[-1]
+    count=sum(result['formats'][f'r{r}'] for r in RESIDUALS)
+    cosine=torch.nn.functional.cosine_similarity(tensor[...,:full,:].float(),out[...,:full,:].float(),dim=-1)
+    pair_cosine=cosine.reshape(1,heads,-1,2).amin((0,1,3))
+    valid=pair_cosine[choice>0]
+    row=STATS.setdefault(f'{target}_layer_{layer_idx}',{'accounting':ACCOUNTING,'dense_bits':0,'stored_bits':0,
+        'pairs':0,'merged':0,'features':dim,'metadata_bits':0,'norm_bits':0,'residual_mask_bits':0,
+        'cosine_sum':0.,'cosine_min':1.,'cutoff_sum':0.,'updates':0,'shortfall_updates':0,
+        'controller_bound_hits':0,'max_final_target_deviation':0.})
+    row['dense_bits']+=result['dense_bits'];row['stored_bits']+=result['stored_bits']
+    row['pairs']+=len(table.errors);row['merged']+=count
+    row['metadata_bits']+=metadata_bits(len(table.errors),3)
+    row['norm_bits']+=count*heads*2*16
+    row['residual_mask_bits']+=sum(result['formats'][f'r{r}']*heads*dim for r in RESIDUALS if r)
+    row['updates']+=1;row['controller_bound_hits']+=result['price_bound_hits']
+    row['max_final_target_deviation']=max(row['max_final_target_deviation'],abs(result['measured_saving']-saving))
+    if len(valid):
+        row['cosine_sum']+=float(valid.sum());row['cosine_min']=min(row['cosine_min'],float(valid.min()))
+        row['cutoff_sum']+=float(valid.min())
+    return out
+
+
+from engine.kv_compress.methods import METHODS
+METHODS['online_pairs']=apply
