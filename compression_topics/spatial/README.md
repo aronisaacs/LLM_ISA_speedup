@@ -18,6 +18,8 @@ compress prefill; newly appended decode tokens remain dense.
 - **Offline adaptive pairs:** the same representations and reconstruction as
   online, with a price fitted across the full prefill and discrete boundary
   repair. This is an offline reference, not an exact accuracy optimum.
+- **Online hierarchy:** choose dense, pairs, quads or eights within an
+  eight-token window, using the short residual menu and online byte controller.
 
 The clean presentation study's historical rungs 3 and 4 mean query-weighted
 residuals and fixed pairs/quads. Those numbers are not the current method ladder.
@@ -55,6 +57,35 @@ The study supports `--from` and `--through` for resuming stages. Plans are
 immutable within an output directory; use a new `--out` for a changed protocol.
 Calibration writes per-chunk preliminary results. Accuracy writes preliminary
 summaries as configurations complete. The score index is local to the study.
+
+### Online pair/quad/eight accuracy
+
+`scripts/hierarchy_accuracy.py` and `scripts/hierarchy_accuracy_dgx.sh` evaluate
+one online hierarchy with separate token masks at total KV savings of
+10/20/30/40/50/60/70/80%. Results go to `figures/hierarchy_accuracy/`.
+Keys and values have separate, independently calibrated per-layer allocations.
+Each slot is calibrated at seven controller targets (10/25/40/55/70/80/85%):
+448 settings across 32 layers and two targets, using 4 train screening chunks
+and 12 disjoint train refinement chunks. This is a target grid, not a search
+over format combinations or controller hyperparameters.
+
+The common greedy allocator uses measured calibration bytes for this method,
+keeps each calibrated local policy intact, and records discrete overshoot.
+The new 16-chunk validation must achieve total savings within one percentage
+point of each global target before C-Eval runs. C-Eval reports its own actual
+savings and flags deviations. Its dense baseline may reuse the earlier full
+evaluation only after an exact model/prompt/protocol identity and question-count
+check. Compressed results and calibration are never reused from other methods.
+
+The short menu, 32-token startup and feedback parameters are frozen. There are
+no shared-mask, offline, query-weighted, attention-weighted or quantized arms.
+Decode appends remain dense. The launcher uses four GPUs; `--from`/`--through`
+support resume, preliminary results appear during calibration and accuracy,
+and quiet timing records accompany each evaluation attempt.
+
+```bash
+sbatch compression_topics/spatial/scripts/hierarchy_accuracy_dgx.sh
+```
 
 ## Implementation and retained helpers
 

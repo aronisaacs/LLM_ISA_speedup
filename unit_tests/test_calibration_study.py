@@ -79,5 +79,19 @@ class CalibrationStudyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'not matched'):
             require_matched_savings(rows, [.3], ('fixed','online','offline'), tolerance=.01)
 
+    def test_measured_allocation_uses_observed_rates_without_changing_policy(self):
+        rows=[{'name':target,'layer':0,'target':target,'budget':.25,'compression':.24,
+               'measured_saving':.24,'ppl':11.,'kv':{'pipeline':[{'method':'example','saving':.25}]}}
+              for target in ('k','v')]
+        calibration={'dense_ppl':10.,'candidates':rows};before=deepcopy(calibration)
+        assigned=allocate_settings(calibration,rows,1,('k','v'),.23,allocation_basis='measured')
+        self.assertAlmostEqual(assigned['allocation_saving'],.24)
+        self.assertEqual(assigned['target_saving'],.23)
+        self.assertEqual(assigned['allocation_basis'],'measured_calibration_bytes')
+        self.assertEqual(calibration,before)
+        self.assertTrue(all(row['kv']['pipeline'][0]['saving']==.25 for row in assigned['assignment']))
+        with self.assertRaisesRegex(ValueError,'trimming is unsupported'):
+            allocate_settings(calibration,rows,1,('k','v'),.23,allocation_basis='measured',trim_overshoot=True)
+
 if __name__ == '__main__':
     unittest.main()

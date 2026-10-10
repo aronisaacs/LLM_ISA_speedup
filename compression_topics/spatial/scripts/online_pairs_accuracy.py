@@ -112,7 +112,7 @@ def task_run(plan, selections):
     return {'model':'hf','model_args':plan['model_args'],'batch_size':1,'configurations':configs}
 
 
-def summarize(out, run, *, require_complete=False):
+def summarize(out, run, *, require_complete=False, arm_pairs=None, scope=None, comparison=None):
     rows=[]
     for config in run['configurations']:
         path=Path(config['output_path'])
@@ -137,7 +137,7 @@ def summarize(out, run, *, require_complete=False):
     comparisons=[]
     for budget in sorted({r['global_budget'] for r in rows if 'global_budget' in r}):
         pair={r['arm']:r for r in rows if r.get('global_budget')==budget}
-        for left,right in (('fixed','adaptive'),('adaptive','offline'),('fixed','offline')):
+        for left,right in (arm_pairs if arm_pairs is not None else (('fixed','adaptive'),('adaptive','offline'),('fixed','offline'))):
             if left not in pair or right not in pair:continue
             gap=pair[right]['actual_prefill_kv_saving']-pair[left]['actual_prefill_kv_saving']
             comparisons.append({'budget':budget,'reference_arm':left,'comparison_arm':right,
@@ -145,25 +145,25 @@ def summarize(out, run, *, require_complete=False):
                                 'accuracy_gain_points':100*(pair[right]['accuracy']-pair[left]['accuracy'])})
     report={'status':'complete' if complete else 'preliminary','completed':len(rows),'total':len(run['configurations']),
             'dense_accuracy':dense,'rows':rows,'comparisons':comparisons,
-            'scope':'full C-Eval validation 5-shot; independently calibrated methods; prefill compression only',
-            'comparison':'fixed-residual, online adaptive and offline adaptive pairs; same online/offline representations; actual savings checked'}
+            'scope':scope or 'full C-Eval validation 5-shot; independently calibrated methods; prefill compression only',
+            'comparison':comparison or 'fixed-residual, online adaptive and offline adaptive pairs; same online/offline representations; actual savings checked'}
     write_json(out/('summary.json' if complete else 'preliminary.json'),report)
     return report
 
 
-def execute_tasks(out, run):
+def execute_tasks(out, run, *, summarizer=summarize):
     command=[sys.executable,str(ROOT/'engine/multi_run.py'),'--run',str(out/'tasks_run.json'),
              '--skip-existing','--write-results','--results-root',str(out)]
     process=subprocess.Popen(command,cwd=ROOT);previous=-1
     try:
         while True:
-            report=summarize(out,run)
+            report=summarizer(out,run)
             if report['completed']!=previous:
                 print('[preliminary] '+json.dumps(report),flush=True);previous=report['completed']
             try:code=process.wait(timeout=20);break
             except subprocess.TimeoutExpired:pass
         if code:raise subprocess.CalledProcessError(code,command)
-        print(json.dumps(summarize(out,run,require_complete=True),indent=2),flush=True)
+        print(json.dumps(summarizer(out,run,require_complete=True),indent=2),flush=True)
     finally:
         if process.poll() is None:
             process.terminate()
@@ -171,13 +171,14 @@ def execute_tasks(out, run):
             except subprocess.TimeoutExpired:process.kill();process.wait()
 
 
-def run_stage(plan,stage):
+def run_stage(plan,stage, *, candidate_builder=candidates, arms=ARMS,
+              measure_fn=measure, allocation_fn=select_allocations, task_builder=task_run, summarizer=summarize):
     out=Path(plan['out'])
     if stage in ('screen','refine','validate'):
         name='validation' if stage=='validate' else stage
         destination=out/name
         configs=[configuration('dense',{'pipeline':[]},destination,WIKITEXT_FULL)]
-        rows=candidates(plan)
+        rows=candidate_builder(plan)
         if stage=='refine':
             shortlist=load(out/'shortlist.json');rows=[r for r in rows if r['name'] in shortlist]
         if stage=='validate':
@@ -186,9 +187,9 @@ def run_stage(plan,stage):
         else:configs += [configuration(r['name'],r['kv'],destination,WIKITEXT_FULL) for r in rows]
         path=out/f'{name}_run.json';write_json(path,chunk_run(plan,configs,name));execute_chunks(path)
         if stage in ('screen','refine'):
-            calibration=measure(plan,rows,name);write_json(out/('screening.json' if stage=='screen' else 'calibration.json'),calibration)
+            calibration=measure_fn(plan,rows,name);write_json(out/('screening.json' if stage=='screen' else 'calibration.json'),calibration)
             if stage=='screen':
-                chosen=[r['name'] for arm in ARMS for r in winners(calibration,arm)]
+                chosen=[r['name'] for arm in arms for r in winners(calibration,arm)]
                 write_json(out/'shortlist.json',chosen)
                 print(f'Shortlisted {len(chosen)}/{len(rows)} candidates.',flush=True)
         else:
@@ -201,21 +202,21 @@ def run_stage(plan,stage):
                                    'token_ppl':perplexity(payload)})
             write_json(out/'validation.json',validation)
             try:
-                require_matched_savings(validation, plan['budgets'], ARMS, tolerance=plan['matching_tolerance'])
+                require_matched_savings(validation, plan['budgets'], arms, tolerance=plan['matching_tolerance'])
             except ValueError as error:
                 raise RuntimeError('holdout byte gate failed; inspect validation.json before full accuracy') from error
             print(json.dumps(validation,indent=2),flush=True)
     elif stage=='allocate':
-        write_json(out/'selections.json',select_allocations(plan,load(out/'calibration.json')))
+        write_json(out/'selections.json',allocation_fn(plan,load(out/'calibration.json')))
     elif stage=='tasks':
         # Recheck the byte gate even when resuming directly at tasks.
         validation=load(out/'validation.json')
         try:
-            require_matched_savings(validation, plan['budgets'], ARMS, tolerance=plan['matching_tolerance'])
+            require_matched_savings(validation, plan['budgets'], arms, tolerance=plan['matching_tolerance'])
         except ValueError as error:
             raise RuntimeError('validation byte gate failed') from error
-        run=task_run(plan,load(out/'selections.json'));write_json(out/'tasks_run.json',run);execute_tasks(out,run)
-    else:summarize(out,load(out/'tasks_run.json'),require_complete=True)
+        run=task_builder(plan,load(out/'selections.json'));write_json(out/'tasks_run.json',run);execute_tasks(out,run,summarizer=summarizer)
+    else:summarizer(out,load(out/'tasks_run.json'),require_complete=True)
 
 
 def main():

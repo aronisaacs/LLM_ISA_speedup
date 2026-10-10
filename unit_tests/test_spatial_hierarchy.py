@@ -60,6 +60,13 @@ class HierarchyTests(unittest.TestCase):
                                                        return_reconstruction=True)
         result = hierarchy.run(table, .7)
         restored = hierarchy.restore(keys, result, representations)
+        reference = keys.clone()
+        for window,item in enumerate(result['history']):
+            for start,size,residual in item['segments']:
+                if residual is not None:
+                    offset=window*8+start
+                    reference[...,offset:offset+size,:]=representations[(size,residual)][...,offset:offset+size,:]
+        self.assertTrue(torch.equal(restored,reference))
         self.assertTrue(torch.equal(restored[..., -1, :], keys[..., -1, :]))
         self.assertLess(float((restored.float()-keys.float()).square().mean()), 1e-3)
         choices = [table.choose(row, entry['price_used']) for row, entry in zip(table.rows, result['history'])]

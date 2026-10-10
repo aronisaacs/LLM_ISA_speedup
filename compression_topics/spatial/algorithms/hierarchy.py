@@ -199,11 +199,19 @@ def run(table, saving, *, control=Control(), feedback=True):
 
 def restore(tensor, result, reconstructions):
     out = tensor.clone()
+    full = len(result['history'])*WINDOW
+    options = list(reconstructions)
+    codes = [0]*full
     for window, item in enumerate(result['history']):
         for start, size, residual in item['segments']:
             if residual is not None:
                 offset = window * WINDOW + start
-                out[..., offset:offset+size, :] = reconstructions[(size, residual)][..., offset:offset+size, :]
+                codes[offset:offset+size] = [options.index((size,residual))+1]*size
+    codes = torch.tensor(codes,device=tensor.device).reshape(1,1,full,1)
+    body = out[...,:full,:]
+    for code, option in enumerate(options,1):
+        body = torch.where(codes==code,reconstructions[option],body)
+    out[...,:full,:] = body
     return out
 
 
@@ -234,4 +242,6 @@ def apply(tensor, *, layer_idx, target, saving, max_group=8, control=None, mask_
     row['updates'] = row.get('updates', 0) + 1
     row['controller_bound_hits'] = row.get('controller_bound_hits', 0) + result['price_bound_hits']
     row['max_final_target_deviation'] = max(row.get('max_final_target_deviation', 0.), abs(result['measured_saving']-saving))
+    for name,count in result['formats'].items():
+        row['format_'+name] = row.get('format_'+name,0)+count
     return out

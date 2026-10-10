@@ -23,7 +23,7 @@ def read_json(path):
     return json.loads(Path(path).read_text())
 
 
-def measure_candidates(rows, folder, *, tolerance, budget_rule='minimum'):
+def measure_candidates(rows, folder, *, tolerance, budget_rule='minimum', measurement_fn=measurement):
     """Measure one-slot policies on the same chunks and scoring protocol as dense.
 
     minimum is for methods guaranteeing at least the requested savings;
@@ -51,7 +51,7 @@ def measure_candidates(rows, folder, *, tolerance, budget_rule='minimum'):
             raise ValueError('calibration samples differ')
         if len(scores) < 2 or payload.get('scoring') != dense.get('scoring'):
             raise ValueError('calibration needs matching scoring and at least two chunks')
-        stats = measurement(payload)
+        stats = measurement_fn(payload)
         target = candidate['budget']
         saving = stats['compression']
         invalid = saving < target - tolerance if budget_rule == 'minimum' else abs(saving - target) > tolerance
@@ -87,21 +87,27 @@ def select_settings(calibration, *, include, group_fields=('layer', 'target', 'b
     return list(groups.values())
 
 
-def allocate_settings(calibration, settings, layers, targets, budget, *, trim_overshoot=False, allocator=allocate):
-    """Assemble a whole-model policy from local curves using nominal targets.
+def allocate_settings(calibration, settings, layers, targets, budget, *, trim_overshoot=False, allocator=allocate,
+                      allocation_basis='target'):
+    """Assemble a whole-model policy from nominal targets or measured bytes.
 
     Nominal targets preserve the current allocation rule. Actual calibration
     savings are kept separately, and actual whole-model savings require a new
     evaluation. The optional trim is the existing current-study behavior;
-    its changed slot is explicitly marked as not directly calibrated.
+    its changed slot is explicitly marked as not directly calibrated. Measured
+    allocation keeps the calibrated policies intact; discrete overshoot is
+    recorded rather than changing a controller target without recalibration.
     """
     selected = []
+    if allocation_basis not in ('target','measured') or (allocation_basis=='measured' and trim_overshoot):
+        raise ValueError('measured allocation keeps calibrated policies unchanged; nominal trimming is unsupported')
     for row in settings:
         measured = row.get('measured_saving', row['compression'])
+        assumed = measured if allocation_basis=='measured' else row['budget']
         selected.append({**row, 'measured_calibration_compression': measured,
                          'target_saving': row.get('target_saving', row['budget']),
-                         'measured_saving': measured, 'allocation_saving': row['budget'],
-                         'compression': row['budget']})
+                         'measured_saving': measured, 'allocation_saving': assumed,
+                         'compression': assumed})
     result = allocator({**calibration, 'selected': selected}, layers, targets, budget)
     # Some protocol tests substitute a minimal allocator; no policy to assemble.
     if 'assignment' not in result:
@@ -127,6 +133,7 @@ def allocate_settings(calibration, settings, layers, targets, budget, *, trim_ov
         result['whole_kv_compression'] = budget * len(targets) / 2
     result['target_saving'] = budget
     result['allocation_saving'] = result['compression']
+    if allocation_basis=='measured':result['allocation_basis']='measured_calibration_bytes'
     result['kv'] = {'pipeline': [step for row in result['assignment'] for step in row['kv']['pipeline']]}
     return result
 
