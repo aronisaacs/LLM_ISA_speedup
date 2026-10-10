@@ -50,3 +50,34 @@ def capture_queries(model_type):
 
     llama.apply_rotary_pos_emb = rotary
     return take, uninstall
+
+
+def next8_attention(query, keys):
+    """Bounded local attention: next eight queries, causal 16-token Q/K window.
+
+    Softmax includes the old block and visible tokens of the next block, never
+    earlier history or later queries. GQA query heads are averaged per KV head.
+    A uniform-attention reference of 1/16 defines weight 1; a fixed 0.1 floor
+    protects tokens with little observed local attention. No sequence-wide
+    normalization (which would leak later blocks). The final tail is untouched.
+    """
+    if query.ndim != 4 or keys.ndim != 4 or query.shape[0] != 1 or keys.shape[0] != 1 or query.shape[-2:] != keys.shape[-2:]:
+        raise ValueError('next8 importance requires matching batch-one Q/K')
+    hq, length, dim = query.shape[1:]
+    hk = keys.shape[1]
+    if hq % hk or not torch.isfinite(query).all() or not torch.isfinite(keys).all():
+        raise ValueError('invalid Q/K heads or nonfinite values')
+    weights = torch.ones(1, hk, length, device=keys.device)
+    windows = max(0, (length-8)//8)
+    if not windows:
+        return weights
+    # Overlapping local windows; constant 8x16 attention work per block.
+    k = keys.float().unfold(2,16,8).permute(0,1,2,4,3)
+    q = query.float()[...,8:,:].unfold(2,8,8).permute(0,1,2,4,3)
+    q = q[:,:,:windows].reshape(1,hk,hq//hk,windows,8,dim)
+    scores = torch.einsum('bhgwqd,bhwkd->bhgwqk',q,k[:,:,:windows])/dim**.5
+    causal = torch.arange(16,device=keys.device)[None,:] > torch.arange(8,16,device=keys.device)[:,None]
+    probs = scores.masked_fill(causal,float('-inf')).softmax(-1)
+    received = (16*probs[...,:8].mean((2,4))).clamp_min(.1)
+    weights[...,:windows*8] = received.reshape(1,hk,windows*8)
+    return weights

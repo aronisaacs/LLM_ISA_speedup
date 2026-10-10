@@ -34,7 +34,7 @@ def compress_kv(
         kwargs = dict(step.kwargs)
         kwargs["seq_start"] = seq_start
         kwargs["rope_tables"] = rope
-        if step.kwargs.get('importance') == 'prefill_attention':
+        if step.kwargs.get('importance') in ('prefill_attention', 'next8_attention'):
             kwargs['token_weights'] = token_weights
         if _layer_enabled(step.k_layers, layer_idx):
             key_states = method(key_states, layer_idx=layer_idx, target="k", **kwargs)

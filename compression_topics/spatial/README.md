@@ -213,3 +213,41 @@ policy = keys.pipeline(0.30, k_layers=[12], v_layers=[])
 
 Each distinct composition still needs its own calibration; components being
 reusable does not make their measured quality curves interchangeable.
+
+### Query residuals, bounded token importance, and shared masks
+
+`hierarchy_weighted.py` uses the same online pair/quad/eight menu and controller
+as `hierarchy_accuracy.py`. Four independently calibrated arms are available:
+`query`, `query_attention`, `query_shared`, `query_attention_shared`. Query energy
+changes K residual feature ranking only; V features remain ordinary deviation
+ranked. Shared masks select one feature set per merged group/head while retaining
+separate residual values for its tokens (pairs already share one signed residual).
+
+The attention arms use the next eight post-RoPE queries to weight reconstruction
+errors on the previous eight tokens. Softmax is causal within the local 16-token
+window, averaging GQA heads per KV head. Weight is 16 times mean received local
+attention, floored at 0.1; it is not normalized across the sequence. The last
+eight tokens, plus incomplete windows, stay dense and count toward stored bytes.
+This is a bounded-delay **prefill simulation**, not live decode compression.
+Future queries beyond that local window cannot affect its importance weights.
+
+Two fresh dense WikiText training prefixes produce checksum-verified query
+second moments; no large tensor dumps are saved. Every arm uses its own training
+calibration and measured-byte layer allocation. Default budgets are 30/50/70%,
+with two screening, two disjoint refinement, and two holdout chunks. These are
+preliminary perplexity/byte checks, not accuracy conclusions. The holdout byte
+gate must pass before full C-Eval. Timing files and per-configuration preliminary
+results use the existing runner. The four-arm calibration is still substantial;
+`--arms query` runs only the first addition. Use a fresh `--out` when changing
+arms, budgets, or chunk counts.
+
+On the DGX, after publishing these files:
+```bash
+mkdir -p logs
+sbatch compression_topics/spatial/scripts/hierarchy_weighted_dgx.sh
+```
+Default ends at holdout validation. Resume the same protocol with
+`--from tasks --through summary` only when a full accuracy run is desired.
+For stronger calibration, set all three chunk counts on the initial submission;
+changing counts later requires a fresh output directory. The existing unweighted
+accuracy study and its output directory are unchanged.

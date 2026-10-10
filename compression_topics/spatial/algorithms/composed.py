@@ -47,7 +47,7 @@ class SpatialConfig:
             raise ValueError('directional must be boolean')
         if self.select_by not in ('deviation', 'query') or self.distortion not in ('relative', 'query'):
             raise ValueError('unknown feature selection or distortion objective')
-        if self.importance not in ('none', 'prefill_attention'):
+        if self.importance not in ('none', 'prefill_attention', 'next8_attention'):
             raise ValueError('unknown token importance mode')
         needs_query = self.select_by == 'query' or self.distortion == 'query'
         if needs_query != (self.query_weights is not None and self.query_weights_sha256 is not None):
@@ -55,10 +55,12 @@ class SpatialConfig:
         if not needs_query and (self.query_weights is not None or self.query_weights_sha256 is not None):
             raise ValueError('unused query weights are not allowed')
         if self.representation == 'hierarchy':
-            if self.decision != 'online' or needs_query or self.importance != 'none':
-                raise ValueError('hierarchy currently supports online ordinary-error decisions only')
+            if self.decision != 'online' or self.distortion != 'relative' or self.importance == 'prefill_attention':
+                raise ValueError('hierarchy requires online relative-error decisions and bounded importance')
             if self.control is not None and online_pairs.Control(**self.control).startup_tokens % 8:
                 raise ValueError('hierarchical startup requires complete eight-token windows')
+        if self.importance == 'next8_attention' and self.representation != 'hierarchy':
+            raise ValueError('next8 attention currently requires hierarchy')
         if self.decision == 'fixed':
             if isinstance(self.residual_entries, bool) or not isinstance(self.residual_entries, int) or self.residual_entries < 0:
                 raise ValueError('fixed decisions require a nonnegative residual count')
@@ -77,7 +79,7 @@ class SpatialConfig:
             raise ValueError('only online decisions use controller settings')
         if self.control is not None:
             online_pairs.Control(**self.control)
-        if self.decision == 'online' and self.importance != 'none':
+        if self.decision == 'online' and self.importance == 'prefill_attention':
             raise ValueError('prefill attention importance uses later queries; not causal for online decisions')
 
     def pipeline(self, saving, *, k_layers='all', v_layers='all'):
@@ -103,14 +105,16 @@ def apply(tensor, *, layer_idx, target, saving, decision='online', representatio
         raise ValueError('query-aware components apply only to keys')
     if seq_start:
         return tensor  # All current configurations leave appended tokens dense.
-    if importance == 'prefill_attention':
+    if importance in ('prefill_attention', 'next8_attention'):
         if token_weights is None or token_weights.shape != tensor.shape[:3] or not torch.isfinite(token_weights).all() or (token_weights < 0).any():
             raise ValueError('prefill attention importance requires matching nonnegative token weights')
     elif token_weights is not None:
         raise ValueError('token weights require an explicit importance mode')
     if representation == 'hierarchy':
         return hierarchy.apply(tensor, layer_idx=layer_idx, target=target, saving=saving,
-                               max_group=max_group, control=control, rope_tables=rope_tables, mask_layout=mask_layout)
+                               max_group=max_group, control=control, rope_tables=rope_tables, mask_layout=mask_layout,
+                               selection=select_by, query_energy=query_energy(query_weights, layer_idx, query_weights_sha256, tensor) if select_by=='query' else None,
+                               token_weights=token_weights, delayed=importance=='next8_attention')
     if decision == 'fixed':
         return presentation_spatial.apply_components(tensor, layer_idx=layer_idx, target=target, saving=saving,
             residual_entries=residual_entries, group_size=2 if representation=='pairs' else 4,

@@ -24,7 +24,7 @@ def install(lm: Any, spec: KvSpec) -> Callable[[], None]:
     if spec.is_identity():
         return _noop
     _validate_layer_indices(lm, spec)
-    importance = any(step.kwargs.get('importance') == 'prefill_attention' for step in spec.pipeline)
+    importance = any(step.kwargs.get('importance') in ('prefill_attention', 'next8_attention') for step in spec.pipeline)
     if not importance:
         return patch_cache_update(spec, _rope_tables(lm))
     from engine.kv_compress.importance import capture_queries

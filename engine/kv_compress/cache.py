@@ -37,15 +37,23 @@ def patch_cache_update(spec: KvSpec, rope: RopeTables | None = None, *, take_que
         end = start + key_states.shape[-2]
         token_weights = None
         query = take_query() if take_query is not None else None
-        needs_importance = any(step.kwargs.get('importance') == 'prefill_attention' and
+        needs_importance = any(step.kwargs.get('importance') in ('prefill_attention', 'next8_attention') and
                                (_enabled(step.k_layers, layer_idx) or _enabled(step.v_layers, layer_idx))
                                for step in spec.pipeline)
         if needs_importance and start == 0:
             if query is None:
                 raise ValueError('missing current prefill queries for token importance')
             from engine.kv_compress.importance import attention_received
-            token_weights = attention_received(query, key_states)[0].unsqueeze(0)
-            token_weights = token_weights / token_weights.mean().clamp_min(1e-12)
+            modes = {step.kwargs.get('importance') for step in spec.pipeline if
+                     _enabled(step.k_layers, layer_idx) or _enabled(step.v_layers, layer_idx)}
+            if 'next8_attention' in modes and 'prefill_attention' in modes:
+                raise ValueError('cannot mix full-prefill and bounded attention importance')
+            if 'next8_attention' in modes:
+                from engine.kv_compress.importance import next8_attention
+                token_weights = next8_attention(query, key_states)
+            else:
+                token_weights = attention_received(query, key_states)[0].unsqueeze(0)
+                token_weights = token_weights / token_weights.mean().clamp_min(1e-12)
         metrics.observe(key_states, value_states, layer_idx, spec)
         key_states, value_states = compress_kv(
             key_states, value_states, layer_idx, spec, seq_start=start, rope=rope,

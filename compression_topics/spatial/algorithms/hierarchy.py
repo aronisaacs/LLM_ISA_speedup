@@ -71,7 +71,8 @@ class WindowTable:
         return visit(0, WINDOW)
 
 
-def build_table(tensor, *, target, max_group=8, rope_tables=None, return_reconstruction=False, mask_layout='separate'):
+def build_table(tensor, *, target, max_group=8, rope_tables=None, return_reconstruction=False, mask_layout='separate',
+                selection='deviation', query_energy=None, token_weights=None):
     accounting(mask_layout)
     if max_group not in MENUS:
         raise ValueError('max_group must be 2, 4 or 8')
@@ -92,8 +93,10 @@ def build_table(tensor, *, target, max_group=8, rope_tables=None, return_reconst
         errors = []
         for residual in menu:
             restored, valid = reconstruct(basis, residual, dtype=torch.bfloat16,
-                                          round_mean_before_residual=True, shared_mask=mask_layout=='shared')
-            error = reconstruction_error(basis.source, restored).mean((0, 1, 3)) * size / WINDOW
+                                          round_mean_before_residual=True, shared_mask=mask_layout=='shared',
+                                          selection=selection, query_energy=query_energy)
+            weights = None if token_weights is None else token_weights[..., :full].reshape(1, heads, full//size, size)
+            error = reconstruction_error(basis.source, restored, token_weights=weights).mean((0, 1, 3)) * size / WINDOW
             errors.append(error.masked_fill(~valid.all((0, 1)), float('inf')))
             payload[(size, residual)] = heads * vector_group_bits(residual, dim, size, include_norms=True,
                                                                  shared_mask=mask_layout=='shared')
@@ -216,7 +219,8 @@ def restore(tensor, result, reconstructions):
 
 
 def apply(tensor, *, layer_idx, target, saving, max_group=8, control=None, mask_layout='separate',
-          seq_start=0, rope_tables=None):
+          seq_start=0, rope_tables=None, selection='deviation', query_energy=None,
+          token_weights=None, delayed=False):
     """Head-local hierarchy integrated with prefill; decode appends stay dense."""
     from engine.kv_compress.metrics import STATS
     storage_layout = accounting(mask_layout)
@@ -231,10 +235,25 @@ def apply(tensor, *, layer_idx, target, saving, max_group=8, control=None, mask_
             row['dense_bits'] += tensor.numel()*16
             row['stored_bits'] += tensor.numel()*16
         return tensor
-    table, reconstructions = build_table(tensor, target=target, max_group=max_group,
-                                         rope_tables=rope_tables, return_reconstruction=True, mask_layout=mask_layout)
+    # Only complete windows with eight subsequent observed tokens are eligible.
+    eligible = max(0, (tensor.shape[-2]-8)//8*8) if delayed else tensor.shape[-2]
+    if delayed and eligible < WINDOW:
+        key = f'{target}_layer_{layer_idx}'
+        row = STATS.setdefault(key, {'accounting': storage_layout, 'dense_bits': 0, 'stored_bits': 0})
+        row['dense_bits'] += tensor.numel()*16
+        row['stored_bits'] += tensor.numel()*16
+        return tensor
+    body = tensor[..., :eligible, :]
+    table, reconstructions = build_table(body, target=target, max_group=max_group,
+                                         rope_tables=rope_tables, return_reconstruction=True, mask_layout=mask_layout,
+                                         selection=selection, query_energy=query_energy, token_weights=token_weights)
     result = run(table, saving, control=settings)
-    out = restore(tensor, result, reconstructions)
+    out = tensor.clone()
+    out[..., :eligible, :] = restore(body, result, reconstructions)
+    tail_bits = (tensor.shape[-2]-eligible)*tensor.shape[1]*tensor.shape[-1]*16
+    result['dense_bits'] += tail_bits
+    result['stored_bits'] += tail_bits
+    result['measured_saving'] = 1-result['stored_bits']/result['dense_bits']
     key = f'{target}_layer_{layer_idx}'
     row = STATS.setdefault(key, {'accounting': storage_layout, 'dense_bits': 0, 'stored_bits': 0})
     for field in ('dense_bits', 'stored_bits', 'metadata_bits'):
