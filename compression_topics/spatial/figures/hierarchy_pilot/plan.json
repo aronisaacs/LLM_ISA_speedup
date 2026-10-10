@@ -1,0 +1,83 @@
+{
+  "model_args": "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16",
+  "captures": [
+    "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_offline/keys/chunk_00007.pt",
+    "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/group_rd_offline/keys/chunk_00009.pt"
+  ],
+  "sampling": {
+    "pool_chunks": 80,
+    "offset": 0,
+    "chunks": 16,
+    "seed": 0,
+    "seq_len": 2048
+  },
+  "layers": [
+    0,
+    8,
+    16,
+    24,
+    31
+  ],
+  "prefixes": [
+    32,
+    128,
+    512,
+    1536
+  ],
+  "budgets": [
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8
+  ],
+  "menus": {
+    "2": [
+      0,
+      16,
+      32
+    ],
+    "4": [
+      0,
+      16
+    ],
+    "8": [
+      0,
+      16
+    ]
+  },
+  "window_tokens": 8,
+  "accounting": {
+    "separate": "hierarchical_bf16_scales_bitmap_terminal_3bit_v1",
+    "shared": "hierarchical_bf16_scales_shared_bitmap_terminal_3bit_v1"
+  },
+  "variants": [
+    {
+      "max_group": 2,
+      "mask_layout": "separate",
+      "name": "pairs"
+    },
+    {
+      "max_group": 4,
+      "mask_layout": "separate",
+      "name": "pairs_quads_separate"
+    },
+    {
+      "max_group": 4,
+      "mask_layout": "shared",
+      "name": "pairs_quads_shared"
+    },
+    {
+      "max_group": 8,
+      "mask_layout": "separate",
+      "name": "pairs_quads_eights_separate"
+    },
+    {
+      "max_group": 8,
+      "mask_layout": "shared",
+      "name": "pairs_quads_eights_shared"
+    }
+  ],
+  "scope": "Small reconstruction/bytes/controller pilot on existing dense 8B KV captures.\n\nNo model inference, accuracy evaluation, query weighting, attention importance,\nor quantization. Both separate and shared quad/eight masks are tested online.\nEqual per-slot targets are a diagnostic,\nnot a replacement for independently calibrated layer allocation in a full run.\n"
+}
