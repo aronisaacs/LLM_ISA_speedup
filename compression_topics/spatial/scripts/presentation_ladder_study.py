@@ -12,7 +12,6 @@ import argparse
 import hashlib
 import json
 import math
-import statistics
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +28,7 @@ from engine.eval_runner.chunks import partition
 from engine.eval_runner.text_chunks import wikitext_chunks
 from engine.layer_select.calibration import configuration, execute_chunks, measurement, perplexity
 from engine.layer_select.greedy.calibrated import allocate
+from engine.layer_select.study import measure_candidates, select_settings, allocate_settings
 from engine.kv_compress.spec import parse_kv_spec
 
 OUT = ROOT / 'compression_topics/spatial/figures/presentation_ladder_clean'
@@ -162,40 +162,13 @@ def capture_weights(plan):
 
 
 def measure_rows(plan, rows, stage):
-    out = Path(plan['out']) / stage
-    dense_payload = load(out / 'dense.json')
-    baseline = perplexity(dense_payload)
-    dense_scores = dense_payload['chunk_scores']
-    measured = []
-    for row in rows:
-        payload = load(out / f"{row['name']}.json")
-        if payload['simulation']['kv'] != row['kv']:
-            raise ValueError(f"stale policy result {row['name']}")
-        scores = payload['chunk_scores']
-        if [r['chunk'] for r in scores] != [r['chunk'] for r in dense_scores]:
-            raise ValueError('calibration requires identical dense/candidate chunk IDs')
-        stats = measurement(payload)
-        if stats['shortfall_updates'] or stats['compression'] < row['budget'] - .001:
-            raise ValueError(f"candidate cannot meet its finite measured byte budget: {row['name']}")
-        differences = [r['nll'] - d['nll'] for r, d in zip(scores, dense_scores)]
-        ppl = perplexity(payload)
-        measured.append({**row, **stats, 'ppl': ppl, 'delta_nll': math.log(ppl / baseline),
-                         'paired_nll_standard_error': statistics.stdev(differences) / math.sqrt(len(differences)),
-                         'chunk_scores': scores})
-    return {'dense_ppl': baseline, 'candidates': measured}
+    return measure_candidates(rows, Path(plan['out']) / stage, tolerance=.001, budget_rule='minimum')
 
 
 def winners(calibration, rung, *, by_size=False):
-    rows = [r for r in calibration['candidates'] if rung in r['rungs']]
     fields = ('layer', 'target', 'budget', 'group_size') if by_size else ('layer', 'target', 'budget')
-    groups = {}
-    for row in rows:
-        key = tuple(row[f] for f in fields)
-        if key not in groups or (row['ppl'], row['residual_entries'], row['group_size']) < \
-           (groups[key]['ppl'], groups[key]['residual_entries'], groups[key]['group_size']):
-            groups[key] = row
-    return list(groups.values())
-
+    return select_settings(calibration, include=lambda row: rung in row['rungs'], group_fields=fields,
+                           rank=lambda row: (row['ppl'], row['residual_entries'], row['group_size']))
 
 
 def budget_cases(plan):
@@ -215,11 +188,9 @@ def select_allocations(plan, calibration):
     selections = []
     for rung in range(1, 5):
         selected = winners(calibration, rung)
-        conservative = {**calibration, 'selected': [
-            {**r, 'measured_calibration_compression': r['compression'], 'compression': r['budget']} for r in selected]}
         for budget in [c['budget'] for c in budget_cases(plan)
                        if c['rung'] == rung and c['status'] == 'eligible']:
-            assignment = allocate(conservative, plan['layers'], ('k', 'v'), budget)
+            assignment = allocate_settings(calibration, selected, plan['layers'], ('k', 'v'), budget, allocator=allocate)
             assignment.update(rung=rung, label=LABELS[rung], tag=f'rung{rung}_b{round(budget*100):02d}')
             selections.append(assignment)
     return selections

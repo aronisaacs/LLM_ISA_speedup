@@ -12,8 +12,6 @@ optimum. Actual representation metadata is counted separately for each method.
 import argparse
 from dataclasses import asdict
 import json
-import math
-import statistics
 import subprocess
 import sys
 from pathlib import Path
@@ -27,8 +25,8 @@ from compression_topics.spatial.algorithms import presentation_spatial as fixed
 from engine.eval_runner.cache import simulation_identity, identities_match
 from engine.eval_runner.files import write_json
 from engine.kv_compress.spec import parse_kv_spec
-from engine.layer_select.calibration import configuration, execute_chunks, measurement, perplexity
-from engine.layer_select.greedy.calibrated import allocate
+from engine.layer_select.calibration import configuration, execute_chunks, perplexity
+from engine.layer_select.study import measure_candidates, select_settings, allocate_settings, require_matched_savings
 
 OUT = ROOT / 'compression_topics/spatial/figures/online_pairs_accuracy_offline'
 ARMS = ('fixed', 'adaptive', 'offline')
@@ -87,56 +85,21 @@ def load(path):
 
 
 def measure(plan, rows, stage):
-    folder=Path(plan['out'])/stage
-    dense=load(folder/'dense.json');baseline=perplexity(dense)
-    result=[]
-    for row in rows:
-        payload=load(folder/f"{row['name']}.json")
-        if payload['simulation']['kv']!=row['kv']:
-            raise ValueError('calibration policy differs')
-        scores=payload['chunk_scores'];base=dense['chunk_scores']
-        if [(r['chunk'],r['tokens']) for r in scores]!=[(r['chunk'],r['tokens']) for r in base]:
-            raise ValueError('calibration samples differ')
-        stats=measurement(payload)
-        if abs(stats['compression']-row['budget'])>.03 or stats['shortfall_updates']:
-            raise ValueError(f"calibration budget miss: {row['name']}")
-        differences=[a['nll']-b['nll'] for a,b in zip(scores,base)]
-        result.append({**row,**stats,'ppl':perplexity(payload),
-                       'delta_nll':math.log(perplexity(payload)/baseline),
-                       'paired_nll_standard_error':statistics.stdev(differences)/math.sqrt(len(differences))})
-    return {'dense_ppl':baseline,'candidates':result}
+    return measure_candidates(rows, Path(plan['out']) / stage, tolerance=.03, budget_rule='absolute')
 
 
 def winners(calibration, arm):
-    groups={}
-    for row in calibration['candidates']:
-        if row['arm']!=arm:continue
-        key=(row['layer'],row['target'],row['budget'])
-        if key not in groups or row['ppl']<groups[key]['ppl']:
-            groups[key]=row
-    return list(groups.values())
+    return select_settings(calibration, include=lambda row: row['arm'] == arm)
 
 
 def select_allocations(plan, calibration):
-    selections=[]
+    selections = []
     for arm in ARMS:
-        # Same nominal budget grid and allocation rule; each method has its own
-        # measured loss curves. Feedback deviations are assessed on holdout.
-        chosen=[{**r,'measured_calibration_compression':r['compression'],'compression':r['budget']}
-                for r in winners(calibration,arm)]
+        settings = winners(calibration, arm)
         for budget in plan['budgets']:
-            selection=json.loads(json.dumps(allocate({'selected':chosen,'dense_ppl':calibration['dense_ppl']},plan['layers'],('k','v'),budget)))
-            # Remove the final discrete allocation overshoot before holdout;
-            # adjust one assigned slot, using no validation/test scores.
-            overshoot=(selection['compression']-budget)*2*plan['layers']
-            if overshoot>1e-10:
-                row=max(selection['assignment'],key=lambda r:r['budget'])
-                if row['budget']<=overshoot:raise ValueError('cannot trim allocation')
-                row['budget']-=overshoot
-                row['kv']={'pipeline':[{**s,'saving':row['budget']} for s in row['kv']['pipeline']]}
-            selection.update(arm=arm,tag=f'{arm}_b{round(100*budget):02d}',compression=budget,
-                             whole_kv_compression=budget)
-            selection['kv']={'pipeline':[s for r in selection['assignment'] for s in r['kv']['pipeline']]}
+            selection = allocate_settings(calibration, settings, plan['layers'], ('k', 'v'),
+                                          budget, trim_overshoot=True)
+            selection.update(arm=arm, tag=f'{arm}_b{round(100*budget):02d}')
             selections.append(selection)
     return selections
 
@@ -235,21 +198,20 @@ def run_stage(plan,stage):
                                    'actual_saving':payload['storage']['targets']['kv']['compression'],
                                    'token_ppl':perplexity(payload)})
             write_json(out/'validation.json',validation)
-            for budget in plan['budgets']:
-                pair=[r for r in validation if r['budget']==budget]
-                if any(abs(r['actual_saving']-budget)>plan['matching_tolerance'] for r in pair) or \
-                   abs(max(r['actual_saving'] for r in pair)-min(r['actual_saving'] for r in pair))>plan['matching_tolerance']:
-                    raise RuntimeError('holdout savings not matched within one point; inspect validation.json before full accuracy')
+            try:
+                require_matched_savings(validation, plan['budgets'], ARMS, tolerance=plan['matching_tolerance'])
+            except ValueError as error:
+                raise RuntimeError('holdout byte gate failed; inspect validation.json before full accuracy') from error
             print(json.dumps(validation,indent=2),flush=True)
     elif stage=='allocate':
         write_json(out/'selections.json',select_allocations(plan,load(out/'calibration.json')))
     elif stage=='tasks':
         # Recheck the byte gate even when resuming directly at tasks.
         validation=load(out/'validation.json')
-        for budget in plan['budgets']:
-            pair=[r for r in validation if r['budget']==budget]
-            if len(pair)!=len(ARMS) or any(abs(r['actual_saving']-budget)>.01 for r in pair) or abs(max(r['actual_saving'] for r in pair)-min(r['actual_saving'] for r in pair))>.01:
-                raise RuntimeError('validation byte gate failed')
+        try:
+            require_matched_savings(validation, plan['budgets'], ARMS, tolerance=plan['matching_tolerance'])
+        except ValueError as error:
+            raise RuntimeError('validation byte gate failed') from error
         run=task_run(plan,load(out/'selections.json'));write_json(out/'tasks_run.json',run);execute_tasks(out,run)
     else:summarize(out,load(out/'tasks_run.json'),require_complete=True)
 

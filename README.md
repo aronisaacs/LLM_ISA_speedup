@@ -2,6 +2,12 @@
 
 KV-cache compression studies for Llama 3.1 8B. Each experiment is its own script under `compression_topics/`. Scores land in `results.json`. A finished row is skipped on the next run.
 
+## Spatial research
+
+The clean spatial studies and current method terminology are documented in
+[compression_topics/spatial/README.md](compression_topics/spatial/README.md).
+Use its study-specific Slurm launcher for the current comparison.
+
 ## DGX
 
 Lab notes on the machine: `/home/aroni/README.md` (user `aroni`, host `DGX-host-01`).

@@ -2,6 +2,11 @@
 import math
 
 
+def allocation_saving(row):
+    """Use the explicit allocation assumption; accept legacy saved rows."""
+    return row['allocation_saving'] if 'allocation_saving' in row else row['compression']
+
+
 def choose_candidates(choices, dense_ppl, budget, *, require_budget=True):
     """Each slot has ordered candidates containing compression and perplexity.
 
@@ -22,7 +27,7 @@ def choose_candidates(choices, dense_ppl, budget, *, require_budget=True):
                 continue
             current = None if current_idx == -1 else choices[slot][current_idx]
             nxt = choices[slot][next_idx]
-            gain = nxt["compression"] - (current["compression"] if current else 0.)
+            gain = allocation_saving(nxt) - (allocation_saving(current) if current else 0.)
             if gain <= 0:
                 raise ValueError("calibrated rung compression must increase")
             cost = nxt["ppl"] - (current["ppl"] if current else dense_ppl)
@@ -41,7 +46,7 @@ def choose_candidates(choices, dense_ppl, budget, *, require_budget=True):
 def allocate(calibration, layers, targets, budget):
     slots = [(layer, target) for layer in range(layers) for target in targets]
     choices = {slot: sorted([r for r in calibration["selected"]
-                            if (r["layer"], r["target"]) == slot], key=lambda r: r["budget"]) for slot in slots}
+                            if (r["layer"], r["target"]) == slot], key=lambda r: r.get("allocation_saving", r["budget"])) for slot in slots}
     selected, total = choose_candidates(choices, calibration["dense_ppl"], budget)
     assignment = list(selected.values())
     return {"budget": budget, "compression": total / len(slots),
