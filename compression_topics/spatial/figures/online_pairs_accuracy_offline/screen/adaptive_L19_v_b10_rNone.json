@@ -1,0 +1,118 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 5.964490714891196,
+      "mean_nll,none": 1.7858236730098724
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 100,
+      "nll": 2.067199945449829,
+      "tokens": 512
+    },
+    {
+      "chunk": 632,
+      "nll": 1.75624680519104,
+      "tokens": 512
+    },
+    {
+      "chunk": 1016,
+      "nll": 1.5779173374176025,
+      "tokens": 512
+    },
+    {
+      "chunk": 111,
+      "nll": 1.741930603981018,
+      "tokens": 512
+    }
+  ],
+  "gate_stats": {
+    "v_layer_19": {
+      "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+      "dense_bits": 100663296,
+      "stored_bits": 90818368,
+      "pairs": 3072,
+      "merged": 895,
+      "features": 128,
+      "metadata_bits": 9280,
+      "norm_bits": 229120,
+      "residual_mask_bits": 916480,
+      "cosine_sum": 851.5329895019531,
+      "cosine_min": 0.9113234281539917,
+      "cutoff_sum": 3.6808841228485107,
+      "updates": 4,
+      "shortfall_updates": 0,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.0029038747151693134
+    }
+  },
+  "storage": {
+    "scope": "simulated_prefill_cache_storage",
+    "targets": {
+      "k": {
+        "dense_bits": 3221225472,
+        "stored_bits": 3221225472,
+        "compression": 0.0
+      },
+      "v": {
+        "dense_bits": 3221225472,
+        "stored_bits": 3211380544,
+        "compression": 0.0030562678972879675
+      },
+      "kv": {
+        "dense_bits": 6442450944,
+        "stored_bits": 6432606016,
+        "compression": 0.0015281339486440393
+      }
+    }
+  },
+  "scoring": {
+    "prefix_tokens": 1536,
+    "definition": "continuation token NLL only; prefix logits excluded"
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "online_pairs",
+          "k_layers": [],
+          "v_layers": [
+            19
+          ],
+          "saving": 0.1,
+          "accounting": "online_pairs_bf16_scales_bitmap_shared_3bit_tag_v1",
+          "feedback": true,
+          "fixed_residual": null,
+          "decision": "online",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          }
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 16,
+      "offset": 0,
+      "chunks": 4,
+      "seed": 83,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  }
+}
