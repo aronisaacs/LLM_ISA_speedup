@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=spatial-weighted-g8
 #SBATCH --partition=prod
-#SBATCH --gres=gpu:4
-#SBATCH --cpus-per-task=32
+#SBATCH --gres=gpu:2
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=200000
 #SBATCH --time=24:00:00
 #SBATCH --output=logs/spatial_weighted_g8_%j.out
