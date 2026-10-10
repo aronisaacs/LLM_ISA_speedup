@@ -23,7 +23,7 @@ class OnlinePairTests(unittest.TestCase):
         x=torch.randn(1,2,129,128)
         table=online.pair_table(x,target='v')
         result=online.run(table,.3)
-        self.assertGreaterEqual(result['startup_saving'],.3)
+        self.assertLessEqual(result['startup_saving'],.3+1e-9)
         self.assertEqual(result['history'][15]['price_used'],result['initial_price'])
         self.assertEqual(result['stored_bits'],result['history'][-1]['stored_bits']+2*128*16)
         self.assertEqual(result['dense_bits'],x.numel()*16)
@@ -73,16 +73,36 @@ class OnlinePairTests(unittest.TestCase):
         # The same 4-point deviation is tolerated early but corrected later.
         self.assertEqual(online.outside(.04,early[1]),0.)
         self.assertGreater(online.outside(.04,later[1]),0.)
+        self.assertEqual(online.asymmetric_outside(.04,early[1],control.cumulative_deadband),0.)
+        self.assertLess(online.asymmetric_outside(-.04,early[1],control.cumulative_deadband),0.)
 
     def test_trace_exposes_early_actual_savings_and_effective_tolerances(self):
         table=online.pair_table(torch.randn(1,2,256,128),target='v')
         result=online.run(table,.3)
         self.assertEqual([r['tokens'] for r in result['early_checkpoints']], [32,48,64,96,128,192,256])
-        bands=[r['cumulative_deadband'] for r in result['early_checkpoints']]
+        bands=[r['cumulative_undercompression_band'] for r in result['early_checkpoints']]
+        self.assertTrue(all(r['cumulative_overcompression_band']==.03 for r in result['early_checkpoints']))
         self.assertTrue(all(a>b for a,b in zip(bands,bands[1:])))
         self.assertEqual(result['early_checkpoints'][0]['stored_bits'],result['history'][15]['stored_bits'])
         self.assertGreaterEqual(result['fraction_post_startup_within_effective_band'],
                                 result['fraction_post_startup_within_three_points'])
+
+    def test_startup_prefers_less_compression_when_tied_pairs_jump_past_target(self):
+        # Every pair has the same breakpoint: the only choices are near 0% or 49%.
+        # A 30% startup target must prefer the dense side, rather than 49% savings.
+        table=online.PairTable([[0.,.1,.1,.1,.1] for _ in range(16)],
+                               [4096,2080,2336,2464,2720],4096,0)
+        result=online.run(table,.3)
+        self.assertLessEqual(result['startup_saving'],.3)
+        self.assertEqual(result['formats']['dense'],16)
+        self.assertGreater(result['initial_price'],0)
+
+    def test_exact_startup_saving_does_not_back_off_unnecessarily(self):
+        table=online.PairTable([[0.,.1,.1,.1,.1] for _ in range(16)],
+                               [4096,2080,2336,2464,2720],4096,0)
+        exact=1-(16*2080+online.metadata_bits(16,3))/(16*4096)
+        result=online.run(table,exact)
+        self.assertAlmostEqual(result['startup_saving'],exact)
 
     def test_pair_only_targets_and_invalid_configuration_rejected(self):
         table=online.pair_table(torch.randn(1,1,32,128),target='v')

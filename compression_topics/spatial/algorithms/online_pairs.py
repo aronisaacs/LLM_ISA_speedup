@@ -89,7 +89,11 @@ def select(error, rates, price, allowed):
 
 
 def initial_price(table, rows, target_saving, allowed):
-    """Search the smallest feasible shared price, only over supplied startup rows."""
+    """Fit startup storage, preferring the undercompressed side of a breakpoint.
+
+    Exact targets are kept. If choices jump past the target, take the last
+    lower-compression price rather than oversaving. Only startup rows are seen.
+    """
     dense = len(rows)*table.dense_pair_bits
     ceiling_bits = sum(min(table.payload_bits[i] for i in allowed if math.isfinite(e[i])) for e in rows)
     overhead = metadata_bits(len(rows), 3)
@@ -108,15 +112,23 @@ def initial_price(table, rows, target_saving, allowed):
         middle=(low+high)/2
         if stored(middle)<=dense*(1-target_saving):high=middle
         else:low=middle
-    return max(high,1e-12)
+    # Budget jumps may span several tied pairs. Favor information preservation,
+    # even if the undercompressed setting is farther away from the target.
+    exact = abs(stored(high) - dense*(1-target_saving)) <= 1e-8
+    return high if exact else low
 
 
 def outside(error, band):
     return math.copysign(max(abs(error)-band, 0.), error)
 
 
+def asymmetric_outside(error, undercompression_band, overcompression_band):
+    """Positive stored-fraction error means undercompression, negative means overcompression."""
+    return outside(error, undercompression_band if error >= 0 else overcompression_band)
+
+
 def effective_bands(table, allowed, pairs, control):
-    """Normal tolerance plus one pair's maximum format-dependent storage impact.
+    """Undercompression tolerance plus one pair's format-dependent storage impact.
 
     Tags have identical width for all options, so their packing does not change
     the difference between two format decisions. The allowance shrinks as 1/N.
@@ -134,6 +146,7 @@ def run(table, target_saving, *, feedback=True, fixed_residual=None, control=Con
     warmup=min(control.startup_tokens//2,len(table.errors))
     price=initial_price(table,table.errors[:warmup],target_saving,allowed)
     initial=price
+    anchor=max(initial,1e-12)
     rates=[b/table.dense_pair_bits for b in table.payload_bits]
     target=1-target_saving
     alpha=1-math.exp(-1/control.memory_pairs)
@@ -153,16 +166,21 @@ def run(table, target_saving, *, feedback=True, fixed_residual=None, control=Con
         elif n>warmup:
             ema=(1-alpha)*ema+alpha*increment
             if feedback:
-                correction=control.recent_gain*outside(ema-target,recent_band)
-                correction+=control.cumulative_gain*outside(fraction-target,cumulative_band)
+                correction=control.recent_gain*asymmetric_outside(ema-target,recent_band,control.recent_deadband)
+                correction+=control.cumulative_gain*asymmetric_outside(fraction-target,cumulative_band,control.cumulative_deadband)
                 change=max(-control.max_log_step,min(control.max_log_step,correction))
-                new=price*math.exp(change)
-                price=max(initial/control.price_span,min(initial*control.price_span,new))
+                # A zero-price dense startup must still be able to begin correcting
+                # undercompression. Seed the first positive adjustment at a finite floor.
+                new=(price if price>0 else anchor/control.price_span)*math.exp(change)
+                price=max(0.,min(anchor*control.price_span,new))
+                if price>0:price=max(anchor/control.price_span,price)
                 hits+=int(price!=new)
         history.append({'tokens':2*n,'format':'dense' if choice==0 else f'r{RESIDUALS[choice-1]}',
                         'price_used':used_price,'price_next':price,'stored_bits':stored,
                         'cumulative_saving':1-fraction,'recent_saving':1-ema,
-                        'recent_deadband':recent_band,'cumulative_deadband':cumulative_band,
+                        'recent_undercompression_band':recent_band,'recent_overcompression_band':control.recent_deadband,
+                        'cumulative_undercompression_band':cumulative_band,'cumulative_overcompression_band':control.cumulative_deadband,
+                        'allowed_saving_min':target_saving-cumulative_band,'allowed_saving_max':target_saving+control.cumulative_deadband,
                         'one_pair_storage_slack':pair_slack,
                         'pair_relative_error':error[choice], 'running_relative_error':total_error/n})
         previous_stored=stored
@@ -175,6 +193,6 @@ def run(table, target_saving, *, feedback=True, fixed_residual=None, control=Con
             'fraction_post_startup_within_three_points':sum(abs(r['cumulative_saving']-target_saving)<=.03 for r in settled)/len(settled) if settled else None,
             'early_checkpoints':[r for r in history if r['tokens'] in (32,48,64,96,128,192,256)],
             'early_max_cumulative_deviation':max((abs(r['cumulative_saving']-target_saving) for r in history[warmup-1:128]),default=None),
-            'fraction_post_startup_within_effective_band':sum(abs(r['cumulative_saving']-target_saving)<=r['cumulative_deadband'] for r in settled)/len(settled) if settled else None,
+            'fraction_post_startup_within_effective_band':sum(r['allowed_saving_min']<=r['cumulative_saving']<=r['allowed_saving_max'] for r in settled)/len(settled) if settled else None,
             'formats':{name:sum(r['format']==name for r in history) for name in ['dense','r0','r8','r16','r32']},
             'stored_bits':final_stored,'dense_bits':final_dense,'history':history}
