@@ -115,6 +115,18 @@ def outside(error, band):
     return math.copysign(max(abs(error)-band, 0.), error)
 
 
+def effective_bands(table, allowed, pairs, control):
+    """Normal tolerance plus one pair's maximum format-dependent storage impact.
+
+    Tags have identical width for all options, so their packing does not change
+    the difference between two format decisions. The allowance shrinks as 1/N.
+    """
+    span = (max(table.payload_bits[i] for i in allowed) -
+            min(table.payload_bits[i] for i in allowed)) / table.dense_pair_bits
+    slack = span / pairs
+    return control.recent_deadband + slack, control.cumulative_deadband + slack, slack
+
+
 def run(table, target_saving, *, feedback=True, fixed_residual=None, control=Control()):
     if not math.isfinite(target_saving) or not 0<target_saving<.5:
         raise ValueError('pair target must be positive and below 50%')
@@ -135,13 +147,14 @@ def run(table, target_saving, *, feedback=True, fixed_residual=None, control=Con
         total_error+=error[choice]
         fraction=stored/(n*table.dense_pair_bits)
         increment=(stored-previous_stored)/table.dense_pair_bits
+        recent_band,cumulative_band,pair_slack=effective_bands(table,allowed,n,control)
         if n==warmup:
             ema=fraction  # Initialize from the actual committed 32-token window.
         elif n>warmup:
             ema=(1-alpha)*ema+alpha*increment
             if feedback:
-                correction=control.recent_gain*outside(ema-target,control.recent_deadband)
-                correction+=control.cumulative_gain*outside(fraction-target,control.cumulative_deadband)
+                correction=control.recent_gain*outside(ema-target,recent_band)
+                correction+=control.cumulative_gain*outside(fraction-target,cumulative_band)
                 change=max(-control.max_log_step,min(control.max_log_step,correction))
                 new=price*math.exp(change)
                 price=max(initial/control.price_span,min(initial*control.price_span,new))
@@ -149,6 +162,8 @@ def run(table, target_saving, *, feedback=True, fixed_residual=None, control=Con
         history.append({'tokens':2*n,'format':'dense' if choice==0 else f'r{RESIDUALS[choice-1]}',
                         'price_used':used_price,'price_next':price,'stored_bits':stored,
                         'cumulative_saving':1-fraction,'recent_saving':1-ema,
+                        'recent_deadband':recent_band,'cumulative_deadband':cumulative_band,
+                        'one_pair_storage_slack':pair_slack,
                         'pair_relative_error':error[choice], 'running_relative_error':total_error/n})
         previous_stored=stored
     final_stored=stored+table.tail_bits
@@ -158,5 +173,8 @@ def run(table, target_saving, *, feedback=True, fixed_residual=None, control=Con
             'mean_relative_squared_error':total_error/len(table.errors),'initial_price':initial,
             'price_bound_hits':hits,'startup_saving':history[warmup-1]['cumulative_saving'],
             'fraction_post_startup_within_three_points':sum(abs(r['cumulative_saving']-target_saving)<=.03 for r in settled)/len(settled) if settled else None,
+            'early_checkpoints':[r for r in history if r['tokens'] in (32,48,64,96,128,192,256)],
+            'early_max_cumulative_deviation':max((abs(r['cumulative_saving']-target_saving) for r in history[warmup-1:128]),default=None),
+            'fraction_post_startup_within_effective_band':sum(abs(r['cumulative_saving']-target_saving)<=r['cumulative_deadband'] for r in settled)/len(settled) if settled else None,
             'formats':{name:sum(r['format']==name for r in history) for name in ['dense','r0','r8','r16','r32']},
             'stored_bits':final_stored,'dense_bits':final_dense,'history':history}

@@ -62,6 +62,28 @@ class OnlinePairTests(unittest.TestCase):
             self.assertGreater(result['fraction_post_startup_within_three_points'],.9)
             self.assertEqual(result['price_bound_hits'],0)
 
+    def test_early_tolerance_shrinks_with_the_impact_of_a_single_decision(self):
+        table=online.PairTable([], [4096,2080,2336,2464,2720],4096,0)
+        control=online.Control()
+        early=online.effective_bands(table,list(range(5)),16,control)
+        later=online.effective_bands(table,list(range(5)),128,control)
+        self.assertGreater(early[1],.06)
+        self.assertLess(later[1],.034)
+        self.assertAlmostEqual(early[2]/later[2],8.)
+        # The same 4-point deviation is tolerated early but corrected later.
+        self.assertEqual(online.outside(.04,early[1]),0.)
+        self.assertGreater(online.outside(.04,later[1]),0.)
+
+    def test_trace_exposes_early_actual_savings_and_effective_tolerances(self):
+        table=online.pair_table(torch.randn(1,2,256,128),target='v')
+        result=online.run(table,.3)
+        self.assertEqual([r['tokens'] for r in result['early_checkpoints']], [32,48,64,96,128,192,256])
+        bands=[r['cumulative_deadband'] for r in result['early_checkpoints']]
+        self.assertTrue(all(a>b for a,b in zip(bands,bands[1:])))
+        self.assertEqual(result['early_checkpoints'][0]['stored_bits'],result['history'][15]['stored_bits'])
+        self.assertGreaterEqual(result['fraction_post_startup_within_effective_band'],
+                                result['fraction_post_startup_within_three_points'])
+
     def test_pair_only_targets_and_invalid_configuration_rejected(self):
         table=online.pair_table(torch.randn(1,1,32,128),target='v')
         with self.assertRaises(ValueError):online.run(table,.5)

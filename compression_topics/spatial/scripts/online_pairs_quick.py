@@ -24,7 +24,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--capture-plan',type=Path,default=ROOT/'compression_topics/spatial/figures/group_rd_offline/plan.json')
     parser.add_argument('--selections',type=Path,default=ROOT/'compression_topics/spatial/figures/presentation_ladder_clean_50/selections.json')
-    parser.add_argument('--out',type=Path,default=ROOT/'compression_topics/spatial/figures/online_pairs_quick')
+    parser.add_argument('--out',type=Path,default=ROOT/'compression_topics/spatial/figures/online_pairs_startup_safe')
     parser.add_argument('--layers',type=int,nargs='+',default=[4,12,20,28])
     parser.add_argument('--global-budgets',type=float,nargs='+',default=[.2,.3,.4])
     parser.add_argument('--device',default='cuda')
@@ -48,6 +48,7 @@ def main():
           'arms':['fixed_residual','adaptive_fixed_price','adaptive_feedback'],
           'decision':'one dense/0/8/16/32-residual format across KV heads; head-local residuals; no query or importance weighting',
           'error':'mean per-token relative squared error across heads; bf16 means/residuals/restoration scales',
+          'feedback':'v2: normal deadbands plus one-pair format storage range / pairs seen; no new tolerance hyperparameter',
           'startup':'first 32 tokens price search only; subsequent decisions see current pair and controller state'}
     path=args.out/'plan.json'
     if path.exists() and json.loads(path.read_text())!=plan:parser.error('different plan exists; use new --out')
@@ -77,6 +78,10 @@ def main():
                         rows.append(row)
                         print(f"[{tag}] target {local:.1%}; actual {row['measured_saving']:.2%}; error {row['mean_relative_squared_error']:.6f}; "
                               f"time in +/-3pt band {row['fraction_post_startup_within_three_points']}; price bound hits {row['price_bound_hits']}",flush=True)
+                        if arm=='adaptive_feedback':
+                            for checkpoint in result['early_checkpoints']:
+                                print(f"  [early {checkpoint['tokens']} tokens] saving {checkpoint['cumulative_saving']:.2%}; "
+                                      f"effective cumulative band +/-{100*checkpoint['cumulative_deadband']:.2f}pt; price {checkpoint['price_used']:.6g}",flush=True)
                     write_json(args.out/'results.partial.json',{'status':'preliminary','plan':plan,'rows':rows,'skipped':skipped,
                                                                'elapsed_seconds':time.monotonic()-started})
                 del table,source
