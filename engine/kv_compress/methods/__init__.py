@@ -14,6 +14,8 @@ METHODS: dict[str, Method] = {}
 # Optional method-owned callbacks for groups completed across cache updates.
 AFTER_APPEND: dict[str, Callable] = {}
 OPTION_SIGNATURES: dict[str, Callable] = {}
+# Optional declarative checks before model loading; algorithm-owned.
+OPTION_VALIDATORS: dict[str, Callable] = {}
 
 
 def validate_options(name, options):
@@ -26,6 +28,9 @@ def validate_options(name, options):
     unknown = set(options) - allowed
     if unknown:
         raise ValueError(f"{name} contains unknown options: {sorted(unknown)}")
+    validator = OPTION_VALIDATORS.get(name)
+    if validator is not None:
+        validator(options)
 
 
 

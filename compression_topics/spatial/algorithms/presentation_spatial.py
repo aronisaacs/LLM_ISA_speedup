@@ -9,7 +9,9 @@ import math
 import torch
 
 from compression_topics.spatial.algorithms.storage import vector_group_bits, metadata_bits
-from compression_topics.spatial.algorithms.group_rd import plane_tied, _weights
+from compression_topics.spatial.algorithms.representations import prepare_groups, reconstruct
+from compression_topics.spatial.algorithms.decisions import rank_groups
+from compression_topics.spatial.algorithms.scoring import query_energy, reconstruction_error
 from engine.kv_compress.methods import METHODS
 from engine.kv_compress.metrics import STATS
 from engine.kv_compress.rope import apply_rope
@@ -25,9 +27,10 @@ def maximum_saving(kept, dim=128, group_size=2, directional=True):
     return 1 - (merged_bits(kept, dim, group_size, directional) + 1) / (16 * group_size * dim)
 
 
-def apply(tensor, *, layer_idx, target, saving, residual_entries=0, group_size=2,
+def apply_components(tensor, *, layer_idx, target, saving, residual_entries=0, group_size=2,
           directional=True, select_by='deviation', query_weights=None,
-          query_weights_sha256=None, seq_start=0, rope_tables=None, accounting=ACCOUNTING):
+          query_weights_sha256=None, seq_start=0, rope_tables=None, accounting=ACCOUNTING,
+                     distortion='relative', token_weights=None):
     if accounting != ACCOUNTING:
         raise ValueError('unsupported clean-study accounting')
     if target not in ('k', 'v') or group_size not in (2, 4) or not isinstance(directional, bool):
@@ -39,9 +42,9 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0, group_size=2
         raise ValueError('raw baseline supports pairs without residuals only')
     if select_by not in ('deviation', 'query'):
         raise ValueError('select_by must be deviation or query')
-    if select_by == 'query' and (target != 'k' or query_weights is None or query_weights_sha256 is None):
+    if (select_by == 'query' or distortion == 'query') and (target != 'k' or query_weights is None or query_weights_sha256 is None):
         raise ValueError('query selection needs key weights and their checksum')
-    if select_by != 'query' and (query_weights is not None or query_weights_sha256 is not None):
+    if select_by != 'query' and distortion != 'query' and (query_weights is not None or query_weights_sha256 is not None):
         raise ValueError('plain selection must not carry query weights')
     ceiling = maximum_saving(residual_entries, dim, group_size, directional)
     if isinstance(saving, bool) or not isinstance(saving, (int, float)) or not math.isfinite(saving) or not 0 <= saving <= ceiling:
@@ -52,54 +55,22 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0, group_size=2
         raise ValueError('clean spatial study requires batch size one')
     if target == 'k' and (rope_tables is None or rope_tables.attention_scaling != 1.):
         raise ValueError('all clean key variants require pure-rotation RoPE alignment')
-    full = tensor.shape[-2] // group_size * group_size
-    if not full:
-        raise ValueError('prefill is too short for the selected group')
+    basis = prepare_groups(tensor, target=target, group_size=group_size,
+                           directional=directional, rope_tables=rope_tables)
+    full = basis.full
     original = tensor[..., :full, :].float()
-    aligned = original
-    cos = sin = None
-    if target == 'k':
-        offsets = torch.arange(full, device=tensor.device) % group_size
-        cos, sin = rope_tables.cos_sin(offsets, torch.float32)
-        aligned = apply_rope(original, cos, sin, inverse=True)
-    norms = aligned.norm(dim=-1, keepdim=True)
-    vectors = torch.nn.functional.normalize(aligned, dim=-1) if directional else aligned
-    grouped = vectors.reshape(1, tensor.shape[1], full // group_size, group_size, dim)
-    mean = grouped.mean(-2, keepdim=True)
-    deviation = (grouped[..., 0, :] - grouped[..., 1, :]).unsqueeze(-2) / 2 if group_size == 2 else grouped - mean
-    score = deviation.square()
-    if select_by == 'query':
-        weights = plane_tied(_weights(query_weights, layer_idx, query_weights_sha256)).to(tensor.device)
-        if weights.shape != (tensor.shape[1], dim) or not torch.isfinite(weights).all() or (weights < 0).any():
-            raise ValueError('query weights do not match the loaded layer/head shape')
-        score = score * weights.reshape(1, tensor.shape[1], 1, 1, dim)
-    residual = torch.zeros_like(deviation)
-    if residual_entries:
-        ids = score.topk(residual_entries, dim=-1).indices
-        residual.scatter_(-1, ids, deviation.gather(-1, ids))
-    # Mean, residual and stored scales use the loaded model's 16-bit dtype.
-    mean, residual = mean.to(tensor.dtype).float(), residual.to(tensor.dtype).float()
-    reconstructed = torch.cat((mean + residual, mean - residual), -2) if group_size == 2 else mean + residual
-    magnitude = norms.reshape(*grouped.shape[:-1], 1)
-    valid = (magnitude.squeeze(-1) > 1e-12).all(-1)
-    if directional:
-        valid &= (reconstructed.norm(dim=-1) > 1e-6).all(-1)
-        # Precompute the coefficient so compressed execution needs no norm or
-        # square root. It occupies the same one-scalar-per-token norm field.
-        scale = (magnitude / reconstructed.norm(dim=-1, keepdim=True).clamp_min(1e-12)).to(tensor.dtype).float()
-        reconstructed = reconstructed * scale
-        valid &= torch.isfinite(reconstructed).all(-1).all(-1)
-    source = aligned.reshape_as(grouped)
-    error = ((reconstructed - source).square().sum(-1) / source.square().sum(-1).clamp_min(1e-12)).amax(-1)
-    flat = error.masked_fill(~valid, float('inf')).reshape(-1)
-    saving_per_group = 16 * group_size * dim - merged_bits(residual_entries, dim, group_size, directional)
-    overhead = metadata_bits(flat.numel())
-    requested = math.ceil((saving * tensor.numel() * 16 + overhead) / saving_per_group - 1e-10)
-    count = min(requested, int(valid.sum()))
-    mask = torch.zeros_like(flat, dtype=torch.bool)
-    if count:
-        mask[flat.topk(count, largest=False, sorted=False).indices] = True
-    mask = mask.reshape(error.shape)
+    cos, sin = basis.cos, basis.sin
+    weights = query_energy(query_weights, layer_idx, query_weights_sha256, tensor) if select_by == 'query' or distortion == 'query' else None
+    reconstructed, valid = reconstruct(basis, residual_entries, dtype=tensor.dtype,
+                                       selection=select_by, query_energy=weights)
+    source = basis.source
+    grouped_weights = None if token_weights is None else token_weights[..., :full].reshape(*source.shape[:-1])
+    error = reconstruction_error(source, reconstructed, distortion=distortion, query_energy=weights,
+                                 token_weights=grouped_weights).amax(-1)
+    mask, count, requested, overhead, saving_per_group = rank_groups(
+        error, valid, saving=saving, dense_bits=tensor.numel()*16,
+        dense_group_bits=16*group_size*dim,
+        merged_group_bits=merged_bits(residual_entries, dim, group_size, directional))
     restored = reconstructed.reshape_as(original)
     if target == 'k':
         restored = apply_rope(restored, cos, sin, inverse=False)
@@ -118,7 +89,7 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0, group_size=2
     row['metadata_bits'] += overhead
     row['norm_bits'] += count * group_size * 16 if directional else 0
     row['residual_mask_bits'] += count * (1 if group_size == 2 else group_size) * dim if residual_entries else 0
-    row['pairs'] += flat.numel()
+    row['pairs'] += error.numel()
     row['merged'] += count
     row['updates'] += 1
     row['shortfall_updates'] += int(count < requested)
@@ -127,6 +98,17 @@ def apply(tensor, *, layer_idx, target, saving, residual_entries=0, group_size=2
         row['cosine_min'] = min(row['cosine_min'], float(cosine[mask].min()))
         row['cutoff_sum'] += float(cosine[mask].min())
     return out
+
+
+def apply(tensor, *, layer_idx, target, saving, residual_entries=0, group_size=2,
+          directional=True, select_by='deviation', query_weights=None,
+          query_weights_sha256=None, seq_start=0, rope_tables=None, accounting=ACCOUNTING):
+    """Compatibility entry point preserving existing study signatures."""
+    return apply_components(tensor, layer_idx=layer_idx, target=target, saving=saving,
+                            residual_entries=residual_entries, group_size=group_size,
+                            directional=directional, select_by=select_by, query_weights=query_weights,
+                            query_weights_sha256=query_weights_sha256, seq_start=seq_start,
+                            rope_tables=rope_tables, accounting=accounting)
 
 
 METHODS['presentation_spatial'] = apply

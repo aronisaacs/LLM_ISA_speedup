@@ -16,10 +16,11 @@ def residual_mask_bits(kept, dim, residuals, mask="bitmap"):
     raise ValueError("mask must be 'bitmap', 'index' or 'auto'")
 
 
-def vector_group_bits(kept, dim, group_size, *, include_norms, mask="bitmap"):
+def vector_group_bits(kept, dim, group_size, *, include_norms, mask="bitmap", shared_mask=False):
     residuals = 1 if group_size == 2 else group_size
+    masks = 1 if shared_mask else residuals
     return (16 * (dim + residuals * kept + (group_size if include_norms else 0))
-            + residual_mask_bits(kept, dim, residuals, mask))
+            + residual_mask_bits(kept, dim, masks, mask))
 
 
 def metadata_bits(groups, bits_per_group=1):

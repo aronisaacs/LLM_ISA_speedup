@@ -100,3 +100,85 @@ It estimates local sensitivity; it does not predict the combined policy's
 perplexity. Current allocation averages savings across equal-sized Llama slots.
 Supporting unequal slot sizes requires byte-weighted allocation rather than
 assuming this average is a general whole-model byte fraction.
+
+## Composing spatial choices
+
+New experiments can use `algorithms/composed.py:SpatialConfig` and the registered
+`spatial_composed` method. The choices are separate fields, not new algorithm
+names for every combination:
+
+- `representation`: pairs, fixed quads, or an online pair/quad/eight hierarchy.
+- `decision`: fixed global ranking, online feedback, or offline price search.
+- `residual_entries`: one count for fixed ranking; adaptive pairs use the
+  existing short `residual_menu` of 0/8/16/32. The hierarchy uses the eight-format
+  preset described below.
+- `mask_layout`: separate or shared masks for the online hierarchy.
+- `select_by`: deviation or calibrated query energy for residual feature ranking.
+- `distortion`: relative reconstruction error or query-energy-weighted error.
+- `importance`: none or attention received within the available prefill.
+
+`representations.py` builds head-local means, residuals and norm-restored
+candidates. `scoring.py` owns feature scores and distortion. `decisions.py` owns
+fixed ranking, online control and offline search. `storage.py` owns byte formulas.
+The composed entry point connects those components and existing cache integration.
+
+Query feature selection and query distortion are independent; both require
+checksum-verified calibration weights and apply to keys only. Configure values
+in a separate pipeline step. Prefill attention importance is supported for fixed
+and offline decisions; it is rejected for online decisions because later prefill
+queries would influence earlier choices. All modes leave decode appends dense.
+`representation='hierarchy'` adds online decisions inside eight consecutive
+tokens. `max_group=2/4/8` selects nested menus. The eight-format preset is dense
+pairs, pairs with 0/16/32 residual entries, quads with 0/16, and eights with 0/16.
+A bottom-up tree compares a larger merge against its smaller children, without
+enumerating partitions. Choices span KV heads; vectors remain head-local.
+The existing pair algorithm and its 0/8/16/32 menu are unchanged.
+
+The hierarchy currently uses ordinary reconstruction error, no attention or
+query weighting, a 32-token startup, and feedback once per eight-token window.
+Controller memory stays in token units. It models BF16 mean/residual/scale
+storage, one signed residual mask per pair or separate/shared token masks for larger
+groups, packed 3-bit terminal tags, and a 16-bit slot header. Tree costs include
+unpacked tag bits; final byte accounting rounds the whole tag stream to bytes.
+Tail tokens outside complete eight-token windows stay dense. This is a PyTorch
+reconstruction prototype, not an encoded cache or a hardware timing benchmark.
+Decode appends still stay dense. A shared mask is chosen per group and KV head
+from the summed squared deviations of all tokens; their residual values and
+norm scales remain separate. It saves only mask bytes, not residual values.
+
+`scripts/hierarchy_pilot.py` reuses two existing dense 8B captures, probes five
+layers' keys and values at 32/128/512/1536-token prefixes, and tests 30/40/50/60/70/80%
+per-slot targets. It reports reconstruction error, exact modeled bytes, format
+use and controller drift, marks infeasible targets, and flags unmatched savings.
+It compares pairs once, pairs/quads with separate and shared masks, and
+pairs/quads/eights with separate and shared masks. Same-format comparisons
+also isolate the mask's reconstruction penalty and byte saving before control.
+This diagnostic has no accuracy calculation or layer-budget allocation; each
+eventual full-model variant still needs its own calibration. Submit with
+`scripts/hierarchy_pilot_dgx.sh`; preliminary results and quiet timing records
+are written alongside the final summary. Missing captures cause an explicit
+error rather than silently launching model inference.
+
+Existing `online_pairs` and `presentation_spatial` names remain thin compatibility
+entry points for recorded studies. They use these shared components, preserve
+their historical rounding/accounting conventions, and keep their old signatures
+and defaults. The running study's configurations are not migrated automatically.
+
+Example: offline pairs with query-aware residual features but ordinary distortion:
+
+```python
+from compression_topics.spatial.algorithms.composed import SpatialConfig
+
+keys = SpatialConfig(
+    decision="offline",
+    representation="pairs",
+    select_by="query",
+    distortion="relative",
+    query_weights="path/to/calibrated_query_weights.pt",
+    query_weights_sha256="checksum_from_calibration",
+)
+policy = keys.pipeline(0.30, k_layers=[12], v_layers=[])
+```
+
+Each distinct composition still needs its own calibration; components being
+reusable does not make their measured quality curves interchangeable.
