@@ -123,9 +123,11 @@ def summarize(out, run, *, require_complete=False):
         count=payload['n-samples']['ceval-valid']['effective']
         if count!=1346:raise ValueError(f'expected full 1346-question C-Eval, found {count}')
         stats=[r for r in payload.get('gate_stats',{}).values() if 'controller_bound_hits' in r]
+        # Dense evaluations do not install compression accounting.
+        saving=payload['storage']['targets']['kv']['compression'] if config['kv']['pipeline'] else 0.0
         rows.append({'name':config['name'],**config.get('metadata',{}),
                      'accuracy':payload['results']['ceval-valid']['acc,none'],'questions':count,
-                     'actual_prefill_kv_saving':payload['storage']['targets']['kv']['compression'],
+                     'actual_prefill_kv_saving':saving,
                      'max_local_target_deviation':max((r['max_final_target_deviation'] for r in stats),default=None),
                      'controller_bound_hits':sum(r['controller_bound_hits'] for r in stats)})
     dense=next((r['accuracy'] for r in rows if r['name']=='dense_ceval'),None)

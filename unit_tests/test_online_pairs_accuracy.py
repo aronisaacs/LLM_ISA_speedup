@@ -50,8 +50,10 @@ class AccuracyTests(unittest.TestCase):
                          'results':{'ceval-valid':{'acc,none':.5}},
                          'n-samples':{'ceval-valid':{'effective':1346}},
                          'storage':{'targets':{'kv':{'compression':.3}}},'gate_stats':{}}
+                if not config['kv']['pipeline']:payload.pop('storage')
                 write_json(config['output_path'],payload)
             report=study.summarize(out,run,require_complete=True)
+            self.assertEqual(report['rows'][0]['actual_prefill_kv_saving'],0.0)
             self.assertTrue(report['comparisons'][0]['matched_within_one_point'])
             payload['storage']['targets']['kv']['compression']=.33
             write_json(config['output_path'],payload)
