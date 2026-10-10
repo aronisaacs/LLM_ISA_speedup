@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Independently calibrated fixed versus online-adaptive pair accuracy study.
+"""Independently calibrated fixed, online and offline adaptive pair accuracy study.
 
 Common train screen/refinement and validation chunks; full C-Eval 5-shot.
 The fixed arm is clean rung 2 (global prefill ranking, per-head merge masks).
 The adaptive arm uses one pair format across heads and local feedback. Both
 use ordinary residual features, RoPE keys and norm restoration, dense appends.
-Actual representation metadata is counted separately for each method.
+Offline adaptive searches a price over the full prefill, with the same pair
+menu/reconstruction/accounting as online. It is a reference, not an accuracy
+optimum. Actual representation metadata is counted separately for each method.
 """
 import argparse
 from dataclasses import asdict
@@ -28,13 +30,13 @@ from engine.kv_compress.spec import parse_kv_spec
 from engine.layer_select.calibration import configuration, execute_chunks, measurement, perplexity
 from engine.layer_select.greedy.calibrated import allocate
 
-OUT = ROOT / 'compression_topics/spatial/figures/online_pairs_accuracy'
-ARMS = ('fixed', 'adaptive')
+OUT = ROOT / 'compression_topics/spatial/figures/online_pairs_accuracy_offline'
+ARMS = ('fixed', 'adaptive', 'offline')
 STAGES = ('screen', 'refine', 'allocate', 'validate', 'tasks', 'summary')
 
 
 def plan(out, *, layers=32, budgets=(.1,.2,.3,.4), screen=4, refine=12, validation=16):
-    return {'version': 2, 'out': str(out), 'layers': layers, 'head_dim': 128,
+    return {'version': 3, 'out': str(out), 'layers': layers, 'head_dim': 128,
             'model_args': LLAMA31_8B, 'budgets': list(budgets), 'local_budgets': [.1,.25,.4,.47],
             'residuals': [0,8,16,32], 'screen_chunks': screen, 'refine_chunks': refine,
             'validation_chunks': validation, 'seed': 83, 'seq_len': 2048, 'scoring_prefix':1536,
@@ -60,7 +62,8 @@ def candidates(plan):
                                         group_size=2,residual_entries=residual,directional=True,select_by='deviation')
                         else:
                             step.update(method='online_pairs',accounting=online.ACCOUNTING,
-                                        feedback=True,fixed_residual=None,control=plan['control'])
+                                        feedback=True,fixed_residual=None,
+                                        **({'decision':'offline'} if arm=='offline' else {'decision':'online','control':plan['control']}))
                         spec={'pipeline':[step]};parse_kv_spec(spec)
                         tag=f'{arm}_L{layer:02d}_{target}_b{round(100*budget):02d}_r{residual}'
                         rows.append({'name':tag,'arm':arm,'layer':layer,'target':target,
@@ -169,15 +172,16 @@ def summarize(out, run, *, require_complete=False):
     comparisons=[]
     for budget in sorted({r['global_budget'] for r in rows if 'global_budget' in r}):
         pair={r['arm']:r for r in rows if r.get('global_budget')==budget}
-        if set(pair)==set(ARMS):
-            gap=pair['adaptive']['actual_prefill_kv_saving']-pair['fixed']['actual_prefill_kv_saving']
-            comparisons.append({'budget':budget,'saving_gap_points':100*gap,
-                                'matched_within_one_point':abs(gap)<=.01,
-                                'adaptive_accuracy_gain_points':100*(pair['adaptive']['accuracy']-pair['fixed']['accuracy'])})
+        for left,right in (('fixed','adaptive'),('adaptive','offline'),('fixed','offline')):
+            if left not in pair or right not in pair:continue
+            gap=pair[right]['actual_prefill_kv_saving']-pair[left]['actual_prefill_kv_saving']
+            comparisons.append({'budget':budget,'reference_arm':left,'comparison_arm':right,
+                                'saving_gap_points':100*gap,'matched_within_one_point':abs(gap)<=.01,
+                                'accuracy_gain_points':100*(pair[right]['accuracy']-pair[left]['accuracy'])})
     report={'status':'complete' if complete else 'preliminary','completed':len(rows),'total':len(run['configurations']),
             'dense_accuracy':dense,'rows':rows,'comparisons':comparisons,
             'scope':'full C-Eval validation 5-shot; independently calibrated methods; prefill compression only',
-            'comparison':'clean fixed rung 2 versus online feedback adaptive pairs; use actual savings, flag unmatched points'}
+            'comparison':'fixed-residual, online adaptive and offline adaptive pairs; same online/offline representations; actual savings checked'}
     write_json(out/('summary.json' if complete else 'preliminary.json'),report)
     return report
 
@@ -234,7 +238,7 @@ def run_stage(plan,stage):
             for budget in plan['budgets']:
                 pair=[r for r in validation if r['budget']==budget]
                 if any(abs(r['actual_saving']-budget)>plan['matching_tolerance'] for r in pair) or \
-                   abs(pair[0]['actual_saving']-pair[1]['actual_saving'])>plan['matching_tolerance']:
+                   abs(max(r['actual_saving'] for r in pair)-min(r['actual_saving'] for r in pair))>plan['matching_tolerance']:
                     raise RuntimeError('holdout savings not matched within one point; inspect validation.json before full accuracy')
             print(json.dumps(validation,indent=2),flush=True)
     elif stage=='allocate':
@@ -244,7 +248,7 @@ def run_stage(plan,stage):
         validation=load(out/'validation.json')
         for budget in plan['budgets']:
             pair=[r for r in validation if r['budget']==budget]
-            if len(pair)!=2 or any(abs(r['actual_saving']-budget)>.01 for r in pair) or abs(pair[0]['actual_saving']-pair[1]['actual_saving'])>.01:
+            if len(pair)!=len(ARMS) or any(abs(r['actual_saving']-budget)>.01 for r in pair) or abs(max(r['actual_saving'] for r in pair)-min(r['actual_saving'] for r in pair))>.01:
                 raise RuntimeError('validation byte gate failed')
         run=task_run(plan,load(out/'selections.json'));write_json(out/'tasks_run.json',run);execute_tasks(out,run)
     else:summarize(out,load(out/'tasks_run.json'),require_complete=True)
@@ -269,8 +273,8 @@ def main():
     write_json(path,study)
     print(f"Independent calibration: {len(candidates(study))} single-slot candidates x {args.screen_chunks} train chunks; "
           f"refine one finalist per method/slot/budget on {args.refine_chunks} disjoint train chunks. "
-          f"{args.validation_chunks} validation chunks; {1+2*len(study['budgets'])} full C-Eval configurations.",flush=True)
-    print('Both methods: pairs, RoPE keys, norm restoration, no query/token weights, dense decode appends. '
+          f"{args.validation_chunks} validation chunks; {1+len(ARMS)*len(study['budgets'])} full C-Eval configurations.",flush=True)
+    print('All methods: pairs, RoPE keys, norm restoration, no query/token weights, dense decode appends. '
           'Holdout must match savings within one percentage point before accuracy starts.',flush=True)
     if args.execute:
         for stage in STAGES[STAGES.index(args.start):STAGES.index(args.through)+1]:

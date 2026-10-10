@@ -16,5 +16,5 @@ export PYTHONUNBUFFERED=1
 export OMP_NUM_THREADS=8
 echo "Job ${SLURM_JOB_ID:-manual}; GPUs ${CUDA_VISIBLE_DEVICES:-unset}"
 git log -1 --oneline
-python -m unittest unit_tests.test_online_pairs unit_tests.test_online_pairs_continuation unit_tests.test_online_pairs_accuracy
+python -m unittest unit_tests.test_online_pairs unit_tests.test_online_pairs_continuation unit_tests.test_online_pairs_accuracy unit_tests.test_offline_pairs
 python -u compression_topics/spatial/scripts/online_pairs_accuracy.py --execute "$@"

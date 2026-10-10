@@ -55,7 +55,8 @@ class AccuracyTests(unittest.TestCase):
             self.assertTrue(report['comparisons'][0]['matched_within_one_point'])
             payload['storage']['targets']['kv']['compression']=.33
             write_json(config['output_path'],payload)
-            self.assertFalse(study.summarize(out,run)['comparisons'][0]['matched_within_one_point'])
+            comparison=next(r for r in study.summarize(out,run)['comparisons'] if r['reference_arm']=='adaptive' and r['comparison_arm']=='offline')
+            self.assertFalse(comparison['matched_within_one_point'])
             payload['n-samples']['ceval-valid']['effective']=16
             write_json(config['output_path'],payload)
             with self.assertRaisesRegex(ValueError,'1346'):study.summarize(out,run)

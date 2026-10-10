@@ -1,8 +1,9 @@
 """Pair-local reconstruction/storage prototype with a feedback price controller.
 
 Registered for prefill reconstruction in the model pipeline; decode appends stay dense. Each choice applies across KV heads,
-but means/residuals remain within heads. Only the initial 32-token window uses
+but means/residuals remain within heads. In online mode only the initial 32-token window uses
 a shared price search. Afterward decisions inspect the current pair and state.
+Offline mode fits its price over all pairs before committing formats.
 """
 from dataclasses import dataclass
 import math
@@ -201,19 +202,86 @@ def run(table, target_saving, *, feedback=True, fixed_residual=None, control=Con
             'stored_bits':final_stored,'dense_bits':final_dense,'history':history}
 
 
+def run_offline(table, target_saving):
+    """Whole-prefill price search with discrete boundary repair.
+
+    Same five representations/error objective as online. This is a practical
+    offline reference, not an exact multiple-choice knapsack/accuracy optimum.
+    It sees every pair before committing any choices.
+    """
+    if not math.isfinite(target_saving) or not 0 < target_saving < .5:
+        raise ValueError('pair target must be positive and below 50%')
+    n = len(table.errors)
+    if not n:
+        raise ValueError('need complete pairs')
+    dense = n * table.dense_pair_bits + table.tail_bits
+    overhead = metadata_bits(n, 3) + table.tail_bits
+    limit = dense * (1 - target_saving) - overhead
+    errors = torch.tensor(table.errors, dtype=torch.float64)
+    bits = torch.tensor(table.payload_bits, dtype=torch.float64)
+    rates = bits / table.dense_pair_bits
+    minimum = bits.expand_as(errors).masked_fill(~torch.isfinite(errors), float('inf')).amin(-1).sum().item()
+    if minimum > limit + 1e-8:
+        raise ValueError('offline target cannot be met with available pair formats')
+    def choices(price):
+        result = (errors + price * rates).argmin(-1)
+        return result, bits[result].sum().item()
+    high = 1e-6
+    while choices(high)[1] > limit:
+        high *= 4
+        if high > 1e12:
+            raise ValueError('cannot fit offline price')
+    low = 0.
+    for _ in range(60):
+        middle = (low + high) / 2
+        if choices(middle)[1] <= limit:
+            high = middle
+        else:
+            low = middle
+    lower, payload = choices(low)
+    upper, _ = choices(high)
+    selected = lower.tolist()
+    # Split simultaneous price-breakpoint transitions rather than switching
+    # every tied pair at once. Stop after reaching the required byte saving.
+    changes = []
+    for pair, (before, after) in enumerate(zip(selected, upper.tolist())):
+        gain = table.payload_bits[before] - table.payload_bits[after]
+        if gain > 0:
+            cost = table.errors[pair][after] - table.errors[pair][before]
+            changes.append((cost / gain, pair, after, gain))
+    for _, pair, after, gain in sorted(changes):
+        if payload <= limit + 1e-8:
+            break
+        selected[pair] = after
+        payload -= gain
+    if payload > limit + 1e-8:
+        raise ValueError('offline boundary repair missed target')
+    names = ['dense'] + [f'r{r}' for r in RESIDUALS]
+    return {'target_saving': target_saving, 'measured_saving': 1 - (payload + overhead) / dense,
+            'stored_bits': int(payload + overhead), 'dense_bits': dense,
+            'mean_relative_squared_error': sum(table.errors[j][i] for j, i in enumerate(selected)) / n,
+            'price_bound_hits': 0, 'initial_price': high,
+            'formats': {name: selected.count(i) for i, name in enumerate(names)},
+            'history': [{'tokens': 2*(j+1), 'format': names[i]} for j, i in enumerate(selected)]}
+
+
 def apply(tensor, *, layer_idx, target, saving, feedback=True, fixed_residual=None,
-          control=None, seq_start=0, rope_tables=None, accounting=ACCOUNTING):
-    """Compress prefill using local controller choices; no new decode compression."""
+          control=None, seq_start=0, rope_tables=None, accounting=ACCOUNTING, decision="online"):
+    """Compress prefill using online controller or offline reference; appends dense."""
     from engine.kv_compress.metrics import STATS
     if accounting != ACCOUNTING:
         raise ValueError('unsupported online-pair accounting')
     if not isinstance(feedback,bool):
         raise ValueError('feedback must be boolean')
+    if decision not in ('online', 'offline'):
+        raise ValueError('decision must be online or offline')
+    if decision == 'offline' and (fixed_residual is not None or control is not None):
+        raise ValueError('offline reference has no fixed residual/controller settings')
     settings=Control(**(control or {}))
     if seq_start:
         return tensor
     table,reconstructions=pair_table(tensor,target=target,rope_tables=rope_tables,return_reconstruction=True)
-    result=run(table,saving,feedback=feedback,fixed_residual=fixed_residual,control=settings)
+    result=run_offline(table,saving) if decision == 'offline' else run(table,saving,feedback=feedback,fixed_residual=fixed_residual,control=settings)
     names=['dense']+[f'r{r}' for r in RESIDUALS]
     choice=torch.tensor([names.index(r['format']) for r in result['history']],device=tensor.device)
     selected=torch.zeros_like(reconstructions[0])
