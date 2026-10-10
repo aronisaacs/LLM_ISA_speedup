@@ -40,6 +40,7 @@ from engine.eval_runner import (  # noqa: E402
 from engine.eval_runner.cache import reuse_cached_result, simulation_identity, identities_match
 from engine.eval_runner.index import record_simulation
 from engine.eval_runner.progress import format_hms, kv_brief, mirror_terminal, say, summarize_scores
+from engine.eval_runner.timing import TimingRecord
 from engine.eval_runner.workers import exit_with_parent
 from engine.kv_compress import install, parse_kv_spec
 
@@ -189,25 +190,32 @@ def _run_configurations(args) -> None:
         if cached is not None:
             _say(label, f"[{index}/{total}]  {cached}  {name}")
             continue
-        previous_key = loaded_model_key
-        lm, loaded_model_key, device, model_args = load_model_if_needed(
-            lm, loaded_model_key, base, configuration
-        )
-        if loaded_model_key != previous_key:
-            _say(label, f"loaded  {device}  {model_args}")
+        with TimingRecord(args.results_root or Path(args.run).resolve().parent,
+                          name=name, run=args.run, worker=worker,
+                          identity=simulation_identity(base, configuration, kv_spec), enabled=not args.dry_run) as timing:
+            previous_key = loaded_model_key
+            with timing.phase("model_load_or_reuse"):
+                lm, loaded_model_key, device, model_args = load_model_if_needed(
+                    lm, loaded_model_key, base, configuration
+                )
+            if loaded_model_key != previous_key:
+                _say(label, f"loaded  {device}  {model_args}")
+            timing.data.update(device=str(device), model_reloaded=loaded_model_key != previous_key)
 
-        _say(label, f"[{index}/{total}]  {name}  {kv_brief(kv_spec)}  {device}")
+            _say(label, f"[{index}/{total}]  {name}  {kv_brief(kv_spec)}  {device}")
 
-        uninstall = install(lm, kv_spec)
-        try:
-            results = evaluate(lm, base, configuration, kv_spec, device, model_args)
-        finally:
-            uninstall()
-        if getattr(lm, "rank", 0) == 0 and not args.dry_run:
-            if getattr(args, "write_results", False):
-                write_result_json(lm, base, configuration, results,
-                                  simulation_identity(base, configuration, kv_spec))
-            _record(results, simulation_identity(base, configuration, kv_spec), args.results_root)
+            uninstall = install(lm, kv_spec)
+            try:
+                with timing.phase("evaluation"):
+                    results = evaluate(lm, base, configuration, kv_spec, device, model_args)
+                    timing.data['samples'] = results.get('n-samples', {})
+            finally:
+                uninstall()
+            if getattr(lm, "rank", 0) == 0 and not args.dry_run:
+                if getattr(args, "write_results", False):
+                    write_result_json(lm, base, configuration, results,
+                                      simulation_identity(base, configuration, kv_spec))
+                _record(results, simulation_identity(base, configuration, kv_spec), args.results_root)
 
         finished += 1
         elapsed = time.monotonic() - started

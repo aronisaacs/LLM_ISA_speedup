@@ -25,6 +25,7 @@ from engine.eval_runner.text_chunks import wikitext_chunks
 from engine.eval_runner.execute import load_model_if_needed
 from engine.eval_runner.cache import simulation_identity, identities_match
 from engine.eval_runner.files import write_json
+from engine.eval_runner.timing import TimingRecord
 from engine.eval_runner.workers import exit_with_parent
 from engine.kv_compress import install, parse_kv_spec
 from engine.multi_run import visible_cuda_devices
@@ -140,7 +141,8 @@ def evaluate_chunks(model, prompts, kv, chunk_ids, *, scoring_prefix=None, progr
     storage = metrics.storage_summary()
     result = {"results": {"wikitext_chunks": {"token_perplexity,none": math.exp(nll),
                                             "mean_nll,none": nll}},
-            "chunk_scores": scores, "gate_stats": metrics.pop_stats()}
+            "chunk_scores": scores, "gate_stats": metrics.pop_stats(),
+            "timing": {"evaluation_seconds": time.monotonic() - started, "chunks": len(scores), "tokens": tokens}}
     if storage is not None:
         result['storage'] = storage
     if scoring_prefix is not None:
@@ -210,51 +212,55 @@ def main():
         return
     lm = model_key = None
     for index, configuration in enumerate(pending, 1):
-        previous_key = model_key
-        lm, model_key, device, _ = load_model_if_needed(lm, model_key, run, configuration)
-        model = lm.model.eval()
-        if previous_key != model_key:
-            expected = run.get("model_shape", {})
-            config = getattr(model.config, "text_config", model.config)
-            actual_dim = getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
-            if expected and (expected["layers"] != config.num_hidden_layers or expected["head_dim"] != actual_dim):
-                raise ValueError("planned layer count/head dimension do not match the loaded model")
-            prompts, chosen = wikitext_chunks(lm.tokenizer, sampling["pool_chunks"],
-                                               sampling["seq_len"], sampling["seed"],
-                                               **({'split': sampling['split']} if 'split' in sampling else {}))
-            prompts, chosen = partition(prompts, chosen, sampling)
-        prefix = None
-        if configuration.get("reuse_path"):
-            if sampling.get('scoring_prefix') is not None:
-                raise ValueError('continuation runs resume finished configurations; chunk-prefix extension is unsupported')
-            prefix = json.loads(Path(configuration["reuse_path"]).read_text())
-            prefix_sampling = prefix["simulation"]["sampling"]
-            expected_prefix = identity(configuration, prefix_sampling, run)
-            if not identities_match(prefix["simulation"], expected_prefix):
-                raise ValueError("extension model or configuration does not match prefix")
-            for key in ("pool_chunks", "offset", "seed", "seq_len"):
-                if prefix_sampling[key] != sampling[key]:
-                    raise ValueError("extension sampling does not match prefix")
-            if prefix_sampling.get('split', 'test') != sampling.get('split', 'test'):
-                raise ValueError('extension dataset split differs from prefix')
-            if prefix["simulation"]["kv"] != configuration["kv"]:
-                raise ValueError("extension KV configuration does not match prefix")
-            count = len(prefix["chunk_scores"])
-            if [r["chunk"] for r in prefix["chunk_scores"]] != chosen[:count] or count >= len(chosen):
-                raise ValueError("extension does not contain the expected chunk prefix")
-            additional = evaluate_chunks(model, prompts[count:], configuration["kv"], chosen[count:],
-                                         scoring_prefix=sampling.get('scoring_prefix'))
-            result = combine(prefix, additional)
-        else:
-            result = evaluate_chunks(model, prompts, configuration["kv"], chosen,
-                                     scoring_prefix=sampling.get('scoring_prefix'),
-                                     progress_path=Path(configuration['output_path']).with_suffix('.partial.json')
-                                     if run.get('preliminary_results') else None)
-        result["simulation"] = identity(configuration, sampling, run)
-        path = Path(configuration["output_path"])
-        write_json(path, result)
-        print(f"[worker {args.worker or 0}, {index}/{len(pending)}] {configuration['name']}: "
-              f"token PPL {result['results']['wikitext_chunks']['token_perplexity,none']:.5f}", flush=True)
+        with TimingRecord(args.run.resolve().parent, name=configuration["name"],
+                          run=args.run, worker=args.worker or 0,
+                          identity=identity(configuration, sampling, run)) as timing:
+            previous_key = model_key
+            with timing.phase("model_load_or_reuse"):
+                lm, model_key, device, _ = load_model_if_needed(lm, model_key, run, configuration)
+            model = lm.model.eval()
+            if previous_key != model_key:
+                expected = run.get("model_shape", {})
+                config = getattr(model.config, "text_config", model.config)
+                actual_dim = getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
+                if expected and (expected["layers"] != config.num_hidden_layers or expected["head_dim"] != actual_dim):
+                    raise ValueError("planned layer count/head dimension do not match the loaded model")
+                prompts, chosen = wikitext_chunks(lm.tokenizer, sampling["pool_chunks"],
+                                                   sampling["seq_len"], sampling["seed"],
+                                                   **({'split': sampling['split']} if 'split' in sampling else {}))
+                prompts, chosen = partition(prompts, chosen, sampling)
+            prefix = None
+            if configuration.get("reuse_path"):
+                if sampling.get('scoring_prefix') is not None:
+                    raise ValueError('continuation runs resume finished configurations; chunk-prefix extension is unsupported')
+                prefix = json.loads(Path(configuration["reuse_path"]).read_text())
+                prefix_sampling = prefix["simulation"]["sampling"]
+                expected_prefix = identity(configuration, prefix_sampling, run)
+                if not identities_match(prefix["simulation"], expected_prefix):
+                    raise ValueError("extension model or configuration does not match prefix")
+                for key in ("pool_chunks", "offset", "seed", "seq_len"):
+                    if prefix_sampling[key] != sampling[key]:
+                        raise ValueError("extension sampling does not match prefix")
+                if prefix_sampling.get('split', 'test') != sampling.get('split', 'test'):
+                    raise ValueError('extension dataset split differs from prefix')
+                if prefix["simulation"]["kv"] != configuration["kv"]:
+                    raise ValueError("extension KV configuration does not match prefix")
+                count = len(prefix["chunk_scores"])
+                if [r["chunk"] for r in prefix["chunk_scores"]] != chosen[:count] or count >= len(chosen):
+                    raise ValueError("extension does not contain the expected chunk prefix")
+                additional = evaluate_chunks(model, prompts[count:], configuration["kv"], chosen[count:],
+                                             scoring_prefix=sampling.get('scoring_prefix'))
+                result = combine(prefix, additional)
+            else:
+                result = evaluate_chunks(model, prompts, configuration["kv"], chosen,
+                                         scoring_prefix=sampling.get('scoring_prefix'),
+                                         progress_path=Path(configuration['output_path']).with_suffix('.partial.json')
+                                         if run.get('preliminary_results') else None)
+            result["simulation"] = identity(configuration, sampling, run)
+            path = Path(configuration["output_path"])
+            write_json(path, result)
+            print(f"[worker {args.worker or 0}, {index}/{len(pending)}] {configuration['name']}: "
+                  f"token PPL {result['results']['wikitext_chunks']['token_perplexity,none']:.5f}", flush=True)
 
 
 if __name__ == "__main__":
