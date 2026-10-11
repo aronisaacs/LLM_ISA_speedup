@@ -28,19 +28,19 @@ from engine.kv_compress.spec import parse_kv_spec
 from engine.layer_select.calibration import configuration, execute_chunks, perplexity
 from engine.layer_select.study import measure_candidates, select_settings, allocate_settings, require_matched_savings
 
-OUT = ROOT / 'compression_topics/spatial/figures/online_pairs_accuracy_offline'
+OUT = ROOT / 'compression_topics/spatial/figures/online_pairs_per_head_accuracy'
 ARMS = ('fixed', 'adaptive', 'offline')
 STAGES = ('screen', 'refine', 'allocate', 'validate', 'tasks', 'summary')
 
 
 def plan(out, *, layers=32, budgets=(.1,.2,.3,.4), screen=4, refine=12, validation=16):
-    return {'version': 3, 'out': str(out), 'layers': layers, 'head_dim': 128,
+    return {'version': 4, 'out': str(out), 'layers': layers, 'head_dim': 128,
             'model_args': LLAMA31_8B, 'budgets': list(budgets), 'local_budgets': [.1,.25,.4,.47],
             'residuals': [0,8,16,32], 'screen_chunks': screen, 'refine_chunks': refine,
             'validation_chunks': validation, 'seed': 83, 'seq_len': 2048, 'scoring_prefix':1536,
             'control':asdict(online.Control()), 'fixed_accounting':fixed.ACCOUNTING,
             'adaptive_accounting':online.ACCOUNTING,
-            'protocol':'independent_train_calibration_shared_samples_validation_gate_full_ceval5shot',
+            'head_decisions':'per_head', 'protocol':'independent_head_train_calibration_validation_gate_full_ceval5shot_v4',
             'matching_tolerance': .01}
 
 
@@ -59,7 +59,7 @@ def candidates(plan):
                             step.update(method='presentation_spatial',accounting=fixed.ACCOUNTING,
                                         group_size=2,residual_entries=residual,directional=True,select_by='deviation')
                         else:
-                            step.update(method='online_pairs',accounting=online.ACCOUNTING,
+                            step.update(method='online_pairs',accounting=online.ACCOUNTING,head_decisions='per_head',
                                         feedback=True,fixed_residual=None,
                                         **({'decision':'offline'} if arm=='offline' else {'decision':'online','control':plan['control']}))
                         spec={'pipeline':[step]};parse_kv_spec(spec)
@@ -172,7 +172,7 @@ def execute_tasks(out, run, *, summarizer=summarize):
 
 
 def run_stage(plan,stage, *, candidate_builder=candidates, arms=ARMS,
-              measure_fn=measure, allocation_fn=select_allocations, task_builder=task_run, summarizer=summarize):
+              measure_fn=measure, allocation_fn=select_allocations, task_builder=task_run, summarizer=summarize, validation_checker=require_matched_savings):
     out=Path(plan['out'])
     if stage in ('screen','refine','validate'):
         name='validation' if stage=='validate' else stage
@@ -202,7 +202,7 @@ def run_stage(plan,stage, *, candidate_builder=candidates, arms=ARMS,
                                    'token_ppl':perplexity(payload)})
             write_json(out/'validation.json',validation)
             try:
-                require_matched_savings(validation, plan['budgets'], arms, tolerance=plan['matching_tolerance'])
+                validation_checker(validation, plan['budgets'], arms, tolerance=plan['matching_tolerance'])
             except ValueError as error:
                 raise RuntimeError('holdout byte gate failed; inspect validation.json before full accuracy') from error
             print(json.dumps(validation,indent=2),flush=True)
@@ -212,7 +212,7 @@ def run_stage(plan,stage, *, candidate_builder=candidates, arms=ARMS,
         # Recheck the byte gate even when resuming directly at tasks.
         validation=load(out/'validation.json')
         try:
-            require_matched_savings(validation, plan['budgets'], arms, tolerance=plan['matching_tolerance'])
+            validation_checker(validation, plan['budgets'], arms, tolerance=plan['matching_tolerance'])
         except ValueError as error:
             raise RuntimeError('validation byte gate failed') from error
         run=task_builder(plan,load(out/'selections.json'));write_json(out/'tasks_run.json',run);execute_tasks(out,run,summarizer=summarizer)

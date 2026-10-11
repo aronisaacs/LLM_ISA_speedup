@@ -1,6 +1,6 @@
 """Bounded pair/quad/eight tree decisions inside consecutive eight-token windows.
 
-One format choice spans KV heads; every mean/residual remains head-local.
+Each KV head chooses its own format; one controller tracks their combined bytes.
 Leaves are dense pairs or merged pairs. A quad/eight may replace its children.
 There are at most eight terminal formats, not an enumeration of partitions.
 Prefill prototype only: decode appends remain dense. Byte counts model a packed
@@ -21,13 +21,17 @@ from engine.kv_compress.rope import apply_rope
 MENUS = {2: (0, 16, 32), 4: (0, 16), 8: (0, 16)}
 WINDOW = 8
 TAG_BITS = 3
-ACCOUNTING = 'hierarchical_bf16_scales_bitmap_terminal_3bit_v1'
+ACCOUNTING = 'hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2'
 
 
-def accounting(mask_layout):
+def accounting(mask_layout, head_decisions='per_head'):
     if mask_layout not in ('separate', 'shared'):
         raise ValueError('mask_layout must be separate or shared')
-    return ACCOUNTING if mask_layout == 'separate' else 'hierarchical_bf16_scales_shared_bitmap_terminal_3bit_v1'
+    if head_decisions not in ('per_head', 'shared'):
+        raise ValueError('head_decisions must be per_head or shared')
+    if head_decisions == 'shared':
+        return 'hierarchical_bf16_scales_bitmap_terminal_3bit_v1' if mask_layout == 'separate' else 'hierarchical_bf16_scales_shared_bitmap_terminal_3bit_v1'
+    return ACCOUNTING if mask_layout == 'separate' else 'hierarchical_bf16_scales_shared_bitmap_per_head_terminal_3bit_v2'
 
 
 @dataclass(frozen=True)
@@ -35,6 +39,7 @@ class Choice:
     segments: tuple  # (window-relative start, size, residual count; None = dense pair)
     error: float  # relative error, token-weighted to one eight-token window
     payload_bits: int
+    head_segments: tuple = ()
 
     @property
     def bits(self):
@@ -71,9 +76,33 @@ class WindowTable:
         return visit(0, WINDOW)
 
 
+@dataclass
+class HeadWindowTable:
+    """Independent head trees, shared layer price and aggregate accounting."""
+    tables: list
+    @property
+    def rows(self):return [tuple(t.rows[i] for t in self.tables) for i in range(len(self.tables[0].rows))]
+    @property
+    def dense_window_bits(self):return sum(t.dense_window_bits for t in self.tables)
+    @property
+    def tail_bits(self):return sum(t.tail_bits for t in self.tables)
+    @property
+    def mask_layout(self):return self.tables[0].mask_layout
+    @property
+    def max_group(self):return self.tables[0].max_group
+    @property
+    def payload(self):return {k:sum(t.payload[k] for t in self.tables) for k in self.tables[0].payload}
+    def choose(self, row, price):
+        chosen=[t.choose(r,price) for t,r in zip(self.tables,row)]
+        return Choice(tuple(s for c in chosen for s in c.segments),
+                      sum(c.error for c in chosen)/len(chosen),sum(c.payload_bits for c in chosen),
+                      tuple(c.segments for c in chosen))
+
+
 def build_table(tensor, *, target, max_group=8, rope_tables=None, return_reconstruction=False, mask_layout='separate',
-                selection='deviation', query_energy=None, token_weights=None):
-    accounting(mask_layout)
+                selection='deviation', query_energy=None, token_weights=None, head_decisions='per_head', distortion='relative'):
+    accounting(mask_layout, head_decisions)
+    independent = head_decisions == 'per_head'
     if max_group not in MENUS:
         raise ValueError('max_group must be 2, 4 or 8')
     if tensor.ndim != 4 or tensor.shape[0] != 1 or tensor.shape[-1] < 32:
@@ -83,7 +112,7 @@ def build_table(tensor, *, target, max_group=8, rope_tables=None, return_reconst
     if not full:
         raise ValueError('need at least one eight-token window')
     body = tensor[..., :full, :]
-    rows = [{} for _ in range(full // WINDOW)]
+    rows = [[{} for _ in range(full // WINDOW)] for _ in range(heads)] if independent else [{} for _ in range(full // WINDOW)]
     payload = {(2, None): heads * 2 * dim * 16}
     reconstructions = {}
     for size, menu in MENUS.items():
@@ -96,8 +125,8 @@ def build_table(tensor, *, target, max_group=8, rope_tables=None, return_reconst
                                           round_mean_before_residual=True, shared_mask=mask_layout=='shared',
                                           selection=selection, query_energy=query_energy)
             weights = None if token_weights is None else token_weights[..., :full].reshape(1, heads, full//size, size)
-            error = reconstruction_error(basis.source, restored, token_weights=weights).mean((0, 1, 3)) * size / WINDOW
-            errors.append(error.masked_fill(~valid.all((0, 1)), float('inf')))
+            error = reconstruction_error(basis.source, restored, token_weights=weights, distortion=distortion, query_energy=query_energy).mean((0, 3) if independent else (0, 1, 3)) * size / WINDOW
+            errors.append(error.masked_fill(~valid.all(0) if independent else ~valid.all((0, 1)), float('inf')))
             payload[(size, residual)] = heads * vector_group_bits(residual, dim, size, include_norms=True,
                                                                  shared_mask=mask_layout=='shared')
             if return_reconstruction:
@@ -106,11 +135,15 @@ def build_table(tensor, *, target, max_group=8, rope_tables=None, return_reconst
                     flat = apply_rope(flat, basis.cos, basis.sin, inverse=False)
                 reconstructions[(size, residual)] = flat.to(tensor.dtype)
         matrix = torch.stack(errors, -1).cpu().tolist()
-        for window, row in enumerate(rows):
-            for offset in range(0, WINDOW, size):
-                row[(size, offset)] = matrix[(window * WINDOW + offset) // size]
+        for head_rows, head_matrix in zip(rows if independent else [rows], matrix if independent else [matrix]):
+            for window, row in enumerate(head_rows):
+                for offset in range(0, WINDOW, size):
+                    row[(size, offset)] = head_matrix[(window * WINDOW + offset) // size]
     table = WindowTable(rows, payload, heads * WINDOW * dim * 16,
                         (length - full) * heads * dim * 16, max_group, mask_layout)
+    if independent:
+        table = HeadWindowTable([WindowTable(head_rows,{k:v//heads for k,v in payload.items()},
+            WINDOW*dim*16,(length-full)*dim*16,max_group,mask_layout) for head_rows in rows])
     return (table, reconstructions) if return_reconstruction else table
 
 
@@ -138,7 +171,7 @@ def initial_price(table, rows, saving):
     return high if abs(stored(high) - limit) <= 1e-8 else low
 
 
-def run(table, saving, *, control=Control(), feedback=True):
+def run(table, saving, *, control=Control(), feedback=True, saturate=False):
     if not math.isfinite(saving) or not 0 < saving < 1:
         raise ValueError('saving must be between zero and one')
     if not table.rows:
@@ -146,7 +179,7 @@ def run(table, saving, *, control=Control(), feedback=True):
     if control.startup_tokens % WINDOW:
         raise ValueError('hierarchical startup must contain complete eight-token windows')
     warmup = min(control.startup_tokens // WINDOW, len(table.rows))
-    price = initial_price(table, table.rows[:warmup], saving)
+    price = 1e12 if saturate else initial_price(table, table.rows[:warmup], saving)
     anchor = max(price, 1e-12)
     initial = price
     target = 1 - saving
@@ -172,7 +205,7 @@ def run(table, saving, *, control=Control(), feedback=True):
             ema = fraction
         elif n > warmup:
             ema = (1 - alpha) * ema + alpha * increment
-            if feedback:
+            if feedback and not saturate:
                 correction = control.recent_gain * asymmetric_outside(
                     ema - target, control.recent_deadband + slack, control.recent_deadband)
                 correction += control.cumulative_gain * asymmetric_outside(
@@ -184,7 +217,8 @@ def run(table, saving, *, control=Control(), feedback=True):
                 hits += int(price != new)
         history.append(dict(tokens=n * WINDOW, price_used=used_price, price_next=price,
                             cumulative_saving=1-fraction, recent_saving=1-ema,
-                            segments=[list(s) for s in choice.segments]))
+                            segments=[list(s) for s in choice.segments],
+                            **({'head_segments':[[list(s) for s in segments] for segments in choice.head_segments]} if choice.head_segments else {})))
         previous = stored
     dense = len(table.rows) * table.dense_window_bits + table.tail_bits
     stored += table.tail_bits
@@ -204,13 +238,15 @@ def restore(tensor, result, reconstructions):
     out = tensor.clone()
     full = len(result['history'])*WINDOW
     options = list(reconstructions)
-    codes = [0]*full
+    independent = bool(result['history'][0].get('head_segments'))
+    codes = [[0]*full for _ in range(tensor.shape[1] if independent else 1)]
     for window, item in enumerate(result['history']):
-        for start, size, residual in item['segments']:
-            if residual is not None:
-                offset = window * WINDOW + start
-                codes[offset:offset+size] = [options.index((size,residual))+1]*size
-    codes = torch.tensor(codes,device=tensor.device).reshape(1,1,full,1)
+        for head,segments in enumerate(item.get('head_segments',[item['segments']])):
+            for start, size, residual in segments:
+                if residual is not None:
+                    offset = window * WINDOW + start
+                    codes[head][offset:offset+size] = [options.index((size,residual))+1]*size
+    codes = torch.tensor(codes,device=tensor.device).reshape(1,len(codes),full,1)
     body = out[...,:full,:]
     for code, option in enumerate(options,1):
         body = torch.where(codes==code,reconstructions[option],body)
@@ -220,10 +256,10 @@ def restore(tensor, result, reconstructions):
 
 def apply(tensor, *, layer_idx, target, saving, max_group=8, control=None, mask_layout='separate',
           seq_start=0, rope_tables=None, selection='deviation', query_energy=None,
-          token_weights=None, delayed=False):
+          token_weights=None, delayed=False, head_decisions='per_head', distortion='relative', saturate=False):
     """Head-local hierarchy integrated with prefill; decode appends stay dense."""
     from engine.kv_compress.metrics import STATS
-    storage_layout = accounting(mask_layout)
+    storage_layout = accounting(mask_layout, head_decisions)
     if max_group not in MENUS:
         raise ValueError('max_group must be 2, 4 or 8')
     settings = Control(**(control or {}))
@@ -246,8 +282,8 @@ def apply(tensor, *, layer_idx, target, saving, max_group=8, control=None, mask_
     body = tensor[..., :eligible, :]
     table, reconstructions = build_table(body, target=target, max_group=max_group,
                                          rope_tables=rope_tables, return_reconstruction=True, mask_layout=mask_layout,
-                                         selection=selection, query_energy=query_energy, token_weights=token_weights)
-    result = run(table, saving, control=settings)
+                                         selection=selection, query_energy=query_energy, token_weights=token_weights, head_decisions=head_decisions, distortion=distortion)
+    result = run(table, saving, control=settings, saturate=saturate)
     out = tensor.clone()
     out[..., :eligible, :] = restore(body, result, reconstructions)
     tail_bits = (tensor.shape[-2]-eligible)*tensor.shape[1]*tensor.shape[-1]*16

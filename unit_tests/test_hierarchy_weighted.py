@@ -37,7 +37,7 @@ class WeightedTests(unittest.TestCase):
         torch.manual_seed(5);x=torch.randn(1,2,40,64);STATS.clear()
         out=hierarchy.apply(x,layer_idx=0,target='v',saving=.4,delayed=True,token_weights=torch.ones(1,2,40))
         self.assertTrue(torch.equal(out[...,-8:,:],x[...,-8:,:]))
-        table=hierarchy.build_table(x[...,:32,:],target='v',token_weights=torch.ones(1,2,40))
+        table=hierarchy.build_table(x[...,:32,:],target='v',token_weights=torch.ones(1,2,40),head_decisions='per_head')
         result=hierarchy.run(table,.4)
         row=STATS['v_layer_0'];tail=8*2*64*16
         self.assertEqual(row['stored_bits'],result['stored_bits']+tail)

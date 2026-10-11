@@ -28,15 +28,19 @@ class SpatialConfig:
     control: dict | None = None
     max_group: int = 8
     mask_layout: str = 'separate'
+    head_decisions: str = 'per_head'
+    saturate: bool = False
 
     def __post_init__(self):
+        if not isinstance(self.saturate,bool) or (self.saturate and (self.representation!='hierarchy' or self.max_group!=2)):
+            raise ValueError('saturation endpoint requires pair-only hierarchy')
         if self.decision not in ('fixed', 'online', 'offline'):
             raise ValueError('decision must be fixed, online or offline')
         if self.representation not in ('pairs', 'quads', 'hierarchy'):
             raise ValueError('representation must be pairs, quads or hierarchy')
         if isinstance(self.max_group, bool) or self.max_group not in (2, 4, 8):
             raise ValueError('max_group must be 2, 4 or 8')
-        hierarchy.accounting(self.mask_layout)
+        hierarchy.accounting(self.mask_layout, self.head_decisions)
         if self.representation != 'hierarchy' and self.mask_layout != 'separate':
             raise ValueError('shared masks currently require the online hierarchy')
         expected_menu = hierarchy.MENUS[2] if self.representation == 'hierarchy' else online_pairs.RESIDUALS
@@ -55,8 +59,8 @@ class SpatialConfig:
         if not needs_query and (self.query_weights is not None or self.query_weights_sha256 is not None):
             raise ValueError('unused query weights are not allowed')
         if self.representation == 'hierarchy':
-            if self.decision != 'online' or self.distortion != 'relative' or self.importance == 'prefill_attention':
-                raise ValueError('hierarchy requires online relative-error decisions and bounded importance')
+            if self.decision != 'online' or self.importance == 'prefill_attention':
+                raise ValueError('hierarchy requires online decisions and bounded importance')
             if self.control is not None and online_pairs.Control(**self.control).startup_tokens % 8:
                 raise ValueError('hierarchical startup requires complete eight-token windows')
         if self.importance == 'next8_attention' and self.representation != 'hierarchy':
@@ -98,9 +102,9 @@ class SpatialConfig:
 def apply(tensor, *, layer_idx, target, saving, decision='online', representation='pairs',
           residual_entries=None, residual_menu=None, directional=True,
           select_by='deviation', distortion='relative', importance='none', query_weights=None,
-          query_weights_sha256=None, control=None, max_group=8, mask_layout='separate', seq_start=0, rope_tables=None, token_weights=None):
+          query_weights_sha256=None, control=None, max_group=8, mask_layout='separate', head_decisions='per_head', saturate=False, seq_start=0, rope_tables=None, token_weights=None):
     SpatialConfig(decision, representation, residual_entries, None if residual_menu is None else tuple(residual_menu), directional,
-                           select_by, distortion, importance, query_weights, query_weights_sha256, control, max_group, mask_layout)
+                           select_by, distortion, importance, query_weights, query_weights_sha256, control, max_group, mask_layout, head_decisions, saturate)
     if (select_by == 'query' or distortion == 'query') and target != 'k':
         raise ValueError('query-aware components apply only to keys')
     if seq_start:
@@ -113,8 +117,8 @@ def apply(tensor, *, layer_idx, target, saving, decision='online', representatio
     if representation == 'hierarchy':
         return hierarchy.apply(tensor, layer_idx=layer_idx, target=target, saving=saving,
                                max_group=max_group, control=control, rope_tables=rope_tables, mask_layout=mask_layout,
-                               selection=select_by, query_energy=query_energy(query_weights, layer_idx, query_weights_sha256, tensor) if select_by=='query' else None,
-                               token_weights=token_weights, delayed=importance=='next8_attention')
+                               selection=select_by, query_energy=query_energy(query_weights, layer_idx, query_weights_sha256, tensor) if select_by=='query' or distortion=='query' else None,
+                               token_weights=token_weights, delayed=importance=='next8_attention', head_decisions=head_decisions, distortion=distortion, saturate=saturate)
     if decision == 'fixed':
         return presentation_spatial.apply_components(tensor, layer_idx=layer_idx, target=target, saving=saving,
             residual_entries=residual_entries, group_size=2 if representation=='pairs' else 4,
@@ -124,7 +128,7 @@ def apply(tensor, *, layer_idx, target, saving, decision='online', representatio
     energy = query_energy(query_weights, layer_idx, query_weights_sha256, tensor) if select_by=='query' or distortion=='query' else None
     return online_pairs.apply_components(tensor, layer_idx=layer_idx, target=target, saving=saving,
         decision=decision, control=control, selection=select_by, distortion=distortion,
-        query_energy=energy, token_weights=token_weights, rope_tables=rope_tables)
+        query_energy=energy, token_weights=token_weights, rope_tables=rope_tables, head_decisions=head_decisions)
 
 
 METHODS['spatial_composed'] = apply

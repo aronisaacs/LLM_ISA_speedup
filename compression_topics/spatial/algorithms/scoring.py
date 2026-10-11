@@ -22,7 +22,11 @@ def reconstruction_error(source, restored, *, distortion='relative', query_energ
         squared = squared * query_energy
     elif distortion != 'relative':
         raise ValueError('unknown distortion objective')
-    error = squared.sum(-1) / source.square().sum(-1).clamp_min(1e-12)
+    # Query distortion approximates absolute q·key-error squared, not a
+    # relative key reconstruction error. Keep ordinary scoring unchanged.
+    error = squared.sum(-1)
+    if distortion == 'relative':
+        error = error / source.square().sum(-1).clamp_min(1e-12)
     if token_weights is not None:
         if token_weights.shape != error.shape or not torch.isfinite(token_weights).all() or (token_weights < 0).any():
             raise ValueError('token importance must be finite, nonnegative and match grouped tokens')

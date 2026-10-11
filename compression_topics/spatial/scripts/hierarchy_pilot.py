@@ -24,14 +24,14 @@ from engine.eval_runner.timing import TimingRecord
 from engine.kv_compress.rope import RopeTables
 
 CAPTURES = ROOT / 'compression_topics/spatial/figures/group_rd_offline'
-OUT = ROOT / 'compression_topics/spatial/figures/hierarchy_pilot'
+OUT = ROOT / 'compression_topics/spatial/figures/hierarchy_per_head_pilot'
 VARIANTS = ((2, 'separate', 'pairs'), (4, 'separate', 'pairs_quads_separate'),
             (4, 'shared', 'pairs_quads_shared'), (8, 'separate', 'pairs_quads_eights_separate'),
             (8, 'shared', 'pairs_quads_eights_shared'))
 
 
 def measure(tensor, *, target, rope, budgets, progress=None, format_progress=None):
-    tables = {layout: hierarchy.build_table(tensor, target=target, rope_tables=rope, max_group=8, mask_layout=layout)
+    tables = {layout: hierarchy.build_table(tensor, head_decisions='per_head', target=target, rope_tables=rope, max_group=8, mask_layout=layout)
               for layout in ('separate', 'shared')}
     if format_progress:
         # Same residual count: isolate mask flexibility from the controller's
@@ -39,7 +39,7 @@ def measure(tensor, *, target, rope, budgets, progress=None, format_progress=Non
         for size in (4,8):
             separate, shared = tables['separate'], tables['shared']
             paired = [(a[(size,start)][1], b[(size,start)][1])
-                      for a,b in zip(separate.rows,shared.rows) for start in range(0,8,size)]
+                      for aa,bb in zip(separate.rows,shared.rows) for a,b in zip(aa,bb) for start in range(0,8,size)]
             finite = [(a,b) for a,b in paired if math.isfinite(a) and math.isfinite(b)]
             means = [sum(p[i] for p in finite)/len(finite)*8/size for i in (0,1)] if finite else [None,None]
             format_progress(dict(group_size=size,residual_entries=16,valid_groups=len(finite),total_groups=len(paired),
@@ -50,7 +50,7 @@ def measure(tensor, *, target, rope, budgets, progress=None, format_progress=Non
                 scope='same-format comparison across KV heads; payload excludes shared tags and slot header'))
     rows = []
     for size, layout, variant in VARIANTS:
-        subset = replace(tables[layout], max_group=size)
+        subset = hierarchy.HeadWindowTable([replace(t,max_group=size) for t in tables[layout].tables])
         for budget in budgets:
             started = time.monotonic()
             try:

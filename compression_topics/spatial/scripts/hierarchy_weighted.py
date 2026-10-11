@@ -15,13 +15,14 @@ from compression_topics.spatial.algorithms.composed import SpatialConfig
 from engine.eval_runner.files import write_json
 from engine.layer_select.study import measure_candidates
 ARMS=('query','query_attention','query_shared','query_attention_shared')
-OUT=ROOT/'compression_topics/spatial/figures/hierarchy_weighted'
+OUT=ROOT/'compression_topics/spatial/figures/hierarchy_per_head_weighted'
 
 
 def plan(out, budgets=(.3,.5,.7), screen=2, refine=2, validation=2):
     study=base.plan(out,budgets=budgets,screen=screen,refine=refine,validation=validation)
-    study.update(version=1,protocol='query_next8_shared_own_calibration_v1',arms=list(ARMS),
+    study.update(version=3,protocol='per_head_absolute_query_error_own_calibration_v3',arms=list(ARMS),
                  query_weights=str(out/'query_weights.pt'),query_definition='train_post_rope_plane_tied_second_moment',
+                 key_distortion='absolute_diagonal_query_weighted_squared_error_no_key_norm',
                  importance_definition='next8_queries_local16_causal_softmax_times16_floor0.1_dense_tail',
                  query_chunks=2,query_split='train',query_prefix=1536)
     return study
@@ -38,6 +39,7 @@ def candidates(study):
             component=SpatialConfig(representation='hierarchy',control=study['control'],
                 mask_layout='shared' if 'shared' in arm else 'separate',
                 select_by='query' if row['target']=='k' else 'deviation',
+                distortion='query' if row['target']=='k' else 'relative',
                 query_weights=str(path) if row['target']=='k' else None,
                 query_weights_sha256=digest if row['target']=='k' else None,
                 importance='next8_attention' if attention else 'none')

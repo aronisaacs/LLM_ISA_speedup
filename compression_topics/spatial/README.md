@@ -13,7 +13,7 @@ compress prefill; newly appended decode tokens remain dense.
 - **Fixed-residual pairs:** calibrate one residual count per layer/target, then
   globally select merges. Norm restoration is included. This is clean rung 2.
 - **Online adaptive pairs:** select dense or 0/8/16/32 residual features for each
-  pair across heads. Fit the initial price on 32 tokens, then adjust it locally
+  pair independently per KV head. Fit the initial price on 32 tokens, then adjust it locally
   using byte-saving feedback.
 - **Offline adaptive pairs:** the same representations and reconstruction as
   online, with a price fitted across the full prefill and discrete boundary
@@ -162,7 +162,7 @@ queries would influence earlier choices. All modes leave decode appends dense.
 tokens. `max_group=2/4/8` selects nested menus. The eight-format preset is dense
 pairs, pairs with 0/16/32 residual entries, quads with 0/16, and eights with 0/16.
 A bottom-up tree compares a larger merge against its smaller children, without
-enumerating partitions. Choices span KV heads; vectors remain head-local.
+enumerating partitions. Each head chooses its own tree and formats; vectors remain head-local.
 The existing pair algorithm and its 0/8/16/32 menu are unchanged.
 
 The hierarchy currently uses ordinary reconstruction error, no attention or
@@ -251,3 +251,67 @@ Default ends at holdout validation. Resume the same protocol with
 For stronger calibration, set all three chunk counts on the initial submission;
 changing counts later requires a fresh output directory. The existing unweighted
 accuracy study and its output directory are unchanged.
+
+### Independent head decisions (current method)
+
+Online adaptive pairs and the hierarchy now choose merge patterns and residual
+counts independently per KV head. One controller/price remains shared per layer
+and K/V target; it tracks aggregate bytes and updates once per pair or eight-token
+window, not once per head. The startup still means 32 tokens, not 32 times the
+number of heads. Candidate arrays remain vectorized across heads. Invalid merges
+in one head do not invalidate another head's candidates.
+
+Each terminal head/group now has its own three-bit format tag. The slot header
+is packed once; mean, norms, residual values and masks stay head-local. Shared
+residual masks still mean one feature set within a merged group in one head,
+not a feature set shared across heads. New accounting versions include
+`per_head` and use v2. The explicit `head_decisions=shared` setting exists only
+for historical comparisons; new pipelines and table helpers default to
+`per_head`. Pair online and offline references both use the same new head-local
+representations.
+
+Plans are versioned and default outputs use new `per_head` directories. Reusing
+an old plan directory is rejected; model calibration and compressed results must
+be rerun. Previously generated plots describe the older shared-head decision
+method. This change does not add live decode compression or query-weighted merge
+scoring, and does not alter the fixed-format or older monster algorithms.
+
+### Query-aware merge objective
+
+`distortion=query` now scores absolute diagonal query-weighted key error:
+`sum_d E[q_d^2] * (restored_k_d - source_k_d)^2`. It does not divide by the
+source key norm. This approximates squared unscaled query/key dot-product error;
+cross-dimension query covariance is omitted. The attention `1/sqrt(head_dim)`
+factor would be a constant rescaling of this objective within a layer.
+Query-feature selection and this merge objective use the same calibrated weights.
+The weighted study enables both for keys; values retain ordinary relative error.
+The controller must initialize/recalibrate its price at this new error scale.
+Weighted plans use protocol v3 and reject earlier calibration directories.
+Existing reports and the older `group_rd` monster implementation are unchanged.
+
+### Clean per-head online ladder (30/40/50%)
+
+`clean_online_ladder.py` compares pairs (D/P0/P16/P32), hierarchy (same pairs,
+plus Q0/Q16/E0/E16), and query-aware hierarchy. Query awareness applies jointly
+to key residual feature selection and absolute diagonal query-weighted merge
+error; values retain ordinary scoring. All arms use independent KV-head choices,
+one aggregate controller per layer/K-V slot, the same eight-token controller
+cadence, separate token masks, and no attention importance.
+
+Each arm has its own layer calibration and measured-byte allocation: four train
+screening chunks, twelve disjoint train refinement chunks, sixteen validation
+chunks, then full 1,346-question five-shot C-Eval. Layer candidate grids are
+explicit in the immutable plan. Whole-model holdout byte validation gates C-Eval
+and also runs on resume. Dense C-Eval can be reused only after identity checks.
+Earlier shared-head results are not reused.
+
+Pairs cannot achieve 50% after scales and tags. The requested pair endpoint uses
+minimum-storage pair formats, without controller feedback, is calibrated and
+validated separately, and is labeled maximum-feasible rather than matched-50%.
+Its BF16 D=128 ceiling is about 49.15%, slightly lower after packing/header costs.
+This endpoint is not evidence about online controller behavior at 50%.
+
+Submit each arm independently with `clean_online_ladder_dgx.sh --arms ARM --out
+compression_topics/spatial/figures/clean_online_ladder_ARM`. Each job requests two
+GPUs and prints stage progress; the common evaluation runner writes preliminary
+accuracy summaries during tasks. Outputs remain isolated from older studies.

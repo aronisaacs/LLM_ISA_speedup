@@ -27,21 +27,21 @@ from engine.eval_runner.index import record_simulation
 from engine.layer_select.calibration import configuration
 from engine.layer_select.study import measure_candidates, select_settings, allocate_settings
 
-OUT = ROOT/'compression_topics/spatial/figures/hierarchy_accuracy'
+OUT = ROOT/'compression_topics/spatial/figures/hierarchy_per_head_accuracy'
 ARM = 'online_hierarchy'
 BUDGETS = tuple(n/10 for n in range(1,9))
 STAGES = workflow.STAGES
 
 
 def plan(out, *, layers=32, budgets=BUDGETS, screen=4, refine=12, validation=16):
-    return dict(version=1, out=str(out), layers=layers, head_dim=128, model_args=LLAMA31_8B,
+    return dict(version=2, out=str(out), layers=layers, head_dim=128, model_args=LLAMA31_8B,
                 budgets=list(budgets), local_budgets=[.1,.25,.4,.55,.7,.8,.85],
                 screen_chunks=screen, refine_chunks=refine, validation_chunks=validation,
                 seed=83, seq_len=2048, scoring_prefix=1536, control=asdict(Control()),
-                representation='hierarchy', max_group=8, mask_layout='separate',
+                representation='hierarchy', max_group=8, mask_layout='separate', head_decisions='per_head',
                 menus={str(g):list(menu) for g,menu in MENUS.items()},
                 accounting=accounting('separate'), allocation_basis='measured_calibration_bytes',
-                protocol='own_train_calibration_measured_slot_allocation_validation_gate_full_ceval5shot_v1',
+                protocol='per_head_own_train_calibration_measured_slot_allocation_validation_gate_full_ceval5shot_v2',
                 matching_tolerance=.01,
                 dense_ceval_source=str(ROOT/'compression_topics/spatial/figures/online_pairs_accuracy_offline/tasks/dense_ceval.json'))
 

@@ -29,12 +29,13 @@ class OfflineTests(unittest.TestCase):
 
     def test_live_reconstruction_uses_identical_menu_and_statistics(self):
         x=torch.randn(1,2,65,128)
-        table,options=pairs.pair_table(x,target='v',return_reconstruction=True)
-        expected=pairs.run_offline(table,.3)
+        table,options=pairs.build_pair_table(x,target='v',return_reconstruction=True,head_decisions='per_head')
+        expected=pairs.run_head_pairs(table,.3,offline=True)
         y=pairs.apply(x,layer_idx=0,target='v',saving=.3,decision='offline')
         names=['dense','r0','r8','r16','r32']
         for n,entry in enumerate(expected['history']):
-            torch.testing.assert_close(y[...,2*n:2*n+2,:],options[names.index(entry['format'])][...,n,:,:])
+            for head,format in enumerate(entry['formats']):
+                torch.testing.assert_close(y[:,head,2*n:2*n+2,:],options[names.index(format)][:,head,n,:,:])
         self.assertTrue(torch.equal(y[...,-1,:],x[...,-1,:]))
         self.assertEqual(metrics.STATS['v_layer_0']['stored_bits'],expected['stored_bits'])
         self.assertTrue(torch.equal(pairs.apply(x,layer_idx=0,target='v',saving=.3,decision='offline',seq_start=65),x))

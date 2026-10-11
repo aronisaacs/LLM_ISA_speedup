@@ -12,16 +12,16 @@ class OnlinePairTests(unittest.TestCase):
         x=torch.randn(1,2,1,128).expand(1,2,64,128).clone()
         cos,sin=rope.cos_sin(torch.arange(64),torch.float32)
         rotated=apply_rope(x,cos,sin,inverse=False)
-        a=online.pair_table(rotated,target='k',rope_tables=rope)
-        b=online.pair_table(x,target='v')
+        a=online.pair_table(rotated, head_decisions='shared', target='k',rope_tables=rope)
+        b=online.pair_table(x, head_decisions='shared', target='v')
         torch.testing.assert_close(torch.tensor(a.errors),torch.tensor(b.errors),atol=1e-5,rtol=1e-3)
         self.assertLess(max(e[1] for e in b.errors),1e-4)
         self.assertEqual(b.payload_bits[1],2*(16*(128+2)))
-        with self.assertRaisesRegex(ValueError,'RoPE'):online.pair_table(x,target='k')
+        with self.assertRaisesRegex(ValueError,'RoPE'):online.pair_table(x, head_decisions='shared', target='k')
 
     def test_startup_and_budget_account_for_tags_and_dense_tail(self):
         x=torch.randn(1,2,129,128)
-        table=online.pair_table(x,target='v')
+        table=online.pair_table(x, head_decisions='shared', target='v')
         result=online.run(table,.3)
         self.assertLessEqual(result['startup_saving'],.3+1e-9)
         self.assertEqual(result['history'][15]['price_used'],result['initial_price'])
@@ -32,9 +32,9 @@ class OnlinePairTests(unittest.TestCase):
 
     def test_future_pairs_cannot_change_post_startup_decisions(self):
         x=torch.randn(1,2,128,128)
-        a=online.pair_table(x,target='v')
+        a=online.pair_table(x, head_decisions='shared', target='v')
         changed=x.clone();changed[...,96:,:]=torch.randn_like(changed[...,96:,:])*4
-        b=online.pair_table(changed,target='v')
+        b=online.pair_table(changed, head_decisions='shared', target='v')
         ra,rb=online.run(a,.3),online.run(b,.3)
         self.assertEqual(ra['history'][:48],rb['history'][:48])
 
@@ -55,7 +55,7 @@ class OnlinePairTests(unittest.TestCase):
 
     def test_stationary_sequence_tracks_targets_after_startup(self):
         torch.manual_seed(44)
-        table=online.pair_table(torch.randn(1,2,2048,128),target='v')
+        table=online.pair_table(torch.randn(1, 2,2048,128),head_decisions='shared', target='v')
         for target in (.1,.25,.4,.49):
             result=online.run(table,target)
             self.assertLess(abs(result['measured_saving']-target),.03)
@@ -77,7 +77,7 @@ class OnlinePairTests(unittest.TestCase):
         self.assertLess(online.asymmetric_outside(-.04,early[1],control.cumulative_deadband),0.)
 
     def test_trace_exposes_early_actual_savings_and_effective_tolerances(self):
-        table=online.pair_table(torch.randn(1,2,256,128),target='v')
+        table=online.pair_table(torch.randn(1, 2,256,128),head_decisions='shared', target='v')
         result=online.run(table,.3)
         self.assertEqual([r['tokens'] for r in result['early_checkpoints']], [32,48,64,96,128,192,256])
         bands=[r['cumulative_undercompression_band'] for r in result['early_checkpoints']]
@@ -105,7 +105,7 @@ class OnlinePairTests(unittest.TestCase):
         self.assertAlmostEqual(result['startup_saving'],exact)
 
     def test_pair_only_targets_and_invalid_configuration_rejected(self):
-        table=online.pair_table(torch.randn(1,1,32,128),target='v')
+        table=online.pair_table(torch.randn(1, 1,32,128),head_decisions='shared', target='v')
         with self.assertRaises(ValueError):online.run(table,.5)
         with self.assertRaises(ValueError):online.Control(startup_tokens=31)
         with self.assertRaises(ValueError):online.Control(memory_pairs=0)

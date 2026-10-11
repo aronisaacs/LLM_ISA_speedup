@@ -20,7 +20,7 @@ class HierarchyTests(unittest.TestCase):
     def test_tree_matches_exhaustive_small_window(self):
         # Exhaustive enumeration is only a test oracle, never the algorithm.
         x = torch.randn(1, 2, 8, 128)
-        table = hierarchy.build_table(x, target='v')
+        table = hierarchy.build_table(x,  head_decisions='shared', target='v')
         row = table.rows[0]
         def possibilities(start, size):
             options = [hierarchy.Choice(((start, 2, None),), 0., table.payload[(2, None)])] if size == 2 else [
@@ -39,15 +39,15 @@ class HierarchyTests(unittest.TestCase):
         # A perfect first pair and unrelated second pair: only the first merges.
         a = torch.randn(1, 2, 1, 128)
         x = torch.cat((a, a, torch.randn(1, 2, 6, 128)), 2)
-        table = hierarchy.build_table(x, target='v', max_group=2)
+        table = hierarchy.build_table(x,  head_decisions='shared', target='v', max_group=2)
         choice = table.choose(table.rows[0], .01)
         self.assertEqual(choice.segments[0], (0, 2, 0))
         self.assertIn((2, 2, None), choice.segments)
         reverse = x.clone();reverse[:, :, :4] = x[:, :, [2, 3, 0, 1]]
-        swapped = hierarchy.build_table(reverse, target='v', max_group=2)
+        swapped = hierarchy.build_table(reverse,  head_decisions='shared', target='v', max_group=2)
         self.assertEqual(swapped.choose(swapped.rows[0], .01).segments[1], (2, 2, 0))
         damaged = x.clone();damaged[:, 1, 1] = torch.randn(1, 128)
-        other = hierarchy.build_table(damaged, target='v', max_group=2)
+        other = hierarchy.build_table(damaged,  head_decisions='shared', target='v', max_group=2)
         self.assertGreater(other.rows[0][(2, 0)][0], table.rows[0][(2, 0)][0])
 
     def test_rope_alignment_norms_tail_and_byte_accounting(self):
@@ -56,7 +56,7 @@ class HierarchyTests(unittest.TestCase):
         cos, sin = self.rope.cos_sin(torch.arange(64), torch.float32)
         keys = apply_rope(plain, cos, sin, inverse=False)
         keys = torch.cat((keys, torch.randn(1, 2, 1, 128)), 2).to(torch.bfloat16)
-        table, representations = hierarchy.build_table(keys, target='k', rope_tables=self.rope,
+        table, representations = hierarchy.build_table(keys,  head_decisions='shared', target='k', rope_tables=self.rope,
                                                        return_reconstruction=True)
         result = hierarchy.run(table, .7)
         restored = hierarchy.restore(keys, result, representations)
@@ -77,8 +77,8 @@ class HierarchyTests(unittest.TestCase):
     def test_later_windows_do_not_change_prior_decisions(self):
         x = torch.randn(1, 2, 128, 128)
         y = x.clone();y[:, :, 64:] *= torch.rand(1, 2, 64, 128)*10
-        first = hierarchy.run(hierarchy.build_table(x, target='v'), .4)
-        second = hierarchy.run(hierarchy.build_table(y, target='v'), .4)
+        first = hierarchy.run(hierarchy.build_table(x,  head_decisions='shared', target='v'), .4)
+        second = hierarchy.run(hierarchy.build_table(y,  head_decisions='shared', target='v'), .4)
         self.assertEqual(first['history'][:8], second['history'][:8])
         self.assertEqual(first['initial_price'], second['initial_price'])
 
@@ -97,8 +97,8 @@ class HierarchyTests(unittest.TestCase):
             self.assertEqual(separate-shared, 0 if size==2 else (size-1)*128)
             self.assertEqual(vector_group_bits(0,128,size,include_norms=True),
                              vector_group_bits(0,128,size,include_norms=True,shared_mask=True))
-        plain = hierarchy.build_table(x,target='v',mask_layout='separate')
-        shared = hierarchy.build_table(x,target='v',mask_layout='shared')
+        plain = hierarchy.build_table(x, head_decisions='shared', target='v',mask_layout='separate')
+        shared = hierarchy.build_table(x, head_decisions='shared', target='v',mask_layout='shared')
         for row_a,row_b in zip(plain.rows,shared.rows):
             for start in (0,2,4,6):
                 self.assertEqual(row_a[(2,start)],row_b[(2,start)])
@@ -118,7 +118,7 @@ class HierarchyTests(unittest.TestCase):
         for options in ({'decision':'offline'}, {'select_by':'query'}, {'control':{'startup_tokens':30}}):
             with self.assertRaises(ValueError):SpatialConfig(representation='hierarchy', **options)
         with self.assertRaisesRegex(ValueError, 'cannot be met'):
-            hierarchy.run(hierarchy.build_table(x, target='v', max_group=2), .7)
+            hierarchy.run(hierarchy.build_table(x,  head_decisions='shared', target='v', max_group=2), .7)
 
     def test_live_prefill_compresses_both_slots_and_continuation_stays_dense(self):
         from transformers import LlamaConfig, LlamaForCausalLM

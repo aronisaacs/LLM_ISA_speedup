@@ -228,3 +228,54 @@ def run_offline(table, target_saving):
             'price_bound_hits': 0, 'initial_price': high,
             'formats': {name: selected.count(i) for i, name in enumerate(names)},
             'history': [{'tokens': 2*(j+1), 'format': names[i]} for j, i in enumerate(selected)]}
+
+
+def run_head_pairs(table, target_saving, *, feedback=True, fixed_residual=None, control=Control(), offline=False):
+    """Choose each head independently; update one controller per token pair.
+
+    Rows are pair-major [pair][head][format]. The shared price is initialized
+    from the first startup_tokens, never startup_tokens per head. Tags are per
+    head/pair with one packed slot header. Memory remains measured in tokens.
+    """
+    if not math.isfinite(target_saving) or not 0<target_saving<.5:
+        raise ValueError('pair target must be positive and below 50%')
+    heads=len(table.errors[0]);pairs=len(table.errors)
+    flat=PairTable([e for row in table.errors for e in row],table.payload_bits,
+                   table.dense_pair_bits,table.tail_bits)
+    if offline:
+        result=run_offline(flat,target_saving)
+        result['history']=[{'tokens':2*(i+1),'formats':[r['format'] for r in result['history'][i*heads:(i+1)*heads]]}
+                           for i in range(pairs)]
+        return result
+    allowed=list(range(5)) if fixed_residual is None else [0,RESIDUALS.index(fixed_residual)+1]
+    warmup=min(control.startup_tokens//2,pairs)
+    price=initial_price(flat,flat.errors[:warmup*heads],target_saving,allowed)
+    initial=price;anchor=max(price,1e-12);rates=[b/table.dense_pair_bits for b in table.payload_bits]
+    target=1-target_saving;alpha=1-math.exp(-1/control.memory_pairs)
+    payload=previous=hits=0;ema=target;history=[];total_error=0.;counts={n:0 for n in ['dense','r0','r8','r16','r32']}
+    for n,row in enumerate(table.errors,1):
+        used=price;choices=[select(e,rates,price,allowed) for e in row]
+        payload+=sum(table.payload_bits[i] for i in choices)
+        stored=payload+metadata_bits(n*heads,3)
+        fraction=stored/(n*heads*table.dense_pair_bits)
+        increment=(stored-previous)/(heads*table.dense_pair_bits)
+        total_error+=sum(e[i] for e,i in zip(row,choices))/heads
+        recent_band,cumulative_band,slack=effective_bands(table,allowed,n,control)
+        if n==warmup:ema=fraction
+        elif n>warmup:
+            ema=(1-alpha)*ema+alpha*increment
+            if feedback:
+                correction=control.recent_gain*asymmetric_outside(ema-target,recent_band,control.recent_deadband)
+                correction+=control.cumulative_gain*asymmetric_outside(fraction-target,cumulative_band,control.cumulative_deadband)
+                change=max(-control.max_log_step,min(control.max_log_step,correction))
+                new=(price if price>0 else anchor/control.price_span)*math.exp(change)
+                price=max(anchor/control.price_span,min(anchor*control.price_span,new));hits+=int(price!=new)
+        formats=['dense' if i==0 else f'r{RESIDUALS[i-1]}' for i in choices]
+        for name in formats:counts[name]+=1
+        history.append(dict(tokens=2*n,formats=formats,price_used=used,price_next=price,stored_bits=stored,
+            cumulative_saving=1-fraction,recent_saving=1-ema,pair_relative_error=sum(e[i] for e,i in zip(row,choices))/heads))
+        previous=stored
+    dense=pairs*heads*table.dense_pair_bits+table.tail_bits;stored+=table.tail_bits
+    return dict(target_saving=target_saving,measured_saving=1-stored/dense,mean_relative_squared_error=total_error/pairs,
+        initial_price=initial,price_bound_hits=hits,startup_saving=history[warmup-1]['cumulative_saving'],
+        formats=counts,stored_bits=stored,dense_bits=dense,history=history)
