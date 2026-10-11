@@ -1,0 +1,134 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 5.957424494193041,
+      "mean_nll,none": 1.7846382558345795
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 100,
+      "nll": 2.067963123321533,
+      "tokens": 512
+    },
+    {
+      "chunk": 632,
+      "nll": 1.753474473953247,
+      "tokens": 512
+    },
+    {
+      "chunk": 1016,
+      "nll": 1.576582431793213,
+      "tokens": 512
+    },
+    {
+      "chunk": 111,
+      "nll": 1.7405329942703247,
+      "tokens": 512
+    }
+  ],
+  "gate_stats": {
+    "k_layer_20": {
+      "accounting": "hierarchical_bf16_scales_bitmap_terminal_3bit_v1",
+      "dense_bits": 100663296,
+      "stored_bits": 61400640,
+      "metadata_bits": 7744,
+      "updates": 4,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.012047195434570335,
+      "format_dense_pair": 376,
+      "format_g2_r16": 135,
+      "format_g4_r0": 93,
+      "format_g2_r32": 1579,
+      "format_g2_r0": 164,
+      "format_g8_r16": 95,
+      "format_g4_r16": 108,
+      "format_g8_r0": 5
+    }
+  },
+  "timing": {
+    "evaluation_seconds": 0.8713094098493457,
+    "chunks": 4,
+    "tokens": 2048
+  },
+  "storage": {
+    "scope": "simulated_prefill_cache_storage",
+    "targets": {
+      "k": {
+        "dense_bits": 3221225472,
+        "stored_bits": 3181962816,
+        "compression": 0.012188732624053955
+      },
+      "v": {
+        "dense_bits": 3221225472,
+        "stored_bits": 3221225472,
+        "compression": 0.0
+      },
+      "kv": {
+        "dense_bits": 6442450944,
+        "stored_bits": 6403188288,
+        "compression": 0.0060943663120269775
+      }
+    }
+  },
+  "scoring": {
+    "prefix_tokens": 1536,
+    "definition": "continuation token NLL only; prefix logits excluded"
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            20
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "relative",
+          "importance": "next8_attention",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/hierarchy_weighted_full_60_query_attention/query_weights.pt",
+          "query_weights_sha256": "6d8e8184b5eece9cc7d13d91097aa1aed957ce5e246ccf6d56cefc55608df52e",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate"
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 16,
+      "offset": 0,
+      "chunks": 4,
+      "seed": 83,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  }
+}

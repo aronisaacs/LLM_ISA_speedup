@@ -1,0 +1,174 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 6.268143779176966,
+      "mean_nll,none": 1.8354802628358204
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 181,
+      "nll": 1.7674367427825928,
+      "tokens": 512
+    },
+    {
+      "chunk": 314,
+      "nll": 2.12845516204834,
+      "tokens": 512
+    },
+    {
+      "chunk": 722,
+      "nll": 1.413970708847046,
+      "tokens": 512
+    },
+    {
+      "chunk": 169,
+      "nll": 2.338932514190674,
+      "tokens": 512
+    },
+    {
+      "chunk": 262,
+      "nll": 2.19997239112854,
+      "tokens": 512
+    },
+    {
+      "chunk": 387,
+      "nll": 1.735432505607605,
+      "tokens": 512
+    },
+    {
+      "chunk": 840,
+      "nll": 1.6275334358215332,
+      "tokens": 512
+    },
+    {
+      "chunk": 356,
+      "nll": 2.405494451522827,
+      "tokens": 512
+    },
+    {
+      "chunk": 70,
+      "nll": 1.9196256399154663,
+      "tokens": 512
+    },
+    {
+      "chunk": 775,
+      "nll": 1.7987021207809448,
+      "tokens": 512
+    },
+    {
+      "chunk": 941,
+      "nll": 1.3272404670715332,
+      "tokens": 512
+    },
+    {
+      "chunk": 434,
+      "nll": 1.3629670143127441,
+      "tokens": 512
+    }
+  ],
+  "gate_stats": {
+    "k_layer_22": {
+      "accounting": "hierarchical_bf16_scales_bitmap_terminal_3bit_v1",
+      "dense_bits": 301989888,
+      "stored_bits": 184382936,
+      "metadata_bits": 23768,
+      "updates": 12,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.014694595336914085,
+      "format_g2_r32": 6194,
+      "format_g2_r0": 221,
+      "format_g4_r16": 243,
+      "format_g8_r16": 364,
+      "format_dense_pair": 567,
+      "format_g2_r16": 226,
+      "format_g4_r0": 25,
+      "format_g8_r0": 4
+    }
+  },
+  "timing": {
+    "evaluation_seconds": 2.7733083399944007,
+    "chunks": 12,
+    "tokens": 6144
+  },
+  "storage": {
+    "scope": "simulated_prefill_cache_storage",
+    "targets": {
+      "k": {
+        "dense_bits": 9663676416,
+        "stored_bits": 9546069464,
+        "compression": 0.01217000103659105
+      },
+      "v": {
+        "dense_bits": 9663676416,
+        "stored_bits": 9663676416,
+        "compression": 0.0
+      },
+      "kv": {
+        "dense_bits": 19327352832,
+        "stored_bits": 19209745880,
+        "compression": 0.006085000518295525
+      }
+    }
+  },
+  "scoring": {
+    "prefix_tokens": 1536,
+    "definition": "continuation token NLL only; prefix logits excluded"
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            22
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/hierarchy_weighted_full_60_query/query_weights.pt",
+          "query_weights_sha256": "50331240ddbcaac60473b9f45b5591258a96f9827b50d0e9db6634288cddb187",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate"
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 16,
+      "offset": 4,
+      "chunks": 12,
+      "seed": 83,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  }
+}

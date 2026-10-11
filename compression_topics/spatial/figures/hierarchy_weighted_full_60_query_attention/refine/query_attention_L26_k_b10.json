@@ -1,0 +1,172 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 6.2663901723758535,
+      "mean_nll,none": 1.83520045876503
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 181,
+      "nll": 1.7679028511047363,
+      "tokens": 512
+    },
+    {
+      "chunk": 314,
+      "nll": 2.1283655166625977,
+      "tokens": 512
+    },
+    {
+      "chunk": 722,
+      "nll": 1.4122947454452515,
+      "tokens": 512
+    },
+    {
+      "chunk": 169,
+      "nll": 2.3396453857421875,
+      "tokens": 512
+    },
+    {
+      "chunk": 262,
+      "nll": 2.19942045211792,
+      "tokens": 512
+    },
+    {
+      "chunk": 387,
+      "nll": 1.7344799041748047,
+      "tokens": 512
+    },
+    {
+      "chunk": 840,
+      "nll": 1.627333164215088,
+      "tokens": 512
+    },
+    {
+      "chunk": 356,
+      "nll": 2.405999183654785,
+      "tokens": 512
+    },
+    {
+      "chunk": 70,
+      "nll": 1.9204741716384888,
+      "tokens": 512
+    },
+    {
+      "chunk": 775,
+      "nll": 1.796159267425537,
+      "tokens": 512
+    },
+    {
+      "chunk": 941,
+      "nll": 1.3275301456451416,
+      "tokens": 512
+    },
+    {
+      "chunk": 434,
+      "nll": 1.3628007173538208,
+      "tokens": 512
+    }
+  ],
+  "gate_stats": {
+    "k_layer_26": {
+      "accounting": "hierarchical_bf16_scales_bitmap_terminal_3bit_v1",
+      "dense_bits": 301989888,
+      "stored_bits": 275047688,
+      "metadata_bits": 27656,
+      "updates": 12,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.012882804870605474,
+      "format_dense_pair": 6803,
+      "format_g2_r32": 2182,
+      "format_g2_r16": 79,
+      "format_g2_r0": 46,
+      "format_g4_r16": 19,
+      "format_g4_r0": 10
+    }
+  },
+  "timing": {
+    "evaluation_seconds": 2.603613024111837,
+    "chunks": 12,
+    "tokens": 6144
+  },
+  "storage": {
+    "scope": "simulated_prefill_cache_storage",
+    "targets": {
+      "k": {
+        "dense_bits": 9663676416,
+        "stored_bits": 9636734216,
+        "compression": 0.002787986563311695
+      },
+      "v": {
+        "dense_bits": 9663676416,
+        "stored_bits": 9663676416,
+        "compression": 0.0
+      },
+      "kv": {
+        "dense_bits": 19327352832,
+        "stored_bits": 19300410632,
+        "compression": 0.001393993281655792
+      }
+    }
+  },
+  "scoring": {
+    "prefix_tokens": 1536,
+    "definition": "continuation token NLL only; prefix logits excluded"
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            26
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "relative",
+          "importance": "next8_attention",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/hierarchy_weighted_full_60_query_attention/query_weights.pt",
+          "query_weights_sha256": "6d8e8184b5eece9cc7d13d91097aa1aed957ce5e246ccf6d56cefc55608df52e",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate"
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 16,
+      "offset": 4,
+      "chunks": 12,
+      "seed": 83,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  }
+}
