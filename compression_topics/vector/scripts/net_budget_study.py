@@ -121,6 +121,10 @@ def write_greedy(arms: str) -> list[dict]:
     for payload in payloads:
         (FIGURES / f"selected_{payload['tag']}.json").write_text(json.dumps(payload, indent=2) + "\n")
     run = budget_run(payloads, tasks=TASKS, results_dir=FIGURES_REL)
+    # multi_run deals configurations to GPUs by index, so group them by task: each
+    # GPU then gets a share of the slow GSM8K runs instead of one GPU getting all.
+    order = {task["name_task"]: rank for rank, task in enumerate(TASKS)}
+    run["configurations"].sort(key=lambda c: order[next(t["name_task"] for t in TASKS if t["tasks"] == c["tasks"])])
     RUNS[arms].write_text(json.dumps(run, indent=2) + "\n")
     print(f"{'selection':<22} {'net':>7} {'zeroed':>7}   K slots 25/50/75   V slots 25/50/75")
     for payload in payloads:
