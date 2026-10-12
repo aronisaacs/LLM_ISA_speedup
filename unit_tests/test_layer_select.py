@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from catalog.compressions import CHECKSPARSE_L1_50, SPARSIFY_48, checksparse_l1, spatial_pool
+from catalog.compressions import CHECKSPARSE_L1_50, SPARSIFY_48, checksparse_l1, sparsify_nm
 from engine.kv_compress.spec import parse_kv_spec
 from engine.layer_select.apply import kv_for_assignment, kv_for_slot, kv_for_slots, parse_singleton, slot_from_kv
 from engine.layer_select.greedy.rank_fill import rank_fill
@@ -61,16 +61,16 @@ class SweepExpanderTests(unittest.TestCase):
     def test_on_off_method_has_one_rung_and_no_prune_percent(self):
         configs = expand_singleton_configs(
             n_layers=2,
-            method_kv=spatial_pool(),
-            method_tag="spatial_pool",
+            method_kv=sparsify_nm(),
+            method_tag="sparsify_nm",
             results_dir="results/sweep",
             name_prefix="m",
         )
         self.assertEqual(len(configs), 1 + 4)
         step = configs[1]["kv"]["pipeline"][0]
-        self.assertEqual(step["method"], "spatial_pool")
+        self.assertEqual(step["method"], "sparsify_nm")
         self.assertNotIn("prune_pct", step)
-        self.assertEqual(parse_singleton(configs[1]["kv"]), (Slot(0, "k"), 100))
+        self.assertEqual(parse_singleton(configs[1]["kv"]), (Slot(0, "k"), 50))
 
 
 def _row(slot, level, delta, dense=10.0):
@@ -155,9 +155,9 @@ class RungTests(unittest.TestCase):
         self.assertEqual([rung.level for rung in rungs_for("vector_compress")], [25, 50, 75])
         self.assertEqual([rung.fraction for rung in rungs_for("vector_compress")], [0.25, 0.50, 0.75])
         self.assertEqual([rung.level for rung in rungs_for("vector_compress_pair")], [25, 50, 75])
-        pool = rungs_for("spatial_pool")
-        self.assertEqual(pool[0].level, 100)
-        self.assertAlmostEqual(pool[0].fraction, 7 / 8)
+        pool = rungs_for("sparsify_nm")
+        self.assertEqual(pool[0].level, 50)
+        self.assertAlmostEqual(pool[0].fraction, 0.5)
         qjl_rungs = rungs_for("qjl")
         self.assertEqual([rung.level for rung in qjl_rungs], [4, 3, 2, 1])
         self.assertAlmostEqual(qjl_rungs[0].fraction, 0.75)

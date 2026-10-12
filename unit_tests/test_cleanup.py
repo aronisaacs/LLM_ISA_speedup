@@ -84,12 +84,12 @@ class LedgerTests(unittest.TestCase):
 class InterfaceTests(unittest.TestCase):
     def test_unknown_option_fails_before_model_loading(self):
         with self.assertRaisesRegex(ValueError, 'unknown options'):
-            parse_kv_spec({'pipeline': [{'method': 'group_calibrated', 'saving': .2,
-                                        'resdual_entries': 8, 'k_layers': [0]}]})
+            parse_kv_spec({'pipeline': [{'method': 'spatial_offline', 'saving': .2,
+                                        'max_grup': 8, 'k_layers': [0]}]})
 
     def test_measured_bytes_include_dense_layers_of_different_sizes(self):
         metrics.reset_stats()
-        spec = parse_kv_spec({'pipeline': [{'method': 'group_calibrated', 'saving': .2, 'k_layers': [0]}]})
+        spec = parse_kv_spec({'pipeline': [{'method': 'spatial_offline', 'saving': .2, 'k_layers': [0]}]})
         small = torch.zeros(1, 1, 4, 8)
         large = torch.zeros(1, 2, 4, 8)
         metrics.observe(small, small, 0, spec)
@@ -109,15 +109,6 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(a['pretrained'], 'first')
         self.assertNotEqual(a, b)
 
-    def test_group_and_pair_plans_accept_other_dimensions(self):
-        from compression_topics.spatial.scripts import group_calibrated_study as group
-        from compression_topics.spatial.scripts import pair_calibrated_study as pair
-        for study in (group, pair):
-            result = study.plan(Path('/tmp/plan'), layers=2, head_dim=64,
-                                model_args='pretrained=other,dtype=float16')
-            self.assertEqual(result['head_dim'], 64)
-            self.assertEqual(result['run']['model_args'], 'pretrained=other,dtype=float16')
-            self.assertEqual({r['layer'] for r in result['candidates']}, {0, 1})
 
 class ExtensionTests(unittest.TestCase):
     def test_new_method_supplies_its_own_append_callback(self):

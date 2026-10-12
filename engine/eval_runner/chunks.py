@@ -79,8 +79,6 @@ def prefill_storage_summary(snapshots):
 def evaluate_chunks(model, prompts, kv, chunk_ids, *, scoring_prefix=None, progress_path=None):
     if len(prompts) != len(chunk_ids) or not prompts:
         raise ValueError("nonempty prompts and matching chunk IDs required")
-    if scoring_prefix is None and any(step.get('importance') == 'prefill_attention' for step in kv.get('pipeline', [])):
-        raise ValueError('prefill importance requires continuation-only scoring, not full-sequence perplexity')
     metrics.reset_stats()
     uninstall = install(SimpleNamespace(model=model), parse_kv_spec(kv))
     scores = []

@@ -95,20 +95,6 @@ def kv_brief(spec) -> str:
                 parts.append(f"vector |x|<{step.get('threshold', '?')}")
         elif method == "vector_compress_pair":
             parts.append(f"vector rope-pairs prune={step.get('prune_pct', '?')}%")
-        elif method == "residual_pool":
-            rope = "rope" if step.get("rope") else "no-rope"
-            parts.append(f"residual pool prune={step.get('prune_pct', '?')}% {rope}")
-        elif method == "pair_pool":
-            parts.append("pair pool")
-        elif method == "pair_gate":
-            parts.append(f"pair gate tau={step.get('tau', '?')} keep={step.get('keep_pct', '?')}%")
-        elif method in {"pair_rank", "pair_rank_residual"}:
-            residual = " + 1/4 residual" if method == "pair_rank_residual" else ""
-            parts.append(f"pair rank merge top {step.get('pct', '?')}%{residual}")
-        elif method == "pair_quant":
-            parts.append(f"pair quant residual bits={step.get('bits', '?')} group={step.get('group', '?')}")
-        elif method == "spatial_pool":
-            parts.append(f"spatial_pool chunk={step.get('chunk', '?')}")
         elif method == "qjl":
             parts.append(f"hadamard bits={step.get('bits', '?')}")
         elif method == "quantize":

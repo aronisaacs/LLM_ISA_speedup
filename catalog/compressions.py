@@ -50,66 +50,6 @@ def vector_compress_pair(k_layers="all", v_layers="all", prune_pct=50):
     return _step("vector_compress_pair", k_layers, v_layers, prune_pct=int(prune_pct))
 
 
-def residual_pool(k_layers="all", v_layers="all", prune_pct=25, rope=False):
-    """Pool adjacent tokens and keep a residual on the largest |delta| features.
-
-    ``prune_pct`` zeros that percent of the residual. 100 is pure pooling.
-    ``rope`` aligns each key pair by one RoPE step before the mean and delta.
-    Values ignore it.
-    """
-    if not isinstance(rope, bool):
-        raise ValueError("residual_pool rope must be a bool")
-    return _step(
-        "residual_pool",
-        k_layers,
-        v_layers,
-        prune_pct=int(prune_pct),
-        rope=rope,
-    )
-
-
-def pair_pool(k_layers="all", v_layers="all"):
-    """Replace each adjacent token pair with its mean. No residual."""
-    return _step("pair_pool", k_layers, v_layers)
-
-
-def pair_quant(k_layers="all", v_layers="all", bits=8, group=32):
-    """Pool adjacent tokens and keep the residual as ``bits``-bit integers.
-
-    ``bits`` is 8, 4, 2, 1, or 0. 0 stores no residual, which is ``pair_pool``.
-    One scale per ``group`` features. The sweep climber walks 8, 4, 2, 1, then
-    merge-only, which is level 100 in a sweep because 0 already means dense.
-    """
-    return _step("pair_quant", k_layers, v_layers, bits=int(bits), group=int(group))
-
-
-def pair_gate(k_layers="all", v_layers="all", tau=0.3, keep_pct=0):
-    """Merge a token pair only when it is similar, keeping the biggest differences exactly.
-
-    ``keep_pct`` percent of the features with the largest |difference| are stored exactly.
-    The pair merges when the difference left over is at most ``tau`` times the pair's mean
-    in length; otherwise both tokens stay as they are. ``keep_pct`` 0 keeps no residual.
-    """
-    return _step("pair_gate", k_layers, v_layers, tau=float(tau), keep_pct=int(keep_pct))
-
-
-def pair_rank(k_layers="all", v_layers=None, pct=50, rope=False, direction=False):
-    """Merge the most similar ``pct`` percent of a layer's token pairs to their mean. No residual.
-
-    Pairs are ranked across all heads of the sequence. The sweep climber walks 25, 50, 75, then 100.
-    """
-    return _step("pair_rank", k_layers, v_layers, pct=int(pct), rope=bool(rope), **({"direction": True} if direction else {}))
-
-
-def pair_rank_residual(k_layers="all", v_layers=None, pct=50, rope=False, direction=False):
-    """``pair_rank`` that also keeps the top 1/4 of each merged pair's difference exactly."""
-    return _step("pair_rank_residual", k_layers, v_layers, pct=int(pct), rope=bool(rope), **({"direction": True} if direction else {}))
-
-
-def spatial_pool(k_layers="all", v_layers="all", chunk=8):
-    """Replace each closed chunk with its mean."""
-    return _step("spatial_pool", k_layers, v_layers, chunk=chunk)
-
 
 def quantize(k_layers="all", v_layers="all", bits=8, group=32):
     """Symmetric int8 or int4, one absmax scale per group of 32. Post-RoPE.

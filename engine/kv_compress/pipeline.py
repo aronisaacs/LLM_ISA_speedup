@@ -20,7 +20,6 @@ def compress_kv(
     spec: KvSpec,
     seq_start: int = 0,
     rope: RopeTables | None = None,
-    token_weights: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Apply enabled pipeline steps to this layer's new K and V chunks.
 
@@ -34,8 +33,6 @@ def compress_kv(
         kwargs = dict(step.kwargs)
         kwargs["seq_start"] = seq_start
         kwargs["rope_tables"] = rope
-        if step.kwargs.get('importance') in ('prefill_attention', 'next8_attention'):
-            kwargs['token_weights'] = token_weights
         if _layer_enabled(step.k_layers, layer_idx):
             key_states = method(key_states, layer_idx=layer_idx, target="k", **kwargs)
         if _layer_enabled(step.v_layers, layer_idx):

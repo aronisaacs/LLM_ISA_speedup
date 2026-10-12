@@ -18,11 +18,6 @@ class Rung:
 
 
 PRUNE = (Rung(25, 0.25), Rung(50, 0.50), Rung(75, 0.75))
-_ON_POOL = (Rung(100, 7 / 8),)
-# Each pair always keeps one mean. The residual keeps the other (100 - prune_pct)%.
-# Fraction removed is prune_pct / 200. At 100 this is pure pooling, half the bytes.
-RESIDUAL = (Rung(25, 25 / 200), Rung(50, 50 / 200), Rung(75, 75 / 200), Rung(100, 100 / 200))
-_PAIR_POOL = (Rung(100, 0.5),)
 # 4:8 sparsify is on or off for a slot. It drops half the slot.
 _ON_SPARSIFY = (Rung(50, 0.5),)
 # Mildest code first. 4 bits removes 12/16 of a slot; 1 bit removes 15/16.
@@ -30,38 +25,13 @@ QJL = (Rung(4, 12 / 16), Rung(3, 13 / 16), Rung(2, 14 / 16), Rung(1, 15 / 16))
 # int8 removes half a slot. int4 removes three quarters. Milder code first.
 QUANT = (Rung(8, 0.5), Rung(4, 0.75))
 
-# pair_quant keeps each pair's mean at full width and a residual of 8, 4, 2 or 1 bits.
-# A pair stores 16 + bits bits per feature pair instead of 32, so a slot loses
-# (16 - bits) / 32 of its bytes, ignoring group scales as QUANT does. Pure
-# merging (0 bits, no residual) removes half. It is level 100, because level 0
-# already means "uncompressed" in an assignment. No residual width exceeds 8.
-MERGE_ONLY = 100
-PAIR_QUANT = (
-    Rung(8, 8 / 32),
-    Rung(4, 12 / 32),
-    Rung(2, 14 / 32),
-    Rung(1, 15 / 32),
-    Rung(MERGE_ONLY, 16 / 32),
-)
-
-# pair_rank merges the most similar pct% of a layer's pairs. A merged pair costs 1/2 of two dense
-# vectors with no residual, and (17 D + 16 D / 4) / (32 D) = 0.65625 with the top 1/4 of the
-# difference kept, so a slot loses pct/100 times 1/2 or times 0.34375.
-PAIR_RANK = tuple(Rung(pct, pct / 100 * 0.5) for pct in (25, 50, 75, 100))
-PAIR_RANK_RESIDUAL = tuple(Rung(pct, pct / 100 * (1 - 0.65625)) for pct in (25, 50, 75, 100))
 
 RUNGS = {
-    "pair_rank": PAIR_RANK,
-    "pair_rank_residual": PAIR_RANK_RESIDUAL,
     "vector_compress": PRUNE,
     "vector_compress_pair": PRUNE,
     "checksparse_l1": PRUNE,
     "checksparse_row": PRUNE,
     "sparsify_nm": _ON_SPARSIFY,
-    "spatial_pool": _ON_POOL,
-    "residual_pool": RESIDUAL,
-    "pair_pool": _PAIR_POOL,
-    "pair_quant": PAIR_QUANT,
     "qjl": QJL,
     "quantize": QUANT,
 }

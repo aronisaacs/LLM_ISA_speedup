@@ -24,23 +24,7 @@ def install(lm: Any, spec: KvSpec) -> Callable[[], None]:
     if spec.is_identity():
         return _noop
     _validate_layer_indices(lm, spec)
-    importance = any(step.kwargs.get('importance') in ('prefill_attention', 'next8_attention') for step in spec.pipeline)
-    if not importance:
-        return patch_cache_update(spec, _rope_tables(lm))
-    from engine.kv_compress.importance import capture_queries
-    take, restore = capture_queries(getattr(_decoder_config(lm), 'model_type', None))
-    try:
-        remove_cache = patch_cache_update(spec, _rope_tables(lm), take_query=take)
-    except BaseException:
-        restore()
-        raise
-
-    def uninstall():
-        try:
-            remove_cache()
-        finally:
-            restore()
-    return uninstall
+    return patch_cache_update(spec, _rope_tables(lm))
 
 
 def _noop() -> None:
