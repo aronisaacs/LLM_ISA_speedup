@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from compression_topics.vector.bitmask import bitmask_bits  # noqa: E402
 from compression_topics.vector.algorithms.vector_compress import _apply as scalar_sparsify  # noqa: E402
 from compression_topics.vector.algorithms.vector_compress_pair import _prune_rope_pairs as pair_sparsify  # noqa: E402
 from compression_topics.vector.scripts.llamacpp_zero_groups import to_llamacpp_order, zero_group_starts  # noqa: E402
@@ -78,11 +79,6 @@ def slot_net_bits(method: str, target: str, layer: int, level: int, table: dict)
         zeroed_values = HEAD_DIM * level // 100
         groups = table[f"scalar_{target}"][str(layer)][str(level)]
     return VALUE_BITS * zeroed_values, RLE_BITS * groups
-
-
-def bitmask_bits(method: str, target: str) -> int:
-    """Bitmask cost per compressed vector: one bit per value, or per pair for RoPE-paired keys."""
-    return HEAD_DIM // 2 if method == "vector_compress_pair" and target == "k" else HEAD_DIM
 
 
 def run_compression(pipeline: list[dict], method: str, table: dict, n_layers: int = 32) -> dict:

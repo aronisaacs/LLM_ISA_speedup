@@ -19,8 +19,13 @@ def rank_fill(
     dense_ppl: float | None = None,
     rungs=PRUNE,
     targets: tuple[str, ...] = ("k", "v"),
+    saving=None,
 ) -> dict[Slot, int]:
-    """Climb rungs until the mean compression of the ``targets`` slots reaches ``budget``."""
+    """Climb rungs until the mean compression of the ``targets`` slots reaches ``budget``.
+
+    ``saving(slot, rung)`` is the fraction of the slot a rung saves, if it is not
+    the rung's own fraction (for example after metadata overhead).
+    """
     slots = all_slots(n_layers, targets)
     table = score_table(rows)
     if dense_ppl is None:
@@ -29,6 +34,7 @@ def rank_fill(
     from engine.layer_select.greedy.calibrated import choose_candidates
     choices = {(slot.layer, slot.target): [
         {"level": rung.level, "compression": rung.fraction,
+         "allocation_saving": rung.fraction if saving is None else saving(slot, rung),
          "ppl": _ppl(table, dense_ppl, slot, rung.level)} for rung in rungs]
         for slot in slots}
     selected, _ = choose_candidates(choices, dense_ppl, budget, require_budget=False)

@@ -21,19 +21,31 @@ TASKS = (CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT)
 FIGURES = "figures"
 
 
-def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS, targets=("k", "v")):
-    """One rank-fill payload per budget. ``compression`` is the realized mean."""
+def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS, targets=("k", "v"), saving=None):
+    """One rank-fill payload per budget. ``compression`` is the realized mean.
+
+    With ``saving(slot, rung)``, budget and ``compression`` count that saving per
+    slot instead of the rung fraction, and ``zeroed`` keeps the rung fractions.
+    """
     template = method_template(method_kv)
     rungs = rungs_for(template["pipeline"][0]["method"])
     n_slots = len(all_slots(n_layers, targets))
     payloads = []
     for budget in budgets:
-        assignment = rank_fill(rows, n_layers, budget, dense_ppl=dense_ppl, rungs=rungs, targets=targets)
+        assignment = rank_fill(rows, n_layers, budget, dense_ppl=dense_ppl, rungs=rungs, targets=targets,
+                               saving=saving)
+        compression = mean_compression(assignment, n_slots, rungs)
+        extra = {}
+        if saving is not None:
+            by_level = {rung.level: rung for rung in rungs}
+            extra["zeroed"] = compression
+            compression = sum(saving(slot, by_level[level]) for slot, level in assignment.items()) / n_slots
         payloads.append(
             {
                 "tag": _budget_tag(budget),
                 "budget": budget,
-                "compression": mean_compression(assignment, n_slots, rungs),
+                "compression": compression,
+                **extra,
                 "n_layers": n_layers,
                 "levels": [rung.level for rung in rungs],
                 "dense_ppl": dense_ppl,
