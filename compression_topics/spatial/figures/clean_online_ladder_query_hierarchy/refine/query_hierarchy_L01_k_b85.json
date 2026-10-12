@@ -1,0 +1,171 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 6.587055166985896,
+      "mean_nll,none": 1.885106384754181
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 181,
+      "nll": 1.778915286064148,
+      "tokens": 512
+    },
+    {
+      "chunk": 314,
+      "nll": 2.151962995529175,
+      "tokens": 512
+    },
+    {
+      "chunk": 722,
+      "nll": 1.5609426498413086,
+      "tokens": 512
+    },
+    {
+      "chunk": 169,
+      "nll": 2.392164468765259,
+      "tokens": 512
+    },
+    {
+      "chunk": 262,
+      "nll": 2.2753663063049316,
+      "tokens": 512
+    },
+    {
+      "chunk": 387,
+      "nll": 1.761035680770874,
+      "tokens": 512
+    },
+    {
+      "chunk": 840,
+      "nll": 1.6805870532989502,
+      "tokens": 512
+    },
+    {
+      "chunk": 356,
+      "nll": 2.4127414226531982,
+      "tokens": 512
+    },
+    {
+      "chunk": 70,
+      "nll": 1.9751386642456055,
+      "tokens": 512
+    },
+    {
+      "chunk": 775,
+      "nll": 1.8244733810424805,
+      "tokens": 512
+    },
+    {
+      "chunk": 941,
+      "nll": 1.3654935359954834,
+      "tokens": 512
+    },
+    {
+      "chunk": 434,
+      "nll": 1.4424551725387573,
+      "tokens": 512
+    }
+  ],
+  "gate_stats": {
+    "k_layer_1": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 301989888,
+      "stored_bits": 45038816,
+      "metadata_bits": 55520,
+      "updates": 12,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.011876805623372455,
+      "format_g8_r0": 16843,
+      "format_g8_r16": 1583,
+      "format_g4_r0": 12
+    }
+  },
+  "timing": {
+    "evaluation_seconds": 4.8411933169700205,
+    "chunks": 12,
+    "tokens": 6144
+  },
+  "storage": {
+    "scope": "simulated_prefill_cache_storage",
+    "targets": {
+      "k": {
+        "dense_bits": 9663676416,
+        "stored_bits": 9406725344,
+        "compression": 0.026589370436138626
+      },
+      "v": {
+        "dense_bits": 9663676416,
+        "stored_bits": 9663676416,
+        "compression": 0.0
+      },
+      "kv": {
+        "dense_bits": 19327352832,
+        "stored_bits": 19070401760,
+        "compression": 0.013294685218069313
+      }
+    }
+  },
+  "scoring": {
+    "prefix_tokens": 1536,
+    "definition": "continuation token NLL only; prefix logits excluded"
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            1
+          ],
+          "v_layers": [],
+          "saving": 0.85,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 16,
+      "offset": 4,
+      "chunks": 12,
+      "seed": 83,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  }
+}

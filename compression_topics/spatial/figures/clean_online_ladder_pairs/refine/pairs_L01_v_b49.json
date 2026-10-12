@@ -1,0 +1,170 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 6.343714637598138,
+      "mean_nll,none": 1.8474645018577576
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 181,
+      "nll": 1.7739784717559814,
+      "tokens": 512
+    },
+    {
+      "chunk": 314,
+      "nll": 2.1366167068481445,
+      "tokens": 512
+    },
+    {
+      "chunk": 722,
+      "nll": 1.4335269927978516,
+      "tokens": 512
+    },
+    {
+      "chunk": 169,
+      "nll": 2.3632590770721436,
+      "tokens": 512
+    },
+    {
+      "chunk": 262,
+      "nll": 2.2147231101989746,
+      "tokens": 512
+    },
+    {
+      "chunk": 387,
+      "nll": 1.743628740310669,
+      "tokens": 512
+    },
+    {
+      "chunk": 840,
+      "nll": 1.6396480798721313,
+      "tokens": 512
+    },
+    {
+      "chunk": 356,
+      "nll": 2.414431095123291,
+      "tokens": 512
+    },
+    {
+      "chunk": 70,
+      "nll": 1.9357444047927856,
+      "tokens": 512
+    },
+    {
+      "chunk": 775,
+      "nll": 1.8047181367874146,
+      "tokens": 512
+    },
+    {
+      "chunk": 941,
+      "nll": 1.3264840841293335,
+      "tokens": 512
+    },
+    {
+      "chunk": 434,
+      "nll": 1.3828151226043701,
+      "tokens": 512
+    }
+  ],
+  "gate_stats": {
+    "v_layer_1": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 301989888,
+      "stored_bits": 153589056,
+      "metadata_bits": 221376,
+      "updates": 12,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.0014239247639974417,
+      "format_g2_r0": 73693,
+      "format_g2_r16": 35
+    }
+  },
+  "timing": {
+    "evaluation_seconds": 4.464324821252376,
+    "chunks": 12,
+    "tokens": 6144
+  },
+  "storage": {
+    "scope": "simulated_prefill_cache_storage",
+    "targets": {
+      "k": {
+        "dense_bits": 9663676416,
+        "stored_bits": 9663676416,
+        "compression": 0.0
+      },
+      "v": {
+        "dense_bits": 9663676416,
+        "stored_bits": 9515275584,
+        "compression": 0.015356560548146603
+      },
+      "kv": {
+        "dense_bits": 19327352832,
+        "stored_bits": 19178952000,
+        "compression": 0.007678280274073246
+      }
+    }
+  },
+  "scoring": {
+    "prefix_tokens": 1536,
+    "definition": "continuation token NLL only; prefix logits excluded"
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            1
+          ],
+          "saving": 0.49,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 2,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 16,
+      "offset": 4,
+      "chunks": 12,
+      "seed": 83,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  }
+}

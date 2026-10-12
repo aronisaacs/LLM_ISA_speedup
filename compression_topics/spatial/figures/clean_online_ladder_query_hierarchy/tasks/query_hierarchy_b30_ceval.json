@@ -1,0 +1,5102 @@
+{
+  "results": {
+    "ceval-valid": {
+      "acc_norm,none": 0.5430906389301634,
+      "acc,none": 0.5430906389301634
+    }
+  },
+  "storage": {
+    "scope": "simulated_cache_storage",
+    "dense_value_bits": 16,
+    "targets": {
+      "k": {
+        "dense_bits": 472347836416,
+        "stored_bits": 320627594256,
+        "compression": 0.32120448208506014
+      },
+      "v": {
+        "dense_bits": 472347836416,
+        "stored_bits": 345536660872,
+        "compression": 0.26846989817122086
+      },
+      "kv": {
+        "dense_bits": 944695672832,
+        "stored_bits": 666164255128,
+        "compression": 0.29483719012814047
+      }
+    }
+  },
+  "config": {
+    "model_args": {
+      "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+      "dtype": "bfloat16",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              0
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              0
+            ],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              1
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              1
+            ],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              2
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              3
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              4
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              5
+            ],
+            "v_layers": [],
+            "saving": 0.49,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              5
+            ],
+            "saving": 0.47,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              6
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              7
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              7
+            ],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              8
+            ],
+            "v_layers": [],
+            "saving": 0.49,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              8
+            ],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              9
+            ],
+            "saving": 0.55,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              10
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              10
+            ],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              11
+            ],
+            "v_layers": [],
+            "saving": 0.49,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              11
+            ],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              12
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              13
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              13
+            ],
+            "saving": 0.1,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              14
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              14
+            ],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              15
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              15
+            ],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              16
+            ],
+            "v_layers": [],
+            "saving": 0.49,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              16
+            ],
+            "saving": 0.47,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              17
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              17
+            ],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              18
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              18
+            ],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              19
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              19
+            ],
+            "saving": 0.1,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              20
+            ],
+            "v_layers": [],
+            "saving": 0.47,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              20
+            ],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              21
+            ],
+            "v_layers": [],
+            "saving": 0.1,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              21
+            ],
+            "saving": 0.47,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              22
+            ],
+            "v_layers": [],
+            "saving": 0.47,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              22
+            ],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              23
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              23
+            ],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              24
+            ],
+            "v_layers": [],
+            "saving": 0.49,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              24
+            ],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              25
+            ],
+            "v_layers": [],
+            "saving": 0.49,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              25
+            ],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              26
+            ],
+            "v_layers": [],
+            "saving": 0.47,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              26
+            ],
+            "saving": 0.47,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              27
+            ],
+            "v_layers": [],
+            "saving": 0.25,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              27
+            ],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              28
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              28
+            ],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              29
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              29
+            ],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              30
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [],
+            "v_layers": [
+              30
+            ],
+            "saving": 0.49,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "deviation",
+            "distortion": "relative",
+            "importance": "none",
+            "query_weights": null,
+            "query_weights_sha256": null,
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          },
+          {
+            "method": "spatial_composed",
+            "k_layers": [
+              31
+            ],
+            "v_layers": [],
+            "saving": 0.4,
+            "decision": "online",
+            "representation": "hierarchy",
+            "residual_entries": null,
+            "residual_menu": [
+              0,
+              16,
+              32
+            ],
+            "directional": true,
+            "select_by": "query",
+            "distortion": "query",
+            "importance": "none",
+            "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+            "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+            "control": {
+              "startup_tokens": 32,
+              "memory_pairs": 10.0,
+              "recent_deadband": 0.02,
+              "cumulative_deadband": 0.03,
+              "recent_gain": 4.0,
+              "cumulative_gain": 8.0,
+              "max_log_step": 0.2,
+              "price_span": 10000.0
+            },
+            "max_group": 8,
+            "mask_layout": "separate",
+            "head_decisions": "per_head",
+            "saturate": false
+          }
+        ]
+      }
+    }
+  },
+  "n-shot": {
+    "ceval-valid": 5
+  },
+  "n-samples": {
+    "ceval-valid": {
+      "original": 1346,
+      "effective": 1346
+    }
+  },
+  "gate_stats": {
+    "k_layer_0": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 13499706200,
+      "metadata_bits": 10718072,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.02967137750589624,
+      "format_dense_pair": 2722545,
+      "format_g2_r32": 742991,
+      "format_g2_r16": 18007,
+      "format_g4_r16": 9421,
+      "format_g8_r16": 3757,
+      "format_g2_r0": 67169,
+      "format_g4_r0": 13
+    },
+    "v_layer_0": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11236088080,
+      "metadata_bits": 10243280,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.02668217677696083,
+      "format_g2_r32": 2066424,
+      "format_dense_pair": 1262242,
+      "format_g8_r16": 56134,
+      "format_g4_r16": 10521,
+      "format_g2_r16": 5735,
+      "format_g2_r0": 4611,
+      "format_g4_r0": 9
+    },
+    "k_layer_1": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 13524990320,
+      "metadata_bits": 10568304,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.033138188627577364,
+      "format_dense_pair": 2789972,
+      "format_g2_r32": 625069,
+      "format_g4_r16": 20344,
+      "format_g8_r16": 16734,
+      "format_g2_r0": 16729,
+      "format_g2_r16": 45182,
+      "format_g4_r0": 16
+    },
+    "v_layer_1": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11227771576,
+      "metadata_bits": 10736600,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.02510255949267781,
+      "format_g2_r32": 2440914,
+      "format_dense_pair": 1057473,
+      "format_g2_r0": 59177,
+      "format_g2_r16": 6612,
+      "format_g8_r16": 4205,
+      "format_g4_r16": 1798,
+      "format_g4_r0": 8
+    },
+    "k_layer_2": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 13460755664,
+      "metadata_bits": 10717552,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.02359026333207262,
+      "format_dense_pair": 2672817,
+      "format_g2_r32": 844801,
+      "format_g2_r16": 16570,
+      "format_g2_r0": 20734,
+      "format_g4_r16": 3032,
+      "format_g8_r16": 5903,
+      "format_g4_r0": 5
+    },
+    "k_layer_3": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11263289144,
+      "metadata_bits": 10606168,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.0340480277998938,
+      "format_dense_pair": 1123249,
+      "format_g2_r32": 2321231,
+      "format_g2_r16": 49469,
+      "format_g2_r0": 2049,
+      "format_g4_r16": 16977,
+      "format_g8_r16": 13661,
+      "format_g4_r0": 6
+    },
+    "k_layer_4": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11231066552,
+      "metadata_bits": 10692152,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.029455872170038533,
+      "format_dense_pair": 1057172,
+      "format_g2_r32": 2448271,
+      "format_g2_r16": 32495,
+      "format_g4_r16": 10563,
+      "format_g2_r0": 616,
+      "format_g8_r16": 6229,
+      "format_g4_r0": 6
+    },
+    "k_layer_5": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 7757303832,
+      "metadata_bits": 7477592,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.034733990492169964,
+      "format_dense_pair": 18138,
+      "format_g2_r32": 1801515,
+      "format_g2_r16": 173655,
+      "format_g8_r16": 307494,
+      "format_g4_r16": 175216,
+      "format_g4_r0": 730,
+      "format_g2_r0": 6264,
+      "format_g8_r0": 792
+    },
+    "v_layer_5": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 8072019056,
+      "metadata_bits": 7941168,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03291820899772202,
+      "format_g4_r16": 92457,
+      "format_g2_r32": 2136352,
+      "format_g8_r16": 284333,
+      "format_g2_r16": 83104,
+      "format_g2_r0": 14996,
+      "format_dense_pair": 26350,
+      "format_g4_r0": 668,
+      "format_g8_r0": 56
+    },
+    "k_layer_6": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11214348616,
+      "metadata_bits": 10756584,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.02310938389806383,
+      "format_dense_pair": 1014821,
+      "format_g2_r32": 2528526,
+      "format_g2_r16": 27830,
+      "format_g4_r16": 4574,
+      "format_g8_r16": 1036,
+      "format_g2_r0": 133,
+      "format_g4_r0": 3
+    },
+    "k_layer_7": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9085267440,
+      "metadata_bits": 9493616,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03647706304962317,
+      "format_g2_r32": 2546919,
+      "format_g4_r16": 139436,
+      "format_g2_r16": 276601,
+      "format_dense_pair": 85804,
+      "format_g8_r16": 96461,
+      "format_g2_r0": 10538,
+      "format_g4_r0": 15
+    },
+    "v_layer_7": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11215597792,
+      "metadata_bits": 10766976,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.02152810167910446,
+      "format_g2_r32": 2545005,
+      "format_dense_pair": 1009893,
+      "format_g2_r16": 21411,
+      "format_g2_r0": 2395,
+      "format_g8_r16": 452,
+      "format_g4_r16": 2047,
+      "format_g4_r0": 1
+    },
+    "k_layer_8": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 7725467496,
+      "metadata_bits": 7457032,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.032271205357142896,
+      "format_g2_r32": 1758748,
+      "format_g8_r16": 307743,
+      "format_g2_r16": 209579,
+      "format_g4_r16": 183347,
+      "format_dense_pair": 9489,
+      "format_g2_r0": 7058,
+      "format_g4_r0": 918,
+      "format_g8_r0": 58
+    },
+    "v_layer_8": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11217261320,
+      "metadata_bits": 10761032,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.029264538493377512,
+      "format_g2_r32": 2529726,
+      "format_dense_pair": 1015310,
+      "format_g2_r16": 26655,
+      "format_g8_r16": 607,
+      "format_g4_r16": 4012,
+      "format_g2_r0": 2459,
+      "format_g4_r0": 3
+    },
+    "v_layer_9": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 6889265088,
+      "metadata_bits": 6126816,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03128687588946866,
+      "format_g8_r16": 475200,
+      "format_g4_r16": 122414,
+      "format_g2_r32": 1288763,
+      "format_g2_r16": 105345,
+      "format_g2_r0": 32661,
+      "format_dense_pair": 6161,
+      "format_g4_r0": 2871,
+      "format_g8_r0": 77
+    },
+    "k_layer_10": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11251322688,
+      "metadata_bits": 10699520,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.027193595173690244,
+      "format_g2_r32": 2420451,
+      "format_dense_pair": 1070638,
+      "format_g4_r16": 16555,
+      "format_g2_r16": 46435,
+      "format_g8_r16": 3426,
+      "format_g2_r0": 268,
+      "format_g4_r0": 1
+    },
+    "v_layer_10": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11220398224,
+      "metadata_bits": 10753328,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.024554243436897827,
+      "format_g2_r32": 2513184,
+      "format_dense_pair": 1022681,
+      "format_g2_r16": 30471,
+      "format_g2_r0": 3360,
+      "format_g8_r16": 1316,
+      "format_g4_r16": 4820,
+      "format_g4_r0": 4
+    },
+    "k_layer_11": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 7774590672,
+      "metadata_bits": 7556048,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03198738866707618,
+      "format_g2_r32": 1666023,
+      "format_g2_r16": 289974,
+      "format_g4_r16": 261881,
+      "format_g8_r16": 270896,
+      "format_g2_r0": 10407,
+      "format_dense_pair": 10700,
+      "format_g8_r0": 2,
+      "format_g4_r0": 75
+    },
+    "v_layer_11": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9196825496,
+      "metadata_bits": 9692056,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.0415759805666287,
+      "format_g4_r16": 97943,
+      "format_g2_r32": 2807274,
+      "format_g8_r16": 88154,
+      "format_g2_r16": 145812,
+      "format_g2_r0": 22224,
+      "format_dense_pair": 60328,
+      "format_g4_r0": 234
+    },
+    "k_layer_12": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11240793248,
+      "metadata_bits": 10760192,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.028003318977790403,
+      "format_dense_pair": 1037287,
+      "format_g2_r32": 2481086,
+      "format_g2_r16": 53963,
+      "format_g4_r16": 4825,
+      "format_g8_r16": 515,
+      "format_g2_r0": 560,
+      "format_g4_r0": 1
+    },
+    "k_layer_13": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9147615784,
+      "metadata_bits": 9701096,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03750415093680093,
+      "format_g4_r16": 152307,
+      "format_g2_r32": 2735402,
+      "format_g2_r16": 241198,
+      "format_g8_r16": 69119,
+      "format_dense_pair": 25126,
+      "format_g2_r0": 1790,
+      "format_g4_r0": 1
+    },
+    "v_layer_13": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 13520514760,
+      "metadata_bits": 10775336,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.030341683759652543,
+      "format_g2_r32": 907333,
+      "format_dense_pair": 2675687,
+      "format_g2_r16": 1472,
+      "format_g2_r0": 100,
+      "format_g4_r16": 8
+    },
+    "k_layer_14": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 13521988464,
+      "metadata_bits": 10775344,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.031004097001061576,
+      "format_g2_r32": 907600,
+      "format_dense_pair": 2676534,
+      "format_g2_r16": 434,
+      "format_g4_r16": 20
+    },
+    "v_layer_14": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11211615936,
+      "metadata_bits": 10766592,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.02206284832802552,
+      "format_g2_r32": 2541831,
+      "format_dense_pair": 1008586,
+      "format_g2_r16": 23825,
+      "format_g2_r0": 3412,
+      "format_g4_r16": 2598,
+      "format_g8_r16": 439,
+      "format_g4_r0": 1
+    },
+    "k_layer_15": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9104064400,
+      "metadata_bits": 9601424,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03209310651102093,
+      "format_g2_r32": 2753273,
+      "format_g8_r16": 86427,
+      "format_g4_r16": 133582,
+      "format_g2_r16": 187442,
+      "format_dense_pair": 29756,
+      "format_g2_r0": 1265
+    },
+    "v_layer_15": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9117931456,
+      "metadata_bits": 9672288,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03361386179670911,
+      "format_g2_r32": 2840405,
+      "format_g8_r16": 85460,
+      "format_g4_r16": 112101,
+      "format_g2_r16": 130627,
+      "format_g2_r0": 32287,
+      "format_dense_pair": 13645,
+      "format_g4_r0": 801
+    },
+    "k_layer_16": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 7744434512,
+      "metadata_bits": 7479312,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.034724354192839146,
+      "format_g2_r32": 1710414,
+      "format_g2_r16": 221270,
+      "format_g4_r16": 247298,
+      "format_g8_r16": 283927,
+      "format_dense_pair": 12022,
+      "format_g2_r0": 8286,
+      "format_g4_r0": 1150,
+      "format_g8_r0": 3
+    },
+    "v_layer_16": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 8048517944,
+      "metadata_bits": 7953368,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.029776980377906992,
+      "format_g4_r16": 154053,
+      "format_g2_r32": 2051764,
+      "format_g8_r16": 261640,
+      "format_g2_r16": 119352,
+      "format_g4_r0": 2946,
+      "format_g2_r0": 34309,
+      "format_dense_pair": 18181,
+      "format_g8_r0": 111
+    },
+    "k_layer_17": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9089736464,
+      "metadata_bits": 9492816,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03687775440705132,
+      "format_g2_r32": 2575422,
+      "format_g4_r16": 170133,
+      "format_g8_r16": 86313,
+      "format_g2_r16": 243331,
+      "format_dense_pair": 77630,
+      "format_g2_r0": 2701,
+      "format_g4_r0": 3
+    },
+    "v_layer_17": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9062393184,
+      "metadata_bits": 9538016,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.033229596739749456,
+      "format_g4_r16": 103842,
+      "format_g2_r32": 2758539,
+      "format_g8_r16": 102445,
+      "format_g2_r16": 129051,
+      "format_g2_r0": 35664,
+      "format_dense_pair": 38308,
+      "format_g4_r0": 2693,
+      "format_g8_r0": 49
+    },
+    "k_layer_18": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9133579720,
+      "metadata_bits": 9657448,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03518624180711616,
+      "format_g2_r32": 2670868,
+      "format_g4_r16": 165374,
+      "format_g2_r16": 261612,
+      "format_g8_r16": 69581,
+      "format_dense_pair": 38901,
+      "format_g2_r0": 3967,
+      "format_g4_r0": 94
+    },
+    "v_layer_18": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11227336248,
+      "metadata_bits": 10662104,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.022622926540284305,
+      "format_g2_r32": 2419364,
+      "format_dense_pair": 1069713,
+      "format_g4_r16": 14754,
+      "format_g2_r16": 27401,
+      "format_g8_r16": 8076,
+      "format_g2_r0": 5630,
+      "format_g4_r0": 330,
+      "format_g8_r0": 7
+    },
+    "k_layer_19": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9062502472,
+      "metadata_bits": 9419624,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.0315871904481132,
+      "format_g2_r32": 2617799,
+      "format_g2_r16": 182273,
+      "format_g4_r16": 143235,
+      "format_g8_r16": 103416,
+      "format_dense_pair": 81569,
+      "format_g2_r0": 2819,
+      "format_g4_r0": 7
+    },
+    "v_layer_19": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 13521341544,
+      "metadata_bits": 10775144,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.02953259698275859,
+      "format_g2_r32": 903556,
+      "format_dense_pair": 2677108,
+      "format_g2_r16": 2815,
+      "format_g2_r0": 785,
+      "format_g4_r16": 122,
+      "format_g8_r16": 24,
+      "format_g4_r0": 2
+    },
+    "k_layer_20": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 8072545968,
+      "metadata_bits": 7999152,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03680030153508773,
+      "format_g2_r32": 1935882,
+      "format_g2_r16": 239800,
+      "format_g4_r16": 226480,
+      "format_dense_pair": 16360,
+      "format_g8_r16": 233315,
+      "format_g2_r0": 5384,
+      "format_g4_r0": 387,
+      "format_g8_r0": 47
+    },
+    "v_layer_20": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9095754848,
+      "metadata_bits": 9576064,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03149491567460316,
+      "format_g4_r16": 74794,
+      "format_g2_r32": 2880270,
+      "format_g8_r16": 108373,
+      "format_g2_r16": 74411,
+      "format_g4_r0": 1177,
+      "format_g2_r0": 17468,
+      "format_dense_pair": 26765,
+      "format_g8_r0": 65
+    },
+    "k_layer_21": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 13498081040,
+      "metadata_bits": 10775344,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.0331658995977723,
+      "format_dense_pair": 2659305,
+      "format_g2_r32": 923963,
+      "format_g2_r16": 1333,
+      "format_g2_r0": 1,
+      "format_g4_r16": 3
+    },
+    "v_layer_21": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 8008028352,
+      "metadata_bits": 7908512,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.027779947916666603,
+      "format_g4_r16": 98722,
+      "format_g2_r32": 2124523,
+      "format_g8_r16": 278970,
+      "format_g2_r0": 25459,
+      "format_g2_r16": 73599,
+      "format_dense_pair": 14703,
+      "format_g4_r0": 6300,
+      "format_g8_r0": 5100
+    },
+    "k_layer_22": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 8058471560,
+      "metadata_bits": 7948648,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.028880518353174622,
+      "format_g2_r32": 1882335,
+      "format_g2_r16": 247908,
+      "format_g4_r16": 235231,
+      "format_g8_r16": 236104,
+      "format_dense_pair": 31091,
+      "format_g2_r0": 7836,
+      "format_g4_r0": 256,
+      "format_g8_r0": 12
+    },
+    "v_layer_22": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11233477120,
+      "metadata_bits": 10738880,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.02617422816265058,
+      "format_g2_r32": 2485926,
+      "format_dense_pair": 1040366,
+      "format_g2_r16": 26056,
+      "format_g4_r16": 7932,
+      "format_g2_r0": 8790,
+      "format_g8_r16": 1867,
+      "format_g4_r0": 69
+    },
+    "k_layer_23": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9112178696,
+      "metadata_bits": 9563720,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03537505874060154,
+      "format_g2_r32": 2693911,
+      "format_g2_r16": 193198,
+      "format_g8_r16": 87138,
+      "format_g4_r16": 143887,
+      "format_dense_pair": 55382,
+      "format_g2_r0": 5529,
+      "format_g4_r0": 131
+    },
+    "v_layer_23": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9079715168,
+      "metadata_bits": 9502560,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03402626372739015,
+      "format_g8_r16": 118768,
+      "format_g4_r16": 65039,
+      "format_g2_r32": 2838511,
+      "format_g2_r16": 61142,
+      "format_g4_r0": 2940,
+      "format_g2_r0": 20781,
+      "format_dense_pair": 51124,
+      "format_g8_r0": 505
+    },
+    "k_layer_24": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 7757843472,
+      "metadata_bits": 7475888,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03186113365800869,
+      "format_g2_r32": 1742035,
+      "format_dense_pair": 20013,
+      "format_g2_r16": 194705,
+      "format_g4_r16": 224979,
+      "format_g8_r16": 291712,
+      "format_g2_r0": 8709,
+      "format_g8_r0": 109,
+      "format_g4_r0": 952
+    },
+    "v_layer_24": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9144166088,
+      "metadata_bits": 9503656,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.044554379111842124,
+      "format_g4_r16": 58538,
+      "format_g2_r32": 2803094,
+      "format_g8_r16": 121124,
+      "format_g2_r16": 58541,
+      "format_g4_r0": 2023,
+      "format_dense_pair": 95867,
+      "format_g2_r0": 19432,
+      "format_g8_r0": 514
+    },
+    "k_layer_25": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 7751974144,
+      "metadata_bits": 7375616,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.032113631810897436,
+      "format_g2_r32": 1750422,
+      "format_g4_r16": 181327,
+      "format_g8_r16": 317739,
+      "format_g2_r16": 141094,
+      "format_dense_pair": 52288,
+      "format_g2_r0": 6630,
+      "format_g4_r0": 230,
+      "format_g8_r0": 26
+    },
+    "v_layer_25": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11228467864,
+      "metadata_bits": 10729400,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.026140222597361817,
+      "format_g2_r32": 2476597,
+      "format_dense_pair": 1042233,
+      "format_g4_r16": 7527,
+      "format_g2_r16": 28557,
+      "format_g2_r0": 9401,
+      "format_g8_r16": 3159,
+      "format_g4_r0": 65
+    },
+    "k_layer_26": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 8053625528,
+      "metadata_bits": 7929368,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03417043585526314,
+      "format_g2_r32": 1960262,
+      "format_g4_r16": 219424,
+      "format_g2_r16": 179179,
+      "format_g8_r16": 243476,
+      "format_g4_r0": 319,
+      "format_g2_r0": 7298,
+      "format_dense_pair": 24375,
+      "format_g8_r0": 26
+    },
+    "v_layer_26": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 8070479032,
+      "metadata_bits": 7929496,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03244597739361699,
+      "format_g8_r16": 290446,
+      "format_g4_r16": 69946,
+      "format_g2_r32": 2156092,
+      "format_g2_r16": 57386,
+      "format_dense_pair": 36023,
+      "format_g2_r0": 20573,
+      "format_g8_r0": 2480,
+      "format_g4_r0": 1469
+    },
+    "k_layer_27": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 11212485600,
+      "metadata_bits": 10735200,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.028218114098837233,
+      "format_dense_pair": 1023228,
+      "format_g2_r32": 2508798,
+      "format_g2_r16": 26860,
+      "format_g4_r16": 7886,
+      "format_g8_r16": 2370,
+      "format_g2_r0": 466,
+      "format_g4_r0": 2
+    },
+    "v_layer_27": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9142729392,
+      "metadata_bits": 9522256,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03983138844936707,
+      "format_g2_r32": 2808623,
+      "format_g4_r16": 66042,
+      "format_dense_pair": 86529,
+      "format_g8_r16": 117371,
+      "format_g2_r16": 61454,
+      "format_g2_r0": 24220,
+      "format_g4_r0": 1099,
+      "format_g8_r0": 4
+    },
+    "k_layer_28": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9127775808,
+      "metadata_bits": 9491360,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03514982524671051,
+      "format_g2_r32": 2640937,
+      "format_g2_r16": 174344,
+      "format_g4_r16": 140546,
+      "format_g8_r16": 96314,
+      "format_g2_r0": 6194,
+      "format_dense_pair": 96639,
+      "format_g4_r0": 71,
+      "format_g8_r0": 1
+    },
+    "v_layer_28": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9157677128,
+      "metadata_bits": 9593704,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.041735580119680926,
+      "format_g4_r16": 69776,
+      "format_g2_r32": 2844400,
+      "format_g8_r16": 108388,
+      "format_g2_r16": 74111,
+      "format_g2_r0": 25206,
+      "format_dense_pair": 66797,
+      "format_g8_r0": 23,
+      "format_g4_r0": 449
+    },
+    "k_layer_29": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9097548304,
+      "metadata_bits": 9276176,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.029824482177263967,
+      "format_g2_r32": 2508824,
+      "format_g2_r16": 146578,
+      "format_g4_r16": 124247,
+      "format_g8_r16": 125520,
+      "format_dense_pair": 169712,
+      "format_g2_r0": 8054,
+      "format_g4_r0": 431,
+      "format_g8_r0": 1
+    },
+    "v_layer_29": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9062165096,
+      "metadata_bits": 9138824,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03221686613475183,
+      "format_g2_r32": 2499827,
+      "format_g4_r16": 76430,
+      "format_g8_r16": 154185,
+      "format_g2_r0": 28054,
+      "format_g4_r0": 6117,
+      "format_dense_pair": 210573,
+      "format_g2_r16": 61684,
+      "format_g8_r0": 659
+    },
+    "k_layer_30": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9139325144,
+      "metadata_bits": 9481400,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03528171269931668,
+      "format_g2_r32": 2686042,
+      "format_dense_pair": 101455,
+      "format_g4_r16": 130024,
+      "format_g8_r16": 100850,
+      "format_g2_r16": 127462,
+      "format_g4_r0": 302,
+      "format_g2_r0": 5597
+    },
+    "v_layer_30": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 7763903752,
+      "metadata_bits": 7470664,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03433103239155255,
+      "format_g4_r16": 66778,
+      "format_g2_r32": 1985672,
+      "format_g8_r16": 344463,
+      "format_g2_r16": 47441,
+      "format_dense_pair": 15638,
+      "format_g2_r0": 19819,
+      "format_g4_r0": 1027,
+      "format_g8_r0": 644
+    },
+    "k_layer_31": {
+      "accounting": "hierarchical_bf16_scales_bitmap_per_head_terminal_3bit_v2",
+      "dense_bits": 14760869888,
+      "stored_bits": 9152045416,
+      "metadata_bits": 9198728,
+      "updates": 1345,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.03698594051059734,
+      "format_g2_r32": 2472743,
+      "format_g4_r16": 108501,
+      "format_g2_r16": 96826,
+      "format_dense_pair": 234765,
+      "format_g8_r16": 139435,
+      "format_g2_r0": 4972,
+      "format_g8_r0": 3,
+      "format_g4_r0": 274
+    }
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "evaluation_options": {},
+    "tasks": [
+      "ceval-valid"
+    ],
+    "num_fewshot": 5,
+    "limit": null,
+    "gen_kwargs": null,
+    "apply_chat_template": true,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            0
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            0
+          ],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            1
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            1
+          ],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            2
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            3
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            4
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            5
+          ],
+          "v_layers": [],
+          "saving": 0.49,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            5
+          ],
+          "saving": 0.47,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            6
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            7
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            7
+          ],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            8
+          ],
+          "v_layers": [],
+          "saving": 0.49,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            8
+          ],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            9
+          ],
+          "saving": 0.55,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            10
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            10
+          ],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            11
+          ],
+          "v_layers": [],
+          "saving": 0.49,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            11
+          ],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            12
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            13
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            13
+          ],
+          "saving": 0.1,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            14
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            14
+          ],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            15
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            15
+          ],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            16
+          ],
+          "v_layers": [],
+          "saving": 0.49,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            16
+          ],
+          "saving": 0.47,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            17
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            17
+          ],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            18
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            18
+          ],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            19
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            19
+          ],
+          "saving": 0.1,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            20
+          ],
+          "v_layers": [],
+          "saving": 0.47,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            20
+          ],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            21
+          ],
+          "v_layers": [],
+          "saving": 0.1,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            21
+          ],
+          "saving": 0.47,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            22
+          ],
+          "v_layers": [],
+          "saving": 0.47,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            22
+          ],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            23
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            23
+          ],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            24
+          ],
+          "v_layers": [],
+          "saving": 0.49,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            24
+          ],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            25
+          ],
+          "v_layers": [],
+          "saving": 0.49,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            25
+          ],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            26
+          ],
+          "v_layers": [],
+          "saving": 0.47,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            26
+          ],
+          "saving": 0.47,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            27
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            27
+          ],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            28
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            28
+          ],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            29
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            29
+          ],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            30
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [],
+          "v_layers": [
+            30
+          ],
+          "saving": 0.49,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "deviation",
+          "distortion": "relative",
+          "importance": "none",
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        },
+        {
+          "method": "spatial_composed",
+          "k_layers": [
+            31
+          ],
+          "v_layers": [],
+          "saving": 0.4,
+          "decision": "online",
+          "representation": "hierarchy",
+          "residual_entries": null,
+          "residual_menu": [
+            0,
+            16,
+            32
+          ],
+          "directional": true,
+          "select_by": "query",
+          "distortion": "query",
+          "importance": "none",
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "max_group": 8,
+          "mask_layout": "separate",
+          "head_decisions": "per_head",
+          "saturate": false
+        }
+      ]
+    }
+  }
+}
