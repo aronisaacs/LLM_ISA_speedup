@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # sbatch compression_topics/vector/scripts/net_budget_dgx.sh pilot   # 50% selections, a few items per task
-# sbatch compression_topics/vector/scripts/net_budget_dgx.sh         # all 39 runs, then the table
+# sbatch compression_topics/vector/scripts/net_budget_dgx.sh         # all 45 runs, then the table
 #SBATCH --job-name=vector-net-budget
 #SBATCH --partition=prod
 #SBATCH --gres=gpu:2

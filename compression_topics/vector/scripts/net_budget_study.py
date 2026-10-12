@@ -6,7 +6,7 @@ rung counts its saving net of the bitmask (compression_topics/vector/bitmask.py)
 a 40% budget means 40% of the KV cache bits saved once the mask is stored.
 
 Stages, in order:
-  greedy  selections at 10/20/30/40/45/50% net for both methods, and the run file
+  greedy  selections at 20/30/35/40/45/50/55% net for both methods, and the run file
   pilot   the 50% selections on a few items of each task; writes nothing
   tasks   CEval, GSM8K (all 1319) and HumanEval for dense and every selection
   table   accuracy by budget from results.json, for whatever has finished
@@ -45,7 +45,7 @@ FIGURES = ROOT / FIGURES_REL
 RUN = FIGURES / "budgets_run.json"
 STAGES = ("greedy", "pilot", "tasks", "table")
 PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"
-BUDGETS = (0.10, 0.20, 0.30, 0.40, 0.45, 0.50)
+BUDGETS = (0.20, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55)
 TASKS = (CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT)
 METHODS = {
     "scalar": ("vector_compress", vector_compress(prune_pct=25)),
