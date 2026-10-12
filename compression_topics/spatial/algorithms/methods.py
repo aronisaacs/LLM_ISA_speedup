@@ -36,6 +36,8 @@ class SpatialConfig:
     control: dict | None = None
     fixed_residual: int | None = None
     minimum_storage: bool = False
+    residual_counts: dict | None = None
+    prefill_only: bool = False
 
     def __post_init__(self):
         if self.algorithm not in ALGORITHMS:
@@ -51,6 +53,13 @@ class SpatialConfig:
             raise ValueError('a fixed residual count requires pairs and 0/16/32 entries')
         if self.minimum_storage and (self.algorithm != 'online' or self.max_group != 2):
             raise ValueError('the minimum-storage endpoint is online pairs only')
+        if not isinstance(self.prefill_only, bool):
+            raise ValueError('prefill_only must be boolean')
+        if self.residual_counts is not None:
+            required={str(g) for g in MENUS if g<=self.max_group}
+            if self.fixed_residual is not None or set(self.residual_counts)!=required or any(
+                isinstance(r,bool) or r not in MENUS[int(g)] for g,r in self.residual_counts.items()):
+                raise ValueError('residual_counts must fix one legal count for each enabled group size')
         if self.control is not None:
             if self.algorithm != 'online':
                 raise ValueError('only the online algorithm uses controller settings')
@@ -88,10 +97,10 @@ def _record_formats(row, choices):
 
 def offline(tensor, *, layer_idx, target, saving, max_group=8, query_aware=False, query_weights=None,
             query_weights_sha256=None, control=None, fixed_residual=None, minimum_storage=False,
-            seq_start=0, rope_tables=None):
+            seq_start=0, rope_tables=None, residual_counts=None, prefill_only=False):
     """Whole-prompt price; generated tokens (seq_start > 0) are left dense."""
     SpatialConfig('offline', max_group, query_aware, query_weights, query_weights_sha256, control,
-                  fixed_residual, minimum_storage)
+                  fixed_residual, minimum_storage, residual_counts, prefill_only)
     heads, length, dim = tensor.shape[1:]
     row = _stats(target, layer_idx)
     row['dense_bits'] += heads * dense_bits(length, dim)
@@ -102,7 +111,7 @@ def offline(tensor, *, layer_idx, target, saving, max_group=8, query_aware=False
     body = tensor[..., :full, :]
     energy = _energy(target, layer_idx, body, query_aware, query_weights, query_weights_sha256)
     table, recon = windows.build(body, target=target, max_group=max_group, rope_tables=rope_tables,
-                                 query_energy=energy, fixed_residual=fixed_residual)
+                                 query_energy=energy, fixed_residual=fixed_residual, residual_counts=residual_counts)
     price = offline_price(table, saving, tail_bits=heads * dense_bits(length - full, dim))
     choices = [table.choose(w, price) for w in range(len(table))]
     out = tensor.clone()
@@ -130,14 +139,14 @@ class _Stream:
 
 def online(tensor, *, layer_idx, target, saving, max_group=8, query_aware=False, query_weights=None,
            query_weights_sha256=None, control=None, fixed_residual=None, minimum_storage=False,
-           seq_start=0, rope_tables=None):
+           seq_start=0, rope_tables=None, residual_counts=None, prefill_only=False):
     """New tokens are stored as written; ``online_after_append`` compresses completed windows."""
     return tensor
 
 
 def online_after_append(cache_tensor, *, target, layer_idx, start, end, rope_tables=None, saving,
                         max_group=8, query_aware=False, query_weights=None, query_weights_sha256=None,
-                        control=None, fixed_residual=None, minimum_storage=False):
+                        control=None, fixed_residual=None, minimum_storage=False, residual_counts=None, prefill_only=False):
     """Compress, in place in the cache, every eight-token window completed by this update."""
     if cache_tensor.ndim != 4 or cache_tensor.shape[0] != 1:
         raise ValueError('spatial compression requires batch size one')
@@ -151,6 +160,8 @@ def online_after_append(cache_tensor, *, target, layer_idx, start, end, rope_tab
     row['dense_bits'] += new
     row['stored_bits'] += new
     stream.dense_tokens = end
+    if prefill_only and start > 0:
+        return  # Preserve the historical prefill-only evaluation protocol.
     complete = end // WINDOW * WINDOW
     controller = stream.controller
     if not controller.started and complete < controller.warmup * WINDOW:
@@ -160,7 +171,7 @@ def online_after_append(cache_tensor, *, target, layer_idx, start, end, rope_tab
     body = cache_tensor[..., stream.done:complete, :]
     energy = _energy(target, layer_idx, body, query_aware, query_weights, query_weights_sha256)
     table, recon = windows.build(body, target=target, max_group=max_group, rope_tables=rope_tables,
-                                 query_energy=energy, fixed_residual=fixed_residual)
+                                 query_energy=energy, fixed_residual=fixed_residual, residual_counts=residual_counts)
     first = not controller.started
     if first:
         controller.start(table)

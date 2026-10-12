@@ -111,3 +111,32 @@ importance is added. Existing runtime settings are unchanged.
 The one-GPU `pair_diagnostic_dgx.sh` has a 30-minute wall-time cap and writes
 `preliminary.json` after each slot and `summary.json` on completion. Running the
 Python script without `--execute` only compares the existing results.
+
+## Fixed-residual hierarchy simplification at 40%
+
+`fixed_hierarchy.py` fixes one residual count for each enabled group size via
+`SpatialConfig(residual_counts={'2': r2, '4': r4, '8': r8})`. Settings are per
+layer K/V slot, shared by its heads; group-size choices remain per-head. Only
+three merged candidates are reconstructed, rather than the seven merged
+candidates in the adaptive menu. Dense remains allowed. Query-aware key
+selection and scoring, RoPE, scales, and the controller remain unchanged.
+
+Twelve combinations are screened on two training chunks. One winner per
+slot/local budget is refined on twelve disjoint training chunks; the common
+measured-byte allocator creates one 40% whole-model policy. Sixteen validation
+chunks compare it with the archived adaptive policy, using the exact archived
+query weights. Both use `prefill_only=True`, preserving the historical dense
+continuation protocol despite the cleanup adding decode compression by default.
+The public default streaming behavior is unchanged.
+
+Full 1,346-question five-shot C-Eval runs only if actual holdout byte savings
+match within one point and fixed-policy PPL is no more than 2% above the
+reevaluated reference. This heuristic gate is checked on resumed task runs too.
+Final accuracy is compared against historical 53.05% at 39.47% actual saving,
+with a one-point accuracy tolerance, always reporting the actual byte gap.
+Screening used two chunks versus the historical reference's four; refinement
+uses twelve for both. This is an independently calibrated simplification test,
+not a claim of identical calibration effort or statistical equivalence.
+
+`fixed_hierarchy_dgx.sh` requests four GPUs for parallel calibration. It evaluates
+one compressed C-Eval setting, which itself is not spread across those GPUs.

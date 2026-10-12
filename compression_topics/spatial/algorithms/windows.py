@@ -87,7 +87,7 @@ class LayerTable:
         return WindowChoice(tuple(h.choose(window, price) for h in self.heads))
 
 
-def build(tensor, *, target, max_group=8, rope_tables=None, query_energy=None, fixed_residual=None):
+def build(tensor, *, target, max_group=8, rope_tables=None, query_energy=None, fixed_residual=None, residual_counts=None):
     """Loss table and every candidate reconstruction for whole windows of ``tensor``.
 
     ``tensor`` is [1, heads, tokens, dim] with tokens a multiple of eight, starting
@@ -114,10 +114,13 @@ def build(tensor, *, target, max_group=8, rope_tables=None, query_energy=None, f
         groups = prepare(tensor, target=target, size=size, rope_tables=rope_tables)
         losses = []
         for residual in menu:
+            allowed = fixed_residual if fixed_residual is not None else (residual_counts.get(str(size)) if residual_counts else None)
+            payload[(size, residual)] = group_bits(residual, dim, size)
+            if allowed is not None and residual != allowed:
+                losses.append(torch.full((heads, length // size), float('inf'), device=tensor.device))
+                continue  # Do not reconstruct disallowed formats at runtime.
             restored, valid = reconstruct(groups, residual, dtype=torch.bfloat16, query_energy=energy)
             value = loss(groups.source, restored, query_energy=energy).mean(3) * size / WINDOW
-            if fixed_residual is not None and residual != fixed_residual:
-                value = torch.full_like(value, float('inf'))
             losses.append(value.masked_fill(~valid, float('inf'))[0])
             payload[(size, residual)] = group_bits(residual, dim, size)
             flat = unalign(restored.reshape(1, heads, length, dim), groups)
