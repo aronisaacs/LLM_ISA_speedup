@@ -23,13 +23,15 @@ def read_json(path):
     return json.loads(Path(path).read_text())
 
 
-def measure_candidates(rows, folder, *, tolerance, budget_rule='minimum', measurement_fn=measurement):
+def measure_candidates(rows, folder, *, tolerance, budget_rule='minimum', measurement_fn=measurement, budget_failure='raise'):
     """Measure one-slot policies on the same chunks and scoring protocol as dense.
 
     minimum is for methods guaranteeing at least the requested savings;
     absolute is for controllers that aim to remain near their target.
     These policies are supplied by the study, not inferred from method names.
     """
+    if budget_failure not in ('raise','exclude'):
+        raise ValueError('invalid candidate rejection policy')
     if budget_rule not in ('minimum', 'absolute') or tolerance < 0:
         raise ValueError('invalid calibration budget rule')
     folder = Path(folder)
@@ -37,6 +39,7 @@ def measure_candidates(rows, folder, *, tolerance, budget_rule='minimum', measur
     baseline = perplexity(dense)
     baseline_scores = dense['chunk_scores']
     measured = []
+    rejected = []
     for candidate in rows:
         payload = read_json(folder / f"{candidate['name']}.json")
         if payload['simulation']['kv'] != candidate['kv']:
@@ -54,8 +57,12 @@ def measure_candidates(rows, folder, *, tolerance, budget_rule='minimum', measur
         stats = measurement_fn(payload)
         target = candidate['budget']
         saving = stats['compression']
-        invalid = saving < target - tolerance if budget_rule == 'minimum' else abs(saving - target) > tolerance
+        invalid = not math.isfinite(saving) or (saving < target - tolerance if budget_rule == 'minimum' else abs(saving - target) > tolerance)
         if invalid or stats['shortfall_updates']:
+            if budget_failure=='exclude':
+                rejected.append({**candidate,'target_saving':target,'measured_saving':saving,
+                    'reason':'local measured byte target missed','tolerance':tolerance,'stats':stats})
+                continue
             raise ValueError(f"candidate cannot meet measured byte budget: {candidate['name']}")
         differences = [r['nll'] - d['nll'] for r, d in zip(scores, baseline_scores)]
         ppl = perplexity(payload)
@@ -67,7 +74,9 @@ def measure_candidates(rows, folder, *, tolerance, budget_rule='minimum', measur
                                                 'scoring': payload.get('scoring'),
                                                 'chunks': [r['chunk'] for r in scores],
                                                 'scored_tokens': [r['tokens'] for r in scores]}})
-    return {'dense_ppl': baseline, 'candidates': measured}
+    result={'dense_ppl': baseline, 'candidates': measured}
+    if budget_failure=='exclude':result['rejected_candidates']=rejected
+    return result
 
 
 def select_settings(calibration, *, include, group_fields=('layer', 'target', 'budget'), rank=None):

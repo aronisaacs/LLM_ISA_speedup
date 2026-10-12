@@ -45,6 +45,22 @@ class CalibrationStudyTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'protocol differs'):
                 measure_candidates([row], folder, tolerance=.03, budget_rule='absolute')
 
+    def test_exclusion_records_bad_budget_but_keeps_integrity_checks(self):
+        rows=[{'name':name,'layer':0,'target':'k','budget':.2,
+               'kv':{'pipeline':[{'method':name,'saving':.2}]}} for name in ('bad','good')]
+        with tempfile.TemporaryDirectory() as directory:
+            folder=Path(directory)
+            write_json(folder/'dense.json',self.payload({'pipeline':[]},0))
+            for row,saving in zip(rows,(.05,.2)):
+                write_json(folder/(row['name']+'.json'),self.payload(row['kv'],saving))
+            cal=measure_candidates(rows,folder,tolerance=.03,budget_rule='absolute',budget_failure='exclude')
+            self.assertEqual([r['name'] for r in cal['candidates']],['good'])
+            self.assertAlmostEqual(cal['rejected_candidates'][0]['measured_saving'],.05)
+            bad=self.payload(rows[0]['kv'],.05);bad['simulation']['pretrained']='wrong'
+            write_json(folder/'bad.json',bad)
+            with self.assertRaisesRegex(ValueError,'protocol differs'):
+                measure_candidates(rows,folder,tolerance=.03,budget_rule='absolute',budget_failure='exclude')
+
     def test_method_selection_and_trim_do_not_mutate_local_measurements(self):
         rows = [{'name': f'{arm}_{target}', 'arm': arm, 'layer': 0, 'target': target,
                  'budget': .25, 'compression': .24, 'measured_saving': .24, 'ppl': ppl,

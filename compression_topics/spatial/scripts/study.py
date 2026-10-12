@@ -81,7 +81,7 @@ def slot_measurement(payload):
 
 def measure(study, rows, stage):
     return measure_candidates(rows, Path(study['out']) / stage, tolerance=.03, budget_rule='absolute',
-                              measurement_fn=slot_measurement)
+                              measurement_fn=slot_measurement, budget_failure='exclude')
 
 
 def winners(calibration, arm):
@@ -220,6 +220,11 @@ def run_stage(study, stage, *, candidates, arms, allocations, tasks, summarizer,
         if stage in ('screen', 'refine'):
             calibration = measure(study, rows, name)
             write_json(out / ('screening.json' if stage == 'screen' else 'calibration.json'), calibration)
+            rejected=calibration.get('rejected_candidates',[])
+            write_json(out/f'{name}_rejected_candidates.json',rejected)
+            print(f'{name}: {len(calibration["candidates"])} accepted, {len(rejected)} rejected local byte targets.',flush=True)
+            if not calibration['candidates']:
+                raise RuntimeError('No usable local candidates; inspect rejected_candidates before allocation')
             if stage == 'screen':
                 chosen = [r['name'] for arm in arms for r in winners(calibration, arm)]
                 write_json(out / 'shortlist.json', chosen)
