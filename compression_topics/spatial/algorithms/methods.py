@@ -38,6 +38,7 @@ class SpatialConfig:
     minimum_storage: bool = False
     residual_counts: dict | None = None
     prefill_only: bool = False
+    merge_sizes: tuple | None = None
 
     def __post_init__(self):
         if self.algorithm not in ALGORITHMS:
@@ -55,8 +56,13 @@ class SpatialConfig:
             raise ValueError('the minimum-storage endpoint is online pairs only')
         if not isinstance(self.prefill_only, bool):
             raise ValueError('prefill_only must be boolean')
+        if self.merge_sizes is not None and (not self.merge_sizes or len(set(self.merge_sizes))!=len(self.merge_sizes) or
+                any(isinstance(g,bool) or g not in MENUS or g>self.max_group for g in self.merge_sizes)):
+            raise ValueError('merge_sizes must be a nonempty subset of enabled group sizes')
+        if self.fixed_residual is not None and self.merge_sizes is not None and 2 not in self.merge_sizes:
+            raise ValueError('fixed pair residual requires pair merges')
         if self.residual_counts is not None:
-            required={str(g) for g in MENUS if g<=self.max_group}
+            required={str(g) for g in (self.merge_sizes or MENUS) if g<=self.max_group}
             if self.fixed_residual is not None or set(self.residual_counts)!=required or any(
                 isinstance(r,bool) or r not in MENUS[int(g)] for g,r in self.residual_counts.items()):
                 raise ValueError('residual_counts must fix one legal count for each enabled group size')
@@ -69,6 +75,8 @@ class SpatialConfig:
         if not math.isfinite(saving) or saving <= 0:
             raise ValueError('saving must be positive')
         options = asdict(self)
+        if options['merge_sizes'] is not None:
+            options['merge_sizes'] = list(options['merge_sizes'])
         algorithm = options.pop('algorithm')
         return {'pipeline': [{'method': 'spatial_' + algorithm, 'saving': saving,
                               'k_layers': k_layers, 'v_layers': v_layers, **options}]}
@@ -97,10 +105,10 @@ def _record_formats(row, choices):
 
 def offline(tensor, *, layer_idx, target, saving, max_group=8, query_aware=False, query_weights=None,
             query_weights_sha256=None, control=None, fixed_residual=None, minimum_storage=False,
-            seq_start=0, rope_tables=None, residual_counts=None, prefill_only=False):
+            seq_start=0, rope_tables=None, residual_counts=None, prefill_only=False, merge_sizes=None):
     """Whole-prompt price; generated tokens (seq_start > 0) are left dense."""
     SpatialConfig('offline', max_group, query_aware, query_weights, query_weights_sha256, control,
-                  fixed_residual, minimum_storage, residual_counts, prefill_only)
+                  fixed_residual, minimum_storage, residual_counts, prefill_only, merge_sizes)
     heads, length, dim = tensor.shape[1:]
     row = _stats(target, layer_idx)
     row['dense_bits'] += heads * dense_bits(length, dim)
@@ -111,7 +119,7 @@ def offline(tensor, *, layer_idx, target, saving, max_group=8, query_aware=False
     body = tensor[..., :full, :]
     energy = _energy(target, layer_idx, body, query_aware, query_weights, query_weights_sha256)
     table, recon = windows.build(body, target=target, max_group=max_group, rope_tables=rope_tables,
-                                 query_energy=energy, fixed_residual=fixed_residual, residual_counts=residual_counts)
+                                 query_energy=energy, fixed_residual=fixed_residual, residual_counts=residual_counts, merge_sizes=merge_sizes)
     price = offline_price(table, saving, tail_bits=heads * dense_bits(length - full, dim))
     choices = [table.choose(w, price) for w in range(len(table))]
     out = tensor.clone()
@@ -139,14 +147,14 @@ class _Stream:
 
 def online(tensor, *, layer_idx, target, saving, max_group=8, query_aware=False, query_weights=None,
            query_weights_sha256=None, control=None, fixed_residual=None, minimum_storage=False,
-           seq_start=0, rope_tables=None, residual_counts=None, prefill_only=False):
+           seq_start=0, rope_tables=None, residual_counts=None, prefill_only=False, merge_sizes=None):
     """New tokens are stored as written; ``online_after_append`` compresses completed windows."""
     return tensor
 
 
 def online_after_append(cache_tensor, *, target, layer_idx, start, end, rope_tables=None, saving,
                         max_group=8, query_aware=False, query_weights=None, query_weights_sha256=None,
-                        control=None, fixed_residual=None, minimum_storage=False, residual_counts=None, prefill_only=False):
+                        control=None, fixed_residual=None, minimum_storage=False, residual_counts=None, prefill_only=False, merge_sizes=None):
     """Compress, in place in the cache, every eight-token window completed by this update."""
     if cache_tensor.ndim != 4 or cache_tensor.shape[0] != 1:
         raise ValueError('spatial compression requires batch size one')
@@ -171,7 +179,7 @@ def online_after_append(cache_tensor, *, target, layer_idx, start, end, rope_tab
     body = cache_tensor[..., stream.done:complete, :]
     energy = _energy(target, layer_idx, body, query_aware, query_weights, query_weights_sha256)
     table, recon = windows.build(body, target=target, max_group=max_group, rope_tables=rope_tables,
-                                 query_energy=energy, fixed_residual=fixed_residual, residual_counts=residual_counts)
+                                 query_energy=energy, fixed_residual=fixed_residual, residual_counts=residual_counts, merge_sizes=merge_sizes)
     first = not controller.started
     if first:
         controller.start(table)

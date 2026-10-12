@@ -140,3 +140,23 @@ not a claim of identical calibration effort or statistical equivalence.
 
 `fixed_hierarchy_dgx.sh` requests four GPUs for parallel calibration. It evaluates
 one compressed C-Eval setting, which itself is not spread across those GPUs.
+
+## Quad-only simplification
+
+`quad_only.py` evaluates dense-or-4-to-1 only at a 40% total KV target. Each
+layer K/V slot calibrates a fixed quad residual count of zero or 16 per token.
+The slot's heads decide independently; pair fallback and eight-token merges are
+disabled using `merge_sizes=[4]`. Within an eight-token controller window, the
+two quads are separate decisions. Dense quads are internally represented by two
+dense pair records under the same conservative 3-bit-tag accounting as the
+reference. No unsupported merged representations are constructed.
+
+Query-aware key selection/scoring, original query weights, RoPE, norms and
+controller settings are retained. Values use ordinary reconstruction error.
+The protocol uses 2 screening train chunks, 12 disjoint refinement train chunks,
+and 16 validation chunks. It preserves historical prefill-only behavior, compares
+holdout quality/bytes with the archived adaptive query hierarchy, and gates one
+full C-Eval point using the same heuristic gate as fixed_hierarchy. Calibration
+is per layer K/V slot, not per head. Results use a fresh `quad_only_40` directory.
+`quad_only_dgx.sh` requests four GPUs; command-line Slurm overrides may request
+more GPUs for parallel calibration, but the final setting runs on one GPU.

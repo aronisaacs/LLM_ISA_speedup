@@ -57,7 +57,7 @@ def check_validation(rows,budgets,arms,*,tolerance):
     require_matched_savings(rows,budgets,arms,tolerance=tolerance)
 
 def quality_gate(p):
-    out=Path(p['out']);ref=base.load(out/'validation/reference.json');fixed=base.load(out/'validation/fixed_hierarchy_b40.json')
+    out=Path(p['out']);ref=base.load(out/'validation/reference.json');fixed=base.load(out/f"validation/{p['arms'][0]}_b40.json")
     a=base.perplexity(ref);b=base.perplexity(fixed)
     saving_ref=ref['storage']['targets']['kv']['compression'];saving_fixed=fixed['storage']['targets']['kv']['compression']
     passed=abs(saving_ref-saving_fixed)<=p['matching_tolerance'] and b<=a*p['holdout_ppl_ratio_limit']
@@ -70,13 +70,13 @@ def tasks(p,selections):
     quality_gate(p)
     return base.task_run(p,selections)
 
-def summarize(out,run,*,require_complete=False):
+def summarize(out,run,*,require_complete=False,arm=ARM):
     report=base.summarize(out,run,require_complete=require_complete,scope='fixed residuals by group size per layer K/V; query-aware; prefill-only',
         comparison='historical adaptive reference plus reevaluated common holdout; 2 screening versus reference 4, both 12 refinement')
     old=base.load(REFERENCE/'summary.json');ref=next(r for r in old['rows'] if r.get('global_budget')==.4)
     report['historical_reference']=ref
     for r in report['rows']:
-        if r.get('arm')==ARM:
+        if r.get('arm')==arm:
             report['reference_comparison']=dict(accuracy_difference_points=100*(r['accuracy']-ref['accuracy']),
                 saving_difference_points=100*(r['actual_kv_saving']-ref['actual_prefill_kv_saving']),
                 within_prespecified_accuracy_tolerance=r['accuracy']>=ref['accuracy']-.01,

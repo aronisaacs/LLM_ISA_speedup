@@ -29,6 +29,7 @@ class HeadTable:
     payload: dict    # (size, residual or None) -> payload bits
     window_bits: int
     max_group: int
+    merge_sizes: tuple | None = None
 
     def choose(self, window, price):
         row = self.rows[window]
@@ -41,7 +42,7 @@ class HeadTable:
                 best = Choice(left.segments + right.segments, left.loss + right.loss,
                               left.payload_bits + right.payload_bits)
             cost = best.loss + price * best.bits / self.window_bits
-            if size <= self.max_group:
+            if size <= self.max_group and (self.merge_sizes is None or size in self.merge_sizes):
                 for residual, value in zip(MENUS[size], row[(size, start)]):
                     option = Choice(((start, size, residual),), value, self.payload[(size, residual)])
                     candidate = option.loss + price * option.bits / self.window_bits
@@ -87,12 +88,14 @@ class LayerTable:
         return WindowChoice(tuple(h.choose(window, price) for h in self.heads))
 
 
-def build(tensor, *, target, max_group=8, rope_tables=None, query_energy=None, fixed_residual=None, residual_counts=None):
+def build(tensor, *, target, max_group=8, rope_tables=None, query_energy=None, fixed_residual=None, residual_counts=None, merge_sizes=None):
     """Loss table and every candidate reconstruction for whole windows of ``tensor``.
 
     ``tensor`` is [1, heads, tokens, dim] with tokens a multiple of eight, starting
     on a window boundary. ``fixed_residual`` restricts pairs to dense or one count.
     """
+    if merge_sizes is not None and (not merge_sizes or any(g not in MENUS or g>max_group for g in merge_sizes)):
+        raise ValueError('invalid merge sizes')
     if max_group not in MENUS:
         raise ValueError('max_group must be 2, 4 or 8')
     if fixed_residual is not None and (max_group != 2 or isinstance(fixed_residual, bool)
@@ -109,7 +112,7 @@ def build(tensor, *, target, max_group=8, rope_tables=None, query_energy=None, f
     reconstructions = {}
     energy = query_energy if target == 'k' else None
     for size, menu in MENUS.items():
-        if size > max_group:
+        if size > max_group or (merge_sizes is not None and size not in merge_sizes):
             continue
         groups = prepare(tensor, target=target, size=size, rope_tables=rope_tables)
         losses = []
@@ -130,7 +133,7 @@ def build(tensor, *, target, max_group=8, rope_tables=None, query_energy=None, f
             for window in range(windows):
                 for offset in range(0, WINDOW, size):
                     rows[head][window][(size, offset)] = matrix[head][(window * WINDOW + offset) // size]
-    table = LayerTable([HeadTable(rows[h], payload, dense_bits(WINDOW, dim), max_group) for h in range(heads)])
+    table = LayerTable([HeadTable(rows[h], payload, dense_bits(WINDOW, dim), max_group, merge_sizes) for h in range(heads)])
     return table, reconstructions
 
 
