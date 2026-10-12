@@ -10,17 +10,17 @@ from __future__ import annotations
 
 HEAD_DIM = 128
 VALUE_BITS = 16
-PAIR_METHOD = "vector_compress_pair"
+PAIR_METHODS = ("vector_compress_pair", "vector_compress_pair_query")
 
 
 def bitmask_bits(method: str, target: str) -> int:
     """Bitmask cost per compressed vector: one bit per value, or per pair for RoPE-paired keys."""
-    return HEAD_DIM // 2 if method == PAIR_METHOD and target == "k" else HEAD_DIM
+    return HEAD_DIM // 2 if method in PAIR_METHODS and target == "k" else HEAD_DIM
 
 
 def zeroed_values(method: str, target: str, level: int) -> int:
     """Values set to zero at ``level`` percent, as the methods round it."""
-    if method == PAIR_METHOD and target == "k":
+    if method in PAIR_METHODS and target == "k":
         return 2 * ((HEAD_DIM // 2) * level // 100)
     return HEAD_DIM * level // 100
 

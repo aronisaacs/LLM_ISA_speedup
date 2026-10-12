@@ -95,6 +95,10 @@ def kv_brief(spec) -> str:
                 parts.append(f"vector |x|<{step.get('threshold', '?')}")
         elif method == "vector_compress_pair":
             parts.append(f"vector rope-pairs prune={step.get('prune_pct', '?')}%")
+        elif method == "vector_compress_query":
+            parts.append(f"vector query-aware prune={step.get('prune_pct', '?')}%")
+        elif method == "vector_compress_pair_query":
+            parts.append(f"vector rope-pairs query-aware prune={step.get('prune_pct', '?')}%")
         elif method == "qjl":
             parts.append(f"hadamard bits={step.get('bits', '?')}")
         elif method == "quantize":
