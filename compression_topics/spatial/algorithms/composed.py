@@ -71,7 +71,8 @@ class SpatialConfig:
             if self.control is not None:
                 raise ValueError('fixed decisions do not use a controller')
         else:
-            if self.residual_entries is not None:
+            fixed_online = self.decision=='online' and self.representation=='hierarchy' and self.max_group==2
+            if self.residual_entries is not None and (not fixed_online or isinstance(self.residual_entries,bool) or self.residual_entries not in hierarchy.MENUS[2]):
                 raise ValueError('adaptive decisions use the residual menu, not a fixed count')
             if self.representation not in ('pairs', 'hierarchy'):
                 raise ValueError('adaptive quad menus are not implemented yet')
@@ -118,7 +119,7 @@ def apply(tensor, *, layer_idx, target, saving, decision='online', representatio
         return hierarchy.apply(tensor, layer_idx=layer_idx, target=target, saving=saving,
                                max_group=max_group, control=control, rope_tables=rope_tables, mask_layout=mask_layout,
                                selection=select_by, query_energy=query_energy(query_weights, layer_idx, query_weights_sha256, tensor) if select_by=='query' or distortion=='query' else None,
-                               token_weights=token_weights, delayed=importance=='next8_attention', head_decisions=head_decisions, distortion=distortion, saturate=saturate)
+                               token_weights=token_weights, delayed=importance=='next8_attention', head_decisions=head_decisions, distortion=distortion, saturate=saturate, residual_entries=residual_entries)
     if decision == 'fixed':
         return presentation_spatial.apply_components(tensor, layer_idx=layer_idx, target=target, saving=saving,
             residual_entries=residual_entries, group_size=2 if representation=='pairs' else 4,

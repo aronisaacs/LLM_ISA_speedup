@@ -100,7 +100,9 @@ class HeadWindowTable:
 
 
 def build_table(tensor, *, target, max_group=8, rope_tables=None, return_reconstruction=False, mask_layout='separate',
-                selection='deviation', query_energy=None, token_weights=None, head_decisions='per_head', distortion='relative'):
+                selection='deviation', query_energy=None, token_weights=None, head_decisions='per_head', distortion='relative', residual_entries=None):
+    if residual_entries is not None and (max_group != 2 or isinstance(residual_entries,bool) or residual_entries not in MENUS[2]):
+        raise ValueError("fixed online format requires pairs and residual count 0/16/32")
     accounting(mask_layout, head_decisions)
     independent = head_decisions == 'per_head'
     if max_group not in MENUS:
@@ -126,6 +128,8 @@ def build_table(tensor, *, target, max_group=8, rope_tables=None, return_reconst
                                           selection=selection, query_energy=query_energy)
             weights = None if token_weights is None else token_weights[..., :full].reshape(1, heads, full//size, size)
             error = reconstruction_error(basis.source, restored, token_weights=weights, distortion=distortion, query_energy=query_energy).mean((0, 3) if independent else (0, 1, 3)) * size / WINDOW
+            if residual_entries is not None and residual != residual_entries:
+                error = torch.full_like(error, float("inf"))
             errors.append(error.masked_fill(~valid.all(0) if independent else ~valid.all((0, 1)), float('inf')))
             payload[(size, residual)] = heads * vector_group_bits(residual, dim, size, include_norms=True,
                                                                  shared_mask=mask_layout=='shared')
@@ -256,7 +260,7 @@ def restore(tensor, result, reconstructions):
 
 def apply(tensor, *, layer_idx, target, saving, max_group=8, control=None, mask_layout='separate',
           seq_start=0, rope_tables=None, selection='deviation', query_energy=None,
-          token_weights=None, delayed=False, head_decisions='per_head', distortion='relative', saturate=False):
+          token_weights=None, delayed=False, head_decisions='per_head', distortion='relative', saturate=False, residual_entries=None):
     """Head-local hierarchy integrated with prefill; decode appends stay dense."""
     from engine.kv_compress.metrics import STATS
     storage_layout = accounting(mask_layout, head_decisions)
@@ -282,7 +286,7 @@ def apply(tensor, *, layer_idx, target, saving, max_group=8, control=None, mask_
     body = tensor[..., :eligible, :]
     table, reconstructions = build_table(body, target=target, max_group=max_group,
                                          rope_tables=rope_tables, return_reconstruction=True, mask_layout=mask_layout,
-                                         selection=selection, query_energy=query_energy, token_weights=token_weights, head_decisions=head_decisions, distortion=distortion)
+                                         selection=selection, query_energy=query_energy, token_weights=token_weights, head_decisions=head_decisions, distortion=distortion, residual_entries=residual_entries)
     result = run(table, saving, control=settings, saturate=saturate)
     out = tensor.clone()
     out[..., :eligible, :] = restore(body, result, reconstructions)

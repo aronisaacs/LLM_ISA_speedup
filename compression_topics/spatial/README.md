@@ -315,3 +315,24 @@ Submit each arm independently with `clean_online_ladder_dgx.sh --arms ARM --out
 compression_topics/spatial/figures/clean_online_ladder_ARM`. Each job requests two
 GPUs and prints stage progress; the common evaluation runner writes preliminary
 accuracy summaries during tasks. Outputs remain isolated from older studies.
+
+### Presentation rungs 1 and 2: fixed-format online pairs
+
+`online_fixed_rungs.py` evaluates `no_residual` and `fixed_residual` at total
+10/20/30/40% KV saving. Both use the same per-head pair reconstruction, RoPE key
+alignment, BF16 norm scales, 3-bit terminal tags, eight-token decision cadence,
+32-token startup, and controller settings as `clean_online_ladder`. Decode
+appends remain dense. No whole-prefill ranking, query weighting, attention
+importance, quads, or eights are used.
+
+Rung 1 restricts merged pairs to zero residuals. Rung 2 calibrates a single
+residual count (0/16/32) per layer K/V slot, fixed for all that slot's merged
+pairs within a selected whole-model operating point. Dense is always allowed.
+The calibrated format may differ between total budget operating points.
+Each arm independently screens four train chunks, refines twelve disjoint train
+chunks, allocates measured layer bytes, validates sixteen holdout chunks, then
+runs full five-shot C-Eval. Infeasible format/budget combinations are excluded
+using the same scale/mask/tag accounting. Validation gates full accuracy and
+resumed tasks. Existing whole-prefill fixed methods are historical comparisons,
+not these online rungs. Launch each arm with `online_fixed_rungs_dgx.sh --arms
+ARM --out compression_topics/spatial/figures/online_fixed_rungs_ARM`.
