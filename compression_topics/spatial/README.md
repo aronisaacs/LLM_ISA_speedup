@@ -87,3 +87,27 @@ Folders under `figures/` were produced by earlier versions of the code and are
 kept as recorded results. `clean_online_ladder_{pairs,hierarchy,query_hierarchy}`
 match the current online method on C-Eval (the decisions are identical on
 prompts). Their plans cannot be resumed with the new scripts.
+
+## Small fixed/adaptive pairs diagnostic
+
+`pair_diagnostic.py --execute` compares recorded 40% allocations, then captures
+five dense layers (0/8/16/24/31) on two train and two validation WikiText prompts,
+each 512 prefix tokens plus 32 observed continuation queries. At each selected
+K/V slot it uses the fixed arm's layer target for both residual policies and
+measures reconstruction, attention logits, attention output, and output after
+that layer's learned output projection. Only one K or V slot is altered at a
+time in these captured-state measurements. This is not downstream perplexity or
+accuracy evaluation.
+
+Variants: fixed/adaptive with the existing causal controller; fixed/adaptive
+with a static price fitted on the independent training captures; and an
+analysis-only adaptive whole-prefix price reference fitted to the fixed
+controller's actual bytes on each validation capture. The last is deliberately
+noncausal, used to diagnose the error objective at similar bytes, not proposed
+as runtime. All actual byte gaps are recorded; frozen/controller variants must
+not be treated as matched if their savings differ. No query weighting or token
+importance is added. Existing runtime settings are unchanged.
+
+The one-GPU `pair_diagnostic_dgx.sh` has a 30-minute wall-time cap and writes
+`preliminary.json` after each slot and `summary.json` on completion. Running the
+Python script without `--execute` only compares the existing results.
