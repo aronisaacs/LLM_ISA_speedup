@@ -96,7 +96,7 @@ screening tolerance. Historical reference screening used four chunks.
 
 ## Entry points
 
-- `ladder.py` / `ladder_dgx.sh`: pairs, hierarchy, query hierarchy (30/40/50%);
+- `ladder.py` / `ladder_dgx.sh`: pairs, hierarchy, query hierarchy, query pairs (30/40/50%);
   `--algorithm online|chunked|offline`.
 - `fixed_rungs.py` / `fixed_rungs_dgx.sh`: no-residual and fixed-residual pairs
   (10/20/30/40%).

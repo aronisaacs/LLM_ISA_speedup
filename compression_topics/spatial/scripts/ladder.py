@@ -4,7 +4,8 @@
 Arms (each calibrated and allocated independently):
 * pairs: dense or pairs with 0/16/32 residual entries;
 * hierarchy: the same pairs plus quads and eights with 0/16 entries;
-* query_hierarchy: the hierarchy with query-aware loss and residuals on keys.
+* query_hierarchy: the hierarchy with query-aware loss and residuals on keys;
+* query_pairs: the pairs with query-aware loss and residuals on keys.
 
 ``--algorithm online`` (default) steers the price causally and also compresses
 generated tokens; ``--algorithm chunked`` compresses every eight-token window to
@@ -28,7 +29,9 @@ from compression_topics.spatial.scripts import study as base
 from engine.eval_runner.files import write_json
 from engine.layer_select.study import require_matched_savings, select_settings
 
-ARMS = ("pairs", "hierarchy", "query_hierarchy")
+ARMS = ("pairs", "hierarchy", "query_hierarchy", "query_pairs")
+PAIR_ARMS = ("pairs", "query_pairs")
+QUERY_ARMS = ("query_hierarchy", "query_pairs")
 BUDGETS = (0.3, 0.4, 0.5)
 OUT = ROOT / "compression_topics/spatial/figures/clean_ladder"
 
@@ -64,10 +67,10 @@ def plan(
 
 
 def _config(study, arm, target, digest, minimum_storage=False):
-    aware = arm == "query_hierarchy" and target == "k"
+    aware = arm in QUERY_ARMS and target == "k"
     return SpatialConfig(
         algorithm=study["algorithm"],
-        max_group=2 if arm == "pairs" else 8,
+        max_group=2 if arm in PAIR_ARMS else 8,
         query_aware=aware,
         query_weights=study["query_weights"] if aware else None,
         query_weights_sha256=digest if aware else None,
@@ -77,7 +80,7 @@ def _config(study, arm, target, digest, minimum_storage=False):
 
 
 def candidates(study):
-    query = "query_hierarchy" in study["arms"]
+    query = any(a in QUERY_ARMS for a in study["arms"])
     path = Path(study["query_weights"])
     if query and not path.exists():
         raise ValueError("fresh query calibration required")
@@ -85,9 +88,9 @@ def candidates(study):
     rows = []
     for arm in study["arms"]:
         budgets = (
-            study["pair_local_budgets"] if arm == "pairs" else study["local_budgets"]
+            study["pair_local_budgets"] if arm in PAIR_ARMS else study["local_budgets"]
         )
-        endpoint = arm == "pairs" and study["algorithm"] != "offline"
+        endpoint = arm in PAIR_ARMS and study["algorithm"] != "offline"
         for layer in range(study["layers"]):
             for target in ("k", "v"):
                 for budget in budgets + ([0.5] if endpoint else []):
@@ -115,16 +118,16 @@ def allocations(study, calibration):
             for r in calibration["candidates"]
             if r["arm"] == arm and not r.get("maximum_feasible")
         ]
-        budgets = [0.3, 0.4] if arm == "pairs" else study["budgets"]
+        budgets = [0.3, 0.4] if arm in PAIR_ARMS else study["budgets"]
         for selection in base.allocate(
             study, dict(calibration, candidates=regular), arm, budgets
         ):
             selection.update(maximum_feasible=False)
             result.append(selection)
-        if arm == "pairs" and study["algorithm"] != "offline":
+        if arm in PAIR_ARMS and study["algorithm"] != "offline":
             settings = select_settings(
                 calibration,
-                include=lambda r: r["arm"] == "pairs" and r.get("maximum_feasible"),
+                include=lambda r, arm=arm: r["arm"] == arm and r.get("maximum_feasible"),
             )
             if len(settings) != study["layers"] * 2:
                 raise ValueError("missing pair endpoint calibration")
@@ -133,7 +136,7 @@ def allocations(study, calibration):
                 dict(
                     arm=arm,
                     budget=0.5,
-                    tag="pairs_b50_maximum_feasible",
+                    tag=f"{arm}_b50_maximum_feasible",
                     maximum_feasible=True,
                     kv={"pipeline": pipeline},
                     assignment=settings,
@@ -147,7 +150,7 @@ def allocations(study, calibration):
 
 def check_validation(rows, budgets, arms, *, tolerance):
     for budget in budgets:
-        eligible = [a for a in arms if not (a == "pairs" and budget == 0.5)]
+        eligible = [a for a in arms if not (a in PAIR_ARMS and budget == 0.5)]
         if eligible:
             require_matched_savings(
                 [r for r in rows if r["arm"] in eligible],
@@ -155,12 +158,10 @@ def check_validation(rows, budgets, arms, *, tolerance):
                 eligible,
                 tolerance=tolerance,
             )
-    endpoint = [r for r in rows if r["arm"] == "pairs" and r["budget"] == 0.5]
-    if endpoint:
-        ceiling = max_saving(
-            128
-        )  # one mean, two norms and a tag per pair; slightly lower with headers
-        if (
+    ceiling = max_saving(128)  # one mean, two norms and a tag per pair; slightly lower with headers
+    for arm in PAIR_ARMS:
+        endpoint = [r for r in rows if r["arm"] == arm and r["budget"] == 0.5]
+        if endpoint and (
             len(endpoint) != 1
             or not ceiling - tolerance <= endpoint[0]["actual_saving"] <= ceiling + 1e-8
         ):
@@ -186,12 +187,17 @@ def summarize(out, run, *, require_complete=False):
         out,
         run,
         require_complete=require_complete,
-        arm_pairs=(("pairs", "hierarchy"), ("hierarchy", "query_hierarchy")),
+        arm_pairs=(
+            ("pairs", "hierarchy"),
+            ("hierarchy", "query_hierarchy"),
+            ("pairs", "query_pairs"),
+            ("query_pairs", "query_hierarchy"),
+        ),
         scope="spatial ladder; per-head decisions; full C-Eval 5-shot",
         comparison="independent calibration per arm; pair 50% is a minimum-storage endpoint",
     )
     for comparison in report["comparisons"]:
-        if comparison["budget"] == 0.5 and comparison["reference_arm"] == "pairs":
+        if comparison["budget"] == 0.5 and comparison["reference_arm"] in PAIR_ARMS:
             comparison.update(
                 matched_within_one_point=False, maximum_feasible_reference=True
             )
@@ -239,7 +245,7 @@ def main():
         flush=True,
     )
     if args.execute:
-        if "query_hierarchy" in study["arms"]:
+        if any(a in QUERY_ARMS for a in study["arms"]):
             base.calibrate_queries(study)
         base.run_stages(study, args.start, args.through, run_stage)
 

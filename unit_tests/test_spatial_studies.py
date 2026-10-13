@@ -98,14 +98,14 @@ class LadderTests(unittest.TestCase):
             p = ladder.plan(Path(folder))
             torch.save({"weights": torch.ones(32, 8, 128)}, p["query_weights"])
             rows = ladder.candidates(p)
-            self.assertEqual(len(rows), 64 * (6 + 9 + 9))
+            self.assertEqual(len(rows), 64 * (6 + 9 + 9 + 6))
             for row in rows:
                 step = row["kv"]["pipeline"][0]
                 self.assertEqual(step["method"], "spatial_online")
-                self.assertEqual(step["max_group"], 2 if row["arm"] == "pairs" else 8)
+                self.assertEqual(step["max_group"], 2 if row["arm"] in ladder.PAIR_ARMS else 8)
                 self.assertEqual(
                     step["query_aware"],
-                    row["arm"] == "query_hierarchy" and row["target"] == "k",
+                    row["arm"] in ladder.QUERY_ARMS and row["target"] == "k",
                 )
                 self.assertEqual(step["minimum_storage"], row["maximum_feasible"])
             offline = ladder.plan(
@@ -129,7 +129,7 @@ class LadderTests(unittest.TestCase):
     def test_validation_gate_and_endpoint(self):
         rows = [
             dict(
-                arm=a, budget=b, actual_saving=0.491 if a == "pairs" and b == 0.5 else b
+                arm=a, budget=b, actual_saving=0.491 if a in ladder.PAIR_ARMS and b == 0.5 else b
             )
             for a in ladder.ARMS
             for b in ladder.BUDGETS
@@ -155,7 +155,7 @@ class LadderTests(unittest.TestCase):
                 for stage in ("screen", "refine", "allocate", "validate"):
                     ladder.run_stage(p, stage)
             selections = json.loads((out / "selections.json").read_text())
-            self.assertEqual(len(selections), 9)
+            self.assertEqual(len(selections), 12)
             endpoint = next(s for s in selections if s["maximum_feasible"])
             self.assertAlmostEqual(endpoint["compression"], 0.491)
             for selection in selections:
@@ -168,9 +168,9 @@ class LadderTests(unittest.TestCase):
             with patch.object(study, "execute_tasks", side_effect=fake_tasks):
                 ladder.run_stage(p, "tasks")
             report = json.loads((out / "summary.json").read_text())
-            self.assertEqual(report["completed"], 10)
+            self.assertEqual(report["completed"], 13)
             self.assertEqual(
-                sum(r.get("maximum_feasible", False) for r in report["rows"]), 1
+                sum(r.get("maximum_feasible", False) for r in report["rows"]), 2
             )
             validation = json.loads((out / "validation.json").read_text())
             validation[1]["actual_saving"] = 0.2
