@@ -10,7 +10,8 @@ Arms (each calibrated and allocated independently):
 Simplifications of query_pairs (each calibrated on its own):
 * query_pairs_per_head: every head meets the saving alone (no shared window budget);
 * query_pairs_no_rope: keys are merged without undoing RoPE;
-* query_pairs_no_norms: no per-token norms; raw vectors are merged.
+* query_pairs_no_norms: no per-token norms; raw vectors are merged;
+* query_pairs_no_rope_no_norms: both of the above.
 
 Every eight-token window of a layer slot is compressed to that slot's saving.
 Pairs cannot reach 50%; their 50% point is the labeled endpoint where every pair
@@ -35,6 +36,7 @@ SIMPLIFICATIONS = {
     "query_pairs_per_head": dict(per_head_budget=True),
     "query_pairs_no_rope": dict(align_rope=False),
     "query_pairs_no_norms": dict(keep_norms=False),
+    "query_pairs_no_rope_no_norms": dict(align_rope=False, keep_norms=False),
 }
 ARMS = ("pairs", "hierarchy", "query_pairs", "query_hierarchy", *SIMPLIFICATIONS)
 PAIR_ARMS = ("pairs", "query_pairs", *SIMPLIFICATIONS)

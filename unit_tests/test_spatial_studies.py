@@ -95,12 +95,14 @@ class LadderTests(unittest.TestCase):
             p = ladder.plan(Path(folder), arms=tuple(ladder.SIMPLIFICATIONS), budgets=(0.3, 0.4))
             torch.save({"weights": torch.ones(32, 8, 128)}, p["query_weights"])
             rows = ladder.candidates(p)
-            self.assertEqual(len(rows), 3 * 64 * 5)  # no 50% endpoint
+            self.assertEqual(len(rows), 4 * 64 * 5)  # no 50% endpoint
             self.assertFalse(any(r["maximum_feasible"] for r in rows))
             flags = {r["arm"]: r["kv"]["pipeline"][0] for r in rows if r["target"] == "k"}
             self.assertTrue(flags["query_pairs_per_head"]["per_head_budget"])
             self.assertFalse(flags["query_pairs_no_rope"]["align_rope"])
             self.assertFalse(flags["query_pairs_no_norms"]["keep_norms"])
+            both = flags["query_pairs_no_rope_no_norms"]
+            self.assertFalse(both["align_rope"] or both["keep_norms"])
 
     def test_validation_gate_and_endpoint(self):
         rows = [
