@@ -17,13 +17,16 @@ HEADER_BITS = 16
 ACCOUNTING = "spatial_v3_per_head_bf16_norms_bitmap_tag3"
 
 
-def group_bits(residual, dim, size):
-    """Payload bits of one merged group (excluding its format tag)."""
+def group_bits(residual, dim, size, norms=True):
+    """Payload bits of one merged group (excluding its format tag).
+
+    ``norms=False`` drops the per-token bf16 norms (the mean is stored unnormalized).
+    """
     if size not in MENUS or residual not in MENUS[size]:
         raise ValueError(f"no {size}-token format with {residual} residual entries")
     residuals = 1 if size == 2 else size
     mask = residuals * dim if residual else 0
-    return VALUE_BITS * (dim + residuals * residual + size) + mask
+    return VALUE_BITS * (dim + residuals * residual + (size if norms else 0)) + mask
 
 
 def dense_bits(tokens, dim):

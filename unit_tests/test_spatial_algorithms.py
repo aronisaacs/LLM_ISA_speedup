@@ -221,5 +221,40 @@ class LiveModelTests(unittest.TestCase):
         self.assertGreaterEqual(1 - (row['stored_bits'] - HEADER_BITS - dense_bits(6, 64)) / compressed, .4)
 
 
+class SimplificationTests(unittest.TestCase):
+    def test_default_pipeline_has_no_study_flags(self):
+        step = SpatialConfig(max_group=2).pipeline(.3)['pipeline'][0]
+        self.assertEqual(set(step) - {'method', 'saving', 'k_layers', 'v_layers'},
+                         {'max_group', 'query_aware', 'query_weights', 'query_weights_sha256'})
+        step = SpatialConfig(max_group=2, keep_norms=False).pipeline(.3)['pipeline'][0]
+        self.assertIs(step['keep_norms'], False)
+        with self.assertRaises(ValueError):
+            SpatialConfig(per_head_budget=True)  # pairs only
+
+    def test_per_head_budget_holds_for_every_head(self):
+        x = correlated(256, heads=4, noise=.6)
+        x[:, 0, 1::2] = x[:, 0, ::2]  # head 0 could give bits away if budgets were shared
+        losses, _ = windows.candidates(x, target='v', max_group=2)
+        _, code = windows.solve_pairs(losses, 128, .3, per_head=True)
+        bits_of = torch.tensor([dense_bits(2, 128)] + [group_bits(r, 128, 2) for r in (0, 16, 32)]) + TAG_BITS
+        per_head = bits_of[code[..., ::2]].sum(-1)  # [heads, windows]
+        self.assertTrue(bool((per_head <= .7 * dense_bits(WINDOW, 128)).all()))
+        _, shared = windows.solve_pairs(losses, 128, .3)
+        self.assertFalse(torch.equal(code, shared))
+
+    def test_without_norms_bits_and_reconstruction(self):
+        self.assertEqual(group_bits(0, 128, 2, norms=False), group_bits(0, 128, 2) - 32)
+        x = correlated(64, noise=0.) * 3
+        out, bits, _ = windows.compress(x, target='v', saving=.45, max_group=2, keep_norms=False)
+        torch.testing.assert_close(out, x, atol=3e-2, rtol=3e-2)  # identical pairs rebuild exactly
+
+    def test_without_rope_alignment_keys_change(self):
+        rope = RopeTables(rope_theta=10000., head_dim=128)
+        x = correlated(128, noise=.3)
+        aligned = windows.compress(x, target='k', saving=.3, max_group=2, rope_tables=rope)[0]
+        plain = windows.compress(x, target='k', saving=.3, max_group=2, align_rope=False)[0]
+        self.assertFalse(torch.equal(aligned, plain))
+
+
 if __name__ == '__main__':
     unittest.main()

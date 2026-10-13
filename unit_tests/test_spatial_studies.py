@@ -90,6 +90,18 @@ class LadderTests(unittest.TestCase):
                     row["maximum_feasible"], row["arm"] in ladder.PAIR_ARMS and row["budget"] == 0.5
                 )
 
+    def test_simplification_arms_at_30_and_40(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p = ladder.plan(Path(folder), arms=tuple(ladder.SIMPLIFICATIONS), budgets=(0.3, 0.4))
+            torch.save({"weights": torch.ones(32, 8, 128)}, p["query_weights"])
+            rows = ladder.candidates(p)
+            self.assertEqual(len(rows), 3 * 64 * 5)  # no 50% endpoint
+            self.assertFalse(any(r["maximum_feasible"] for r in rows))
+            flags = {r["arm"]: r["kv"]["pipeline"][0] for r in rows if r["target"] == "k"}
+            self.assertTrue(flags["query_pairs_per_head"]["per_head_budget"])
+            self.assertFalse(flags["query_pairs_no_rope"]["align_rope"])
+            self.assertFalse(flags["query_pairs_no_norms"]["keep_norms"])
+
     def test_validation_gate_and_endpoint(self):
         rows = [
             dict(

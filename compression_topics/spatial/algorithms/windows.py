@@ -42,7 +42,8 @@ MAX_PRICE = 1e12
 STEPS = 60
 
 
-def candidates(tensor, *, target, max_group=8, rope_tables=None, query_energy=None):
+def candidates(tensor, *, target, max_group=8, rope_tables=None, query_energy=None,
+               align_rope=True, keep_norms=True):
     """Loss of every format and every candidate reconstruction of whole windows.
 
     ``tensor`` is [1, heads, tokens, dim], tokens a multiple of eight. Returns
@@ -58,7 +59,8 @@ def candidates(tensor, *, target, max_group=8, rope_tables=None, query_energy=No
     energy = query_energy if target == "k" else None
     losses, reconstructions = {}, {}
     for size in sizes(max_group):
-        groups = prepare(tensor, target=target, size=size, rope_tables=rope_tables)
+        groups = prepare(tensor, target=target, size=size, rope_tables=rope_tables,
+                         align_rope=align_rope, keep_norms=keep_norms)
         columns = []
         for residual in MENUS[size]:
             restored, valid = reconstruct(
@@ -77,7 +79,7 @@ def options(max_group):
     return [(s, r) for s in sizes(max_group) for r in MENUS[s]]
 
 
-def _tree(losses, dim, price, *, codes=False):
+def _tree(losses, dim, price, *, codes=False, norms=True):
     """Each head's best layout per window at ``price`` [windows].
 
     Returns (bits [heads, windows], loss [heads, windows], code [heads, windows, 8]
@@ -108,7 +110,7 @@ def _tree(losses, dim, price, *, codes=False):
         table = losses[size].to(torch.float64).view(heads, windows, n, -1)
         for j, residual in enumerate(MENUS[size]):
             number += 1
-            option_bits = group_bits(residual, dim, size) + TAG_BITS
+            option_bits = group_bits(residual, dim, size, norms) + TAG_BITS
             candidate = table[..., j] + scale * option_bits
             better = candidate < cost  # ties keep the smaller groups
             cost = torch.where(better, candidate, cost)
@@ -120,14 +122,14 @@ def _tree(losses, dim, price, *, codes=False):
     return bits.view(heads, windows), error.view(heads, windows), code
 
 
-def solve(losses, dim, saving):
+def solve(losses, dim, saving, norms=True):
     """Formats of every window within its budget; returns (bits per window, codes)."""
     heads, groups = losses[2].shape[:2]
     windows = groups * 2 // WINDOW
     limit = (1 - saving) * heads * dense_bits(WINDOW, dim)
 
     def fits(price):
-        return _tree(losses, dim, price)[0].sum(0).cpu() <= limit
+        return _tree(losses, dim, price, norms=norms)[0].sum(0).cpu() <= limit
 
     # Bisect log10(price) per window: ``hi`` fits the budget, ``lo`` does not.
     lo = torch.full((windows,), -9.0, dtype=torch.float64)
@@ -139,8 +141,8 @@ def solve(losses, dim, saving):
     free = fits(torch.zeros(windows, dtype=torch.float64))
     high = torch.where(free, 0.0, 10**hi)
     low = torch.where(free, 0.0, 10**lo)
-    bits_hi, loss_hi, code_hi = _tree(losses, dim, high, codes=True)
-    bits_lo, loss_lo, code_lo = _tree(losses, dim, low, codes=True)
+    bits_hi, loss_hi, code_hi = _tree(losses, dim, high, codes=True, norms=norms)
+    bits_lo, loss_lo, code_lo = _tree(losses, dim, low, codes=True, norms=norms)
     # Between the two prices some heads jump to smaller formats. Undo the jumps
     # that save the most loss per bit while the window stays within its budget.
     extra = (bits_lo - bits_hi).cpu()
@@ -156,14 +158,16 @@ def solve(losses, dim, saving):
     return bits.sum(0).cpu(), code
 
 
-def solve_pairs(losses, dim, saving):
+def solve_pairs(losses, dim, saving, norms=True, per_head=False):
     """Pairs only: sort the merge steps of a window and take them until it fits.
 
     Each pair can move from dense to its merged formats in steps along its lower
     convex hull of (bits saved, error): every step saves some bits for some extra
     error. All steps of a window, over all heads, are sorted by error added per
     bit saved and taken in that order until the window meets its budget (or every
-    step is taken). Returns (bits per window, codes), as :func:`solve`.
+    step is taken). With ``per_head`` every head of the window must meet the
+    saving on its own instead of sharing the window's budget. Returns (bits per
+    window, codes), as :func:`solve`.
     """
     table = losses[2].to(torch.float64)  # [heads, pairs, 3]: PR0, PR16, PR32
     heads, pairs = table.shape[:2]
@@ -171,7 +175,7 @@ def solve_pairs(losses, dim, saving):
     dense = dense_bits(2, dim)
     # Formats from least to most saving: PR32, PR16, PR0 (codes 3, 2, 1).
     order = [2, 1, 0]
-    saved = torch.tensor([dense - group_bits(MENUS[2][j], dim, 2) for j in order], dtype=torch.float64)
+    saved = torch.tensor([dense - group_bits(MENUS[2][j], dim, 2, norms) for j in order], dtype=torch.float64)
     error = table[..., order]  # [heads, pairs, 3]
     # Lower convex hull from (0 saved, 0 error): repeatedly take the cheapest next point.
     steps_saved, steps_error, steps_code = [], [], []
@@ -196,10 +200,11 @@ def solve_pairs(losses, dim, saving):
     # never takes a pair's later step before its earlier one.
     def per_window(x):
         x = torch.stack(x, -1).view(heads, windows, WINDOW // 2, len(order))
-        return x.permute(1, 0, 2, 3).reshape(windows, -1)
+        return x.permute(1, 0, 2, 3).reshape(windows * (heads if per_head else 1), -1)
 
     step_saved, step_rate, step_code = map(per_window, (steps_saved, steps_error, steps_code))
-    need = saving * heads * dense_bits(WINDOW, dim) + heads * (WINDOW // 2) * TAG_BITS
+    sharing = 1 if per_head else heads  # heads that share one budget
+    need = sharing * (saving * dense_bits(WINDOW, dim) + (WINDOW // 2) * TAG_BITS)
     rank = torch.sort(step_rate, dim=1, stable=True).indices
     cumulative = step_saved.gather(1, rank).cumsum(1)
     before = cumulative - step_saved.gather(1, rank)
@@ -211,13 +216,14 @@ def solve_pairs(losses, dim, saving):
         taken.permute(1, 0, 2) > 0,
         codes.gather(-1, (taken.permute(1, 0, 2) - 1).clamp_min(0).unsqueeze(-1)).squeeze(-1),
         torch.zeros(heads, windows, WINDOW // 2, dtype=torch.long))
-    bits_of = torch.tensor([dense] + [group_bits(r, dim, 2) for r in MENUS[2]], dtype=torch.float64) + TAG_BITS
+    bits_of = torch.tensor([dense] + [group_bits(r, dim, 2, norms) for r in MENUS[2]], dtype=torch.float64) + TAG_BITS
     bits = bits_of[pair_code].sum((0, 2))
     code = pair_code.unsqueeze(-1).expand(heads, windows, WINDOW // 2, 2).reshape(heads, windows, WINDOW)
     return bits, code
 
 
-def compress(tensor, *, target, saving, max_group=8, rope_tables=None, query_energy=None):
+def compress(tensor, *, target, saving, max_group=8, rope_tables=None, query_energy=None,
+             align_rope=True, keep_norms=True, per_head_budget=False):
     """Compress the whole windows of ``tensor``.
 
     Returns (reconstructed tensor, stored bits, segment count per format).
@@ -228,9 +234,14 @@ def compress(tensor, *, target, saving, max_group=8, rope_tables=None, query_ene
         max_group=max_group,
         rope_tables=rope_tables,
         query_energy=query_energy,
+        align_rope=align_rope,
+        keep_norms=keep_norms,
     )
     heads, length, dim = tensor.shape[1:]
-    bits, code = solve_pairs(losses, dim, saving) if max_group == 2 else solve(losses, dim, saving)
+    if max_group == 2:
+        bits, code = solve_pairs(losses, dim, saving, keep_norms, per_head_budget)
+    else:
+        bits, code = solve(losses, dim, saving, keep_norms)
     code = code.reshape(1, heads, length, 1).to(tensor.device)
     out = tensor.clone()
     counts = {"format_dense_pair": int((code == 0).sum()) // 2}

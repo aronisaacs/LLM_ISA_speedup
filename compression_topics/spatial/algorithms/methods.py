@@ -29,11 +29,18 @@ class SpatialConfig:
     query_aware: bool = False
     query_weights: str | None = None
     query_weights_sha256: str | None = None
+    # Simplification studies; omitted from the pipeline while at their defaults.
+    per_head_budget: bool = False  # each head meets the saving alone (pairs only)
+    align_rope: bool = True  # undo RoPE on keys before merging
+    keep_norms: bool = True  # store per-token norms and merge unit directions
 
     def __post_init__(self):
         sizes(self.max_group)
-        if not isinstance(self.query_aware, bool):
-            raise ValueError("query_aware is a boolean")
+        for flag in ("query_aware", "per_head_budget", "align_rope", "keep_norms"):
+            if not isinstance(getattr(self, flag), bool):
+                raise ValueError(f"{flag} is a boolean")
+        if self.per_head_budget and self.max_group != 2:
+            raise ValueError("per-head budgets are implemented for pairs only")
         if self.query_aware != (
             self.query_weights is not None and self.query_weights_sha256 is not None
         ):
@@ -45,7 +52,12 @@ class SpatialConfig:
         if not math.isfinite(saving) or not 0 < saving < 1:
             raise ValueError("saving must be between zero and one")
         step = dict(method="spatial", saving=saving, k_layers=k_layers, v_layers=v_layers)
-        return {"pipeline": [dict(step, **asdict(self))]}
+        options = {k: v for k, v in asdict(self).items()
+                   if k not in _STUDY_DEFAULTS or v != _STUDY_DEFAULTS[k]}
+        return {"pipeline": [dict(step, **options)]}
+
+
+_STUDY_DEFAULTS = dict(per_head_budget=False, align_rope=True, keep_norms=True)
 
 
 def _stats(target, layer_idx):
@@ -71,6 +83,9 @@ def store(
     query_aware=False,
     query_weights=None,
     query_weights_sha256=None,
+    per_head_budget=False,
+    align_rope=True,
+    keep_norms=True,
     **context,
 ):
     """New tokens are stored as written; :func:`after_append` compresses whole windows."""
@@ -94,6 +109,9 @@ def after_append(
     query_aware=False,
     query_weights=None,
     query_weights_sha256=None,
+    per_head_budget=False,
+    align_rope=True,
+    keep_norms=True,
 ):
     """Compress, in place, every eight-token window completed by this cache update."""
     if cache_tensor.ndim != 4 or cache_tensor.shape[0] != 1:
@@ -121,6 +139,9 @@ def after_append(
         max_group=max_group,
         rope_tables=rope_tables,
         query_energy=energy,
+        align_rope=align_rope,
+        keep_norms=keep_norms,
+        per_head_budget=per_head_budget,
     )
     cache_tensor[..., done:complete, :] = out
     header = HEADER_BITS if done == 0 else 0

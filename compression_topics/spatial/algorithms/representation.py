@@ -35,9 +35,10 @@ class Groups:
     size: int
     cos: object
     sin: object
+    normalized: bool = True
 
 
-def prepare(tensor, *, target, size, rope_tables):
+def prepare(tensor, *, target, size, rope_tables, align_rope=True, keep_norms=True):
     """Group a [1, heads, tokens, dim] slice whose length is a multiple of ``size``."""
     if tensor.ndim != 4 or tensor.shape[0] != 1:
         raise ValueError(
@@ -48,17 +49,17 @@ def prepare(tensor, *, target, size, rope_tables):
         raise ValueError("slice must hold whole groups")
     source = tensor.float()
     cos = sin = None
-    if target == "k":
+    if target == "k" and align_rope:
         if rope_tables is None or rope_tables.attention_scaling != 1.0:
             raise ValueError("keys require pure-rotation RoPE tables")
         offsets = torch.arange(length, device=tensor.device) % size
         cos, sin = rope_tables.cos_sin(offsets, torch.float32)
         source = apply_rope(source, cos, sin, inverse=True)
-    elif target != "v":
+    elif target not in ("k", "v"):
         raise ValueError("target must be 'k' or 'v'")
     norms = source.norm(dim=-1, keepdim=True)
     shape = (1, tensor.shape[1], length // size, size, tensor.shape[-1])
-    unit = torch.nn.functional.normalize(source, dim=-1).reshape(shape)
+    unit = (torch.nn.functional.normalize(source, dim=-1) if keep_norms else source).reshape(shape)
     mean = unit.mean(-2, keepdim=True)
     deviation = (
         (unit[..., 0, :] - unit[..., 1, :]).unsqueeze(-2) / 2
@@ -73,6 +74,7 @@ def prepare(tensor, *, target, size, rope_tables):
         size,
         cos,
         sin,
+        keep_norms,
     )
 
 
@@ -91,11 +93,15 @@ def reconstruct(groups, residual, *, dtype, query_energy=None):
         torch.cat((mean + kept, mean - kept), -2) if groups.size == 2 else mean + kept
     )
     size = unit.norm(dim=-1, keepdim=True)
-    scale = (groups.norms / size.clamp_min(1e-12)).to(dtype).float()
-    restored = unit * scale
-    valid = (groups.norms.squeeze(-1) > 1e-12).all(-1) & (size.squeeze(-1) > 1e-6).all(
-        -1
-    )
+    if groups.normalized:
+        scale = (groups.norms / size.clamp_min(1e-12)).to(dtype).float()
+        restored = unit * scale
+        valid = (groups.norms.squeeze(-1) > 1e-12).all(-1) & (
+            size.squeeze(-1) > 1e-6
+        ).all(-1)
+    else:  # no stored norms: the merged vectors are used as rebuilt
+        restored = unit
+        valid = torch.ones(unit.shape[:3], dtype=torch.bool, device=unit.device)
     valid &= torch.isfinite(restored).all(-1).all(-1)
     return restored, valid
 

@@ -7,6 +7,11 @@ Arms (each calibrated and allocated independently):
 * query_pairs: pairs with query-aware loss and residuals on keys;
 * query_hierarchy: the hierarchy with query-aware loss and residuals on keys.
 
+Simplifications of query_pairs (each calibrated on its own):
+* query_pairs_per_head: every head meets the saving alone (no shared window budget);
+* query_pairs_no_rope: keys are merged without undoing RoPE;
+* query_pairs_no_norms: no per-token norms; raw vectors are merged.
+
 Every eight-token window of a layer slot is compressed to that slot's saving.
 Pairs cannot reach 50%; their 50% point is the labeled endpoint where every pair
 is merged with no residual (about 49.15%).
@@ -26,18 +31,23 @@ from compression_topics.spatial.scripts import study as base
 from engine.eval_runner.files import write_json
 from engine.layer_select.study import require_matched_savings, select_settings
 
-ARMS = ("pairs", "hierarchy", "query_pairs", "query_hierarchy")
-PAIR_ARMS = ("pairs", "query_pairs")
-QUERY_ARMS = ("query_pairs", "query_hierarchy")
+SIMPLIFICATIONS = {
+    "query_pairs_per_head": dict(per_head_budget=True),
+    "query_pairs_no_rope": dict(align_rope=False),
+    "query_pairs_no_norms": dict(keep_norms=False),
+}
+ARMS = ("pairs", "hierarchy", "query_pairs", "query_hierarchy", *SIMPLIFICATIONS)
+PAIR_ARMS = ("pairs", "query_pairs", *SIMPLIFICATIONS)
+QUERY_ARMS = ("query_pairs", "query_hierarchy", *SIMPLIFICATIONS)
 BUDGETS = (0.3, 0.4, 0.5)
 OUT = ROOT / "compression_topics/spatial/figures/ladder"
 
 
-def plan(out, *, arms=ARMS, layers=32, screen=4, refine=12, validation=16):
+def plan(out, *, arms=ARMS[:4], budgets=BUDGETS, layers=32, screen=4, refine=12, validation=16):
     p = base.base_plan(
         out,
         layers=layers,
-        budgets=BUDGETS,
+        budgets=budgets,
         screen=screen,
         refine=refine,
         validation=validation,
@@ -63,6 +73,7 @@ def _config(study, arm, target, digest):
         query_aware=aware,
         query_weights=study["query_weights"] if aware else None,
         query_weights_sha256=digest if aware else None,
+        **SIMPLIFICATIONS.get(arm, {}),
     )
 
 
@@ -75,11 +86,12 @@ def candidates(study):
     rows = []
     for arm in study["arms"]:
         pairs = arm in PAIR_ARMS
+        endpoint = pairs and 0.5 in study["budgets"]
         budgets = study["pair_local_budgets"] if pairs else study["local_budgets"]
         for layer in range(study["layers"]):
             for target in ("k", "v"):
                 config = _config(study, arm, target, digest)
-                for budget in budgets + ([0.5] if pairs else []):
+                for budget in budgets + ([0.5] if endpoint else []):
                     rows.append(
                         dict(
                             name=f"{arm}_L{layer:02d}_{target}_b{round(100 * budget):02d}",
@@ -87,7 +99,7 @@ def candidates(study):
                             layer=layer,
                             target=target,
                             budget=budget,
-                            maximum_feasible=pairs and budget == 0.5,
+                            maximum_feasible=endpoint and budget == 0.5,
                             kv=config.pipeline(budget, **base.slot(layer, target)),
                         )
                     )
@@ -102,13 +114,13 @@ def allocations(study, calibration):
             for r in calibration["candidates"]
             if r["arm"] == arm and not r.get("maximum_feasible")
         ]
-        budgets = [0.3, 0.4] if arm in PAIR_ARMS else study["budgets"]
+        budgets = [b for b in study["budgets"] if not (arm in PAIR_ARMS and b == 0.5)]
         for selection in base.allocate(
             study, dict(calibration, candidates=regular), arm, budgets
         ):
             selection.update(maximum_feasible=False)
             result.append(selection)
-        if arm in PAIR_ARMS:
+        if arm in PAIR_ARMS and 0.5 in study["budgets"]:
             settings = select_settings(
                 calibration,
                 include=lambda r, arm=arm: r["arm"] == arm and r.get("maximum_feasible"),
@@ -211,15 +223,18 @@ def main():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--out", type=Path, default=OUT)
-    parser.add_argument("--arms", choices=ARMS, nargs="+", default=list(ARMS))
+    parser.add_argument("--arms", choices=ARMS, nargs="+", default=list(ARMS[:4]))
+    parser.add_argument("--budgets", type=float, nargs="+", default=list(BUDGETS))
     parser.add_argument("--from", dest="start", choices=base.STAGES, default="screen")
     parser.add_argument("--through", choices=base.STAGES, default="summary")
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
-    study = plan(args.out.resolve(), arms=tuple(dict.fromkeys(args.arms)))
+    study = plan(args.out.resolve(), arms=tuple(dict.fromkeys(args.arms)),
+                 budgets=tuple(args.budgets))
     base.write_plan(study)
     print(
-        f"Spatial ladder: {', '.join(study['arms'])} at 30/40/50%; "
+        f"Spatial ladder: {', '.join(study['arms'])} at "
+        f"{'/'.join(str(round(100 * b)) for b in study['budgets'])}%; "
         "4+12 train and 16 holdout chunks, full C-Eval.",
         flush=True,
     )
