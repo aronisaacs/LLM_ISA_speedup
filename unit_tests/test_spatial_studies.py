@@ -117,6 +117,14 @@ class LadderTests(unittest.TestCase):
                 all(r["kv"]["pipeline"][0]["method"] == "spatial_offline" for r in rows)
             )
             self.assertNotIn("control", offline)
+            chunked = ladder.plan(Path(folder) / "chunk", algorithm="chunked", arms=("pairs",))
+            rows = ladder.candidates(chunked)
+            self.assertEqual(len(rows), 64 * 6)
+            self.assertTrue(
+                all(r["kv"]["pipeline"][0]["method"] == "spatial_chunked" for r in rows)
+            )
+            self.assertEqual(sum(r["maximum_feasible"] for r in rows), 64)
+            self.assertNotIn("control", chunked)
 
     def test_validation_gate_and_endpoint(self):
         rows = [
@@ -264,7 +272,7 @@ class StudyTests(unittest.TestCase):
                 head_dim=128,
             )
         ).eval()
-        for algorithm in ("online", "offline"):
+        for algorithm in ("online", "offline", "chunked"):
             policy = SpatialConfig(algorithm=algorithm).pipeline(
                 0.4, k_layers=[0], v_layers=[]
             )

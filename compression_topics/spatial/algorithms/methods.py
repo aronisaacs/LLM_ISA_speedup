@@ -1,4 +1,4 @@
-"""The two spatial compression methods: ``spatial_offline`` and ``spatial_online``.
+"""Spatial compression methods: ``spatial_offline``, ``spatial_online`` and ``spatial_chunked``.
 
 Both merge adjacent tokens per KV head (pairs, and optionally quads/eights) with
 the same preprocessing, formats and loss; they differ only in how the price is set.
@@ -12,13 +12,17 @@ the same preprocessing, formats and loss; they differ only in how the price is s
   kept per layer slot across cache updates. Tokens of an unfinished window (and
   all tokens before the first 32 arrive) stay dense until the window completes.
 
+* chunked: no price is carried between windows. Each completed eight-token
+  window, in the prompt and during generation, is compressed on its own to the
+  slot's saving (``chunked.py``). Tokens of an unfinished window stay dense.
+
 Query awareness applies to keys only; values always use the relative loss.
 """
 
 from dataclasses import asdict, dataclass, fields
 import math
 
-from compression_topics.spatial.algorithms import windows
+from compression_topics.spatial.algorithms import chunked, windows
 from compression_topics.spatial.algorithms.controller import (
     Control,
     Online,
@@ -36,7 +40,7 @@ from compression_topics.spatial.algorithms.formats import (
 from compression_topics.spatial.algorithms.representation import query_energy
 from engine.kv_compress.methods import AFTER_APPEND, METHODS, OPTION_VALIDATORS
 
-ALGORITHMS = ("offline", "online")
+ALGORITHMS = ("offline", "online", "chunked")
 
 
 @dataclass(frozen=True)
@@ -55,7 +59,7 @@ class SpatialConfig:
 
     def __post_init__(self):
         if self.algorithm not in ALGORITHMS:
-            raise ValueError("algorithm must be offline or online")
+            raise ValueError("algorithm must be offline, online or chunked")
         validate_layout(
             self.max_group,
             fixed_residual=self.fixed_residual,
@@ -72,8 +76,8 @@ class SpatialConfig:
             raise ValueError(
                 "query-aware loss requires calibrated weights and their checksum, and only then"
             )
-        if self.minimum_storage and (self.algorithm != "online" or self.max_group != 2):
-            raise ValueError("the minimum-storage endpoint is online pairs only")
+        if self.minimum_storage and (self.algorithm == "offline" or self.max_group != 2):
+            raise ValueError("the minimum-storage endpoint is online or chunked pairs only")
         if not isinstance(self.prefill_only, bool):
             raise ValueError("prefill_only must be boolean")
         if self.control is not None:
@@ -323,9 +327,78 @@ def online_after_append(
     stream.done = complete
 
 
+# Tokens already compressed per layer slot by the chunked method.
+_CHUNKED = {}
+
+
+def chunked_after_append(
+    cache_tensor,
+    *,
+    target,
+    layer_idx,
+    start,
+    end,
+    rope_tables=None,
+    saving,
+    max_group=8,
+    query_aware=False,
+    query_weights=None,
+    query_weights_sha256=None,
+    control=None,
+    fixed_residual=None,
+    minimum_storage=False,
+    residual_counts=None,
+    prefill_only=False,
+    merge_sizes=None,
+):
+    """Compress, in place, every eight-token window completed by this update to ``saving``."""
+    if cache_tensor.ndim != 4 or cache_tensor.shape[0] != 1:
+        raise ValueError("spatial compression requires batch size one")
+    key = (layer_idx, target)
+    first = start == 0 or key not in _CHUNKED
+    if first:
+        _CHUNKED[key] = 0
+    done = _CHUNKED[key]
+    heads, dim = cache_tensor.shape[1], cache_tensor.shape[-1]
+    row = _stats(target, layer_idx)
+    new = heads * dense_bits(end - start, dim)
+    row["dense_bits"] += new
+    row["stored_bits"] += new
+    if prefill_only and start > 0:
+        return
+    complete = end // WINDOW * WINDOW
+    if complete <= done:
+        return
+    body = cache_tensor[..., done:complete, :]
+    energy = _energy(
+        target, layer_idx, body, query_aware, query_weights, query_weights_sha256
+    )
+    out, bits, counts = chunked.compress(
+        body,
+        target=target,
+        saving=saving,
+        max_group=max_group,
+        rope_tables=rope_tables,
+        query_energy=energy,
+        fixed_residual=fixed_residual,
+        residual_counts=residual_counts,
+        merge_sizes=merge_sizes,
+        minimum_storage=minimum_storage,
+    )
+    cache_tensor[..., done:complete, :] = out
+    header = HEADER_BITS if done == 0 else 0
+    row["stored_bits"] -= heads * dense_bits(complete - done, dim) - bits - header
+    row["metadata_bits"] += header + 3 * sum(counts.values())
+    row["updates"] += 1
+    for name, count in counts.items():
+        row[name] = row.get(name, 0) + count
+    _CHUNKED[key] = complete
+
+
 def reset():
     """Forget online state (a new sequence also resets it automatically)."""
     _STATE.clear()
+    _CHUNKED.clear()
 
 
 def _validate(options):
@@ -336,9 +409,14 @@ def _validate(options):
 METHODS["spatial_offline"] = offline
 METHODS["spatial_online"] = online
 AFTER_APPEND["spatial_online"] = online_after_append
+METHODS["spatial_chunked"] = online  # stored as written; the append hook compresses
+AFTER_APPEND["spatial_chunked"] = chunked_after_append
 OPTION_VALIDATORS["spatial_offline"] = lambda options: _validate(
     dict(options, algorithm="offline")
 )
 OPTION_VALIDATORS["spatial_online"] = lambda options: _validate(
     dict(options, algorithm="online")
+)
+OPTION_VALIDATORS["spatial_chunked"] = lambda options: _validate(
+    dict(options, algorithm="chunked")
 )

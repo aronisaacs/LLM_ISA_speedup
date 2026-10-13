@@ -7,9 +7,11 @@ Arms (each calibrated and allocated independently):
 * query_hierarchy: the hierarchy with query-aware loss and residuals on keys.
 
 ``--algorithm online`` (default) steers the price causally and also compresses
-generated tokens; ``--algorithm offline`` fits one price per slot over the prompt.
-Pairs cannot reach 50%; online, its 50% point is the labeled minimum-storage
-endpoint (every pair merged, no residual, about 49.15%); offline skips it.
+generated tokens; ``--algorithm chunked`` compresses every eight-token window to
+the slot's saving on its own, also during generation; ``--algorithm offline``
+fits one price per slot over the prompt. Pairs cannot reach 50%; online and
+chunked, its 50% point is the labeled minimum-storage endpoint (every pair
+merged, no residual, about 49.15%); offline skips it.
 """
 
 import argparse
@@ -54,6 +56,8 @@ def plan(
         query_prefix=1536,
         pair_endpoint="minimum_storage_online_only",
     )
+    if algorithm == "chunked":
+        p["pair_endpoint"] = "minimum_storage_chunked"
     if algorithm != "online":
         p.pop("control")
     return p
@@ -83,7 +87,7 @@ def candidates(study):
         budgets = (
             study["pair_local_budgets"] if arm == "pairs" else study["local_budgets"]
         )
-        endpoint = arm == "pairs" and study["algorithm"] == "online"
+        endpoint = arm == "pairs" and study["algorithm"] != "offline"
         for layer in range(study["layers"]):
             for target in ("k", "v"):
                 for budget in budgets + ([0.5] if endpoint else []):
@@ -117,7 +121,7 @@ def allocations(study, calibration):
         ):
             selection.update(maximum_feasible=False)
             result.append(selection)
-        if arm == "pairs" and study["algorithm"] == "online":
+        if arm == "pairs" and study["algorithm"] != "offline":
             settings = select_settings(
                 calibration,
                 include=lambda r: r["arm"] == "pairs" and r.get("maximum_feasible"),
@@ -218,7 +222,7 @@ def main():
     )
     parser.add_argument("--out", type=Path, default=OUT)
     parser.add_argument("--arms", choices=ARMS, nargs="+", default=list(ARMS))
-    parser.add_argument("--algorithm", choices=("online", "offline"), default="online")
+    parser.add_argument("--algorithm", choices=("online", "chunked", "offline"), default="online")
     parser.add_argument("--from", dest="start", choices=base.STAGES, default="screen")
     parser.add_argument("--through", choices=base.STAGES, default="summary")
     parser.add_argument("--execute", action="store_true")

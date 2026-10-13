@@ -113,7 +113,7 @@ class LayerTable:
         return WindowChoice(tuple(h.choose(window, price) for h in self.heads))
 
 
-def build(
+def candidates(
     tensor,
     *,
     target,
@@ -124,10 +124,11 @@ def build(
     residual_counts=None,
     merge_sizes=None
 ):
-    """Loss table and every candidate reconstruction for whole windows of ``tensor``.
+    """Loss of every allowed format and every candidate reconstruction.
 
     ``tensor`` is [1, heads, tokens, dim] with tokens a multiple of eight, starting
-    on a window boundary. ``fixed_residual`` restricts pairs to dense or one count.
+    on a window boundary. Returns (losses, payload, reconstructions): losses[size]
+    is [heads, groups, len(MENUS[size])], infinite where a format is not allowed.
     """
     validate_layout(
         max_group,
@@ -140,10 +141,8 @@ def build(
     heads, length, dim = tensor.shape[1:]
     if length % WINDOW or not length:
         raise ValueError("need whole eight-token windows")
-    windows = length // WINDOW
-    rows = [[{} for _ in range(windows)] for _ in range(heads)]
     payload = {(2, None): dense_bits(2, dim)}
-    reconstructions = {}
+    reconstructions, tables = {}, {}
     energy = query_energy if target == "k" else None
     for size, menu in MENUS.items():
         if size > max_group or (merge_sizes is not None and size not in merge_sizes):
@@ -173,10 +172,22 @@ def build(
                 / WINDOW
             )
             losses.append(value.masked_fill(~valid, float("inf"))[0])
-            payload[(size, residual)] = group_bits(residual, dim, size)
             flat = unalign(restored.reshape(1, heads, length, dim), groups)
             reconstructions[(size, residual)] = flat.to(tensor.dtype)
-        matrix = torch.stack(losses, -1).cpu().tolist()  # [heads][groups][menu]
+        tables[size] = torch.stack(losses, -1)
+    return tables, payload, reconstructions
+
+
+def build(tensor, *, target, max_group=8, merge_sizes=None, **options):
+    """Per-head loss tables (for the tree at a price) and candidate reconstructions."""
+    tables, payload, reconstructions = candidates(
+        tensor, target=target, max_group=max_group, merge_sizes=merge_sizes, **options
+    )
+    heads, length, dim = tensor.shape[1:]
+    windows = length // WINDOW
+    rows = [[{} for _ in range(windows)] for _ in range(heads)]
+    for size, losses in tables.items():
+        matrix = losses.cpu().tolist()  # [heads][groups][menu]
         for head in range(heads):
             for window in range(windows):
                 for offset in range(0, WINDOW, size):

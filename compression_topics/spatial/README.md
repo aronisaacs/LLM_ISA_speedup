@@ -22,6 +22,11 @@ compares larger groups against smaller ones inside each eight-token window.
 - `spatial_online` fits lambda from the first 32 observed tokens, then updates
   it every eight-token window. State survives cache appends, so it supports
   compression during decode. Unfinished windows stay dense.
+- `spatial_chunked` keeps no state between windows: every completed eight-token
+  window, in the prompt and during decode, is compressed on its own to the
+  slot's saving. Within the window's bit budget the heads' formats are chosen
+  together for the least total loss (`algorithms/chunked.py`). Unfinished
+  windows stay dense; there is no startup.
 - `spatial_offline` fits one price over the whole observed prompt; generated
   tokens stay dense. This is a diagnostic/reference method.
 - `prefill_only=True` explicitly leaves continuation/decode appends dense,
@@ -39,6 +44,7 @@ not separate compression implementations.
   and the error objective.
 - `algorithms/windows.py`: per-head format choices and reconstruction.
 - `algorithms/controller.py`: offline price fit and causal online feedback.
+- `algorithms/chunked.py`: per-window budget solver for `spatial_chunked`.
 - `algorithms/methods.py`: configuration and cache integration.
 - `scripts/study.py`: common calibration, allocation, validation, and accuracy
   execution. Candidate generation remains specific to each experiment.
@@ -90,7 +96,8 @@ screening tolerance. Historical reference screening used four chunks.
 
 ## Entry points
 
-- `ladder.py` / `ladder_dgx.sh`: pairs, hierarchy, query hierarchy (30/40/50%).
+- `ladder.py` / `ladder_dgx.sh`: pairs, hierarchy, query hierarchy (30/40/50%);
+  `--algorithm online|chunked|offline`.
 - `fixed_rungs.py` / `fixed_rungs_dgx.sh`: no-residual and fixed-residual pairs
   (10/20/30/40%).
 - `fixed_hierarchy.py` / `fixed_hierarchy_dgx.sh`: one residual per enabled group
