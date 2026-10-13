@@ -5,11 +5,24 @@ compares its quad formats against its two pairs, and the eight compares against
 its two quads. Cost = loss + price * bits / dense window bits. Every KV head
 chooses its own tree; the price is shared by the heads of one layer slot.
 """
+
 from dataclasses import dataclass
 import torch
 
-from compression_topics.spatial.algorithms.formats import MENUS, TAG_BITS, WINDOW, dense_bits, group_bits
-from compression_topics.spatial.algorithms.representation import loss, prepare, reconstruct, unalign
+from compression_topics.spatial.algorithms.formats import (
+    MENUS,
+    TAG_BITS,
+    WINDOW,
+    dense_bits,
+    group_bits,
+    validate_layout,
+)
+from compression_topics.spatial.algorithms.representation import (
+    loss,
+    prepare,
+    reconstruct,
+    unalign,
+)
 
 
 @dataclass(frozen=True)
@@ -25,8 +38,8 @@ class Choice:
 
 @dataclass
 class HeadTable:
-    rows: list       # per window: {(size, start): [loss per residual in MENUS[size]]}
-    payload: dict    # (size, residual or None) -> payload bits
+    rows: list  # per window: {(size, start): [loss per residual in MENUS[size]]}
+    payload: dict  # (size, residual or None) -> payload bits
     window_bits: int
     max_group: int
     merge_sizes: tuple | None = None
@@ -36,19 +49,31 @@ class HeadTable:
 
         def visit(start, size):
             if size == 2:
-                best = Choice(((start, 2, None),), 0., self.payload[(2, None)])
+                best = Choice(((start, 2, None),), 0.0, self.payload[(2, None)])
             else:
-                left, right = visit(start, size // 2), visit(start + size // 2, size // 2)
-                best = Choice(left.segments + right.segments, left.loss + right.loss,
-                              left.payload_bits + right.payload_bits)
+                left, right = visit(start, size // 2), visit(
+                    start + size // 2, size // 2
+                )
+                best = Choice(
+                    left.segments + right.segments,
+                    left.loss + right.loss,
+                    left.payload_bits + right.payload_bits,
+                )
             cost = best.loss + price * best.bits / self.window_bits
-            if size <= self.max_group and (self.merge_sizes is None or size in self.merge_sizes):
+            if size <= self.max_group and (
+                self.merge_sizes is None or size in self.merge_sizes
+            ):
                 for residual, value in zip(MENUS[size], row[(size, start)]):
-                    option = Choice(((start, size, residual),), value, self.payload[(size, residual)])
+                    option = Choice(
+                        ((start, size, residual),),
+                        value,
+                        self.payload[(size, residual)],
+                    )
                     candidate = option.loss + price * option.bits / self.window_bits
                     if candidate < cost:  # ties keep the smaller groups
                         best, cost = option, candidate
             return best
+
         return visit(0, WINDOW)
 
 
@@ -88,43 +113,66 @@ class LayerTable:
         return WindowChoice(tuple(h.choose(window, price) for h in self.heads))
 
 
-def build(tensor, *, target, max_group=8, rope_tables=None, query_energy=None, fixed_residual=None, residual_counts=None, merge_sizes=None):
+def build(
+    tensor,
+    *,
+    target,
+    max_group=8,
+    rope_tables=None,
+    query_energy=None,
+    fixed_residual=None,
+    residual_counts=None,
+    merge_sizes=None
+):
     """Loss table and every candidate reconstruction for whole windows of ``tensor``.
 
     ``tensor`` is [1, heads, tokens, dim] with tokens a multiple of eight, starting
     on a window boundary. ``fixed_residual`` restricts pairs to dense or one count.
     """
-    if merge_sizes is not None and (not merge_sizes or any(g not in MENUS or g>max_group for g in merge_sizes)):
-        raise ValueError('invalid merge sizes')
-    if max_group not in MENUS:
-        raise ValueError('max_group must be 2, 4 or 8')
-    if fixed_residual is not None and (max_group != 2 or isinstance(fixed_residual, bool)
-                                       or fixed_residual not in MENUS[2]):
-        raise ValueError('a fixed residual count requires pairs and 0/16/32 entries')
+    validate_layout(
+        max_group,
+        fixed_residual=fixed_residual,
+        residual_counts=residual_counts,
+        merge_sizes=merge_sizes,
+    )
     if tensor.ndim != 4 or tensor.shape[0] != 1 or tensor.shape[-1] < 32:
-        raise ValueError('need batch-one [1, KV heads, tokens, head_dim >= 32]')
+        raise ValueError("need batch-one [1, KV heads, tokens, head_dim >= 32]")
     heads, length, dim = tensor.shape[1:]
     if length % WINDOW or not length:
-        raise ValueError('need whole eight-token windows')
+        raise ValueError("need whole eight-token windows")
     windows = length // WINDOW
     rows = [[{} for _ in range(windows)] for _ in range(heads)]
     payload = {(2, None): dense_bits(2, dim)}
     reconstructions = {}
-    energy = query_energy if target == 'k' else None
+    energy = query_energy if target == "k" else None
     for size, menu in MENUS.items():
         if size > max_group or (merge_sizes is not None and size not in merge_sizes):
             continue
         groups = prepare(tensor, target=target, size=size, rope_tables=rope_tables)
         losses = []
         for residual in menu:
-            allowed = fixed_residual if fixed_residual is not None else (residual_counts.get(str(size)) if residual_counts else None)
+            allowed = (
+                fixed_residual
+                if fixed_residual is not None
+                else (residual_counts.get(str(size)) if residual_counts else None)
+            )
             payload[(size, residual)] = group_bits(residual, dim, size)
             if allowed is not None and residual != allowed:
-                losses.append(torch.full((heads, length // size), float('inf'), device=tensor.device))
+                losses.append(
+                    torch.full(
+                        (heads, length // size), float("inf"), device=tensor.device
+                    )
+                )
                 continue  # Do not reconstruct disallowed formats at runtime.
-            restored, valid = reconstruct(groups, residual, dtype=torch.bfloat16, query_energy=energy)
-            value = loss(groups.source, restored, query_energy=energy).mean(3) * size / WINDOW
-            losses.append(value.masked_fill(~valid, float('inf'))[0])
+            restored, valid = reconstruct(
+                groups, residual, dtype=torch.bfloat16, query_energy=energy
+            )
+            value = (
+                loss(groups.source, restored, query_energy=energy).mean(3)
+                * size
+                / WINDOW
+            )
+            losses.append(value.masked_fill(~valid, float("inf"))[0])
             payload[(size, residual)] = group_bits(residual, dim, size)
             flat = unalign(restored.reshape(1, heads, length, dim), groups)
             reconstructions[(size, residual)] = flat.to(tensor.dtype)
@@ -132,8 +180,15 @@ def build(tensor, *, target, max_group=8, rope_tables=None, query_energy=None, f
         for head in range(heads):
             for window in range(windows):
                 for offset in range(0, WINDOW, size):
-                    rows[head][window][(size, offset)] = matrix[head][(window * WINDOW + offset) // size]
-    table = LayerTable([HeadTable(rows[h], payload, dense_bits(WINDOW, dim), max_group, merge_sizes) for h in range(heads)])
+                    rows[head][window][(size, offset)] = matrix[head][
+                        (window * WINDOW + offset) // size
+                    ]
+    table = LayerTable(
+        [
+            HeadTable(rows[h], payload, dense_bits(WINDOW, dim), max_group, merge_sizes)
+            for h in range(heads)
+        ]
+    )
     return table, reconstructions
 
 
@@ -147,7 +202,9 @@ def restore(tensor, choices, reconstructions):
             for start, size, residual in head_choice.segments:
                 if residual is not None:
                     offset = window * WINDOW + start
-                    codes[head, offset:offset + size] = options.index((size, residual)) + 1
+                    codes[head, offset : offset + size] = (
+                        options.index((size, residual)) + 1
+                    )
     codes = codes.to(tensor.device).reshape(1, heads, length, 1)
     out = tensor.clone()
     for code, option in enumerate(options, 1):

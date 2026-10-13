@@ -14,5 +14,5 @@ export HF_HUB_CACHE="$HOME/models/huggingface"
 export HF_DATASETS_CACHE="$HOME/datasets/huggingface"
 export OMP_NUM_THREADS=8
 export PYTHONUNBUFFERED=1
-python -m unittest unit_tests.test_pair_diagnostic
+python -m unittest unit_tests.test_storage_contract unit_tests.test_spatial_recorded_results unit_tests.test_pair_diagnostic
 python -u compression_topics/spatial/scripts/pair_diagnostic.py --execute "$@"

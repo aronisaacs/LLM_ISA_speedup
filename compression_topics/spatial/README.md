@@ -1,162 +1,121 @@
 # Spatial compression
 
-Spatial compression merges adjacent tokens within each KV head. There are two
-methods:
+Adjacent token vectors are merged **within each KV head**. Heads choose their
+own formats; the heads of one layer's keys share a controller, and that layer's
+values have a separate controller. Calibration allocates different byte budgets
+across these layer/K-V slots.
 
-- **`spatial_offline`:** sees the whole prompt, fits one price per layer and
-  K/V target so the prompt meets its byte target, and compresses at prefill.
-  Tokens generated during decode stay dense. This is a reference point.
-- **`spatial_online`:** compresses the cache as it grows, at prefill and during
-  decode. Each completed 8-token window is compressed in place once its last
-  token is appended; the window still being filled stays dense. A price fitted
-  on the first 32 tokens is nudged every window toward the byte target.
+## Algorithm
 
-C-Eval and the WikiText chunk scores have no decode, so both methods only
-compress prompt tokens there.
+All current spatial variants share RoPE alignment for keys, directional
+reconstruction with BF16 per-token scales, and conservative packed-format byte
+accounting. Query awareness uses calibrated query energy both to select key
+residual features and to score reconstruction error. Its error is absolute
+weighted squared error; ordinary key/value scoring is relative squared error.
+Values do not use query weights. No attention-importance weighting or shared
+quad/eight masks is included in the current path.
 
-## Representation
+The default menu is dense, pairs with 0/16/32 residual entries, quads with
+0/16 entries per token, and eights with 0/16 entries per token. A bottom-up tree
+compares larger groups against smaller ones inside each eight-token window.
 
-Per KV head, within each 8-token window:
+- `spatial_online` fits lambda from the first 32 observed tokens, then updates
+  it every eight-token window. State survives cache appends, so it supports
+  compression during decode. Unfinished windows stay dense.
+- `spatial_offline` fits one price over the whole observed prompt; generated
+  tokens stay dense. This is a diagnostic/reference method.
+- `prefill_only=True` explicitly leaves continuation/decode appends dense,
+  preserving the protocol used by the recorded presentation experiments.
 
-1. **Preprocessing.** Keys undo RoPE by each token's offset inside its group, so
-   neighbours are compared in the same frame. Every token is normalized to a
-   unit direction and keeps a bf16 norm.
-2. **Groups.** A bottom-up tree chooses dense tokens, pairs, quads or eights
-   (`max_group` 2, 4 or 8). A merged group stores the mean direction plus the
-   top-r residual entries and a bitmask. Pairs choose r from {0, 16, 32};
-   quads and eights from {0, 16}.
-3. **Accounting.** Each group carries a 3-bit tag and each slot a 16-bit header
-   (`formats.ACCOUNTING`).
-4. **Price.** One price λ is shared by the heads of a layer and target. Each head
-   minimises `loss + λ · bits / dense window bits` on its own.
+Fixed residuals restrict the menu through `residual_counts`, one count per
+enabled group size. `merge_sizes=[4]` permits only quad merges; failed quads stay
+dense without pair fallback. These are configuration choices in the same kernel,
+not separate compression implementations.
 
-The optional **query-aware** loss (keys only) weights each RoPE plane by its
-calibrated query energy E[q²], both when choosing residual entries and when
-scoring a group.
+## Code boundaries
 
-## Code
+- `algorithms/formats.py`: menus, bit costs, and format validation.
+- `algorithms/representation.py`: RoPE alignment, reconstruction, query weights,
+  and the error objective.
+- `algorithms/windows.py`: per-head format choices and reconstruction.
+- `algorithms/controller.py`: offline price fit and causal online feedback.
+- `algorithms/methods.py`: configuration and cache integration.
+- `scripts/study.py`: common calibration, allocation, validation, and accuracy
+  execution. Candidate generation remains specific to each experiment.
+- `scripts/comparison.py`: common archived-reference and holdout-quality gates
+  for simplification experiments.
+- `engine/eval_runner/storage.py`: explicit byte scopes and the isolated reader
+  for historical storage records.
 
-- `algorithms/formats.py`: bit costs and format menus.
-- `algorithms/representation.py`: preprocessing, reconstruction and loss.
-- `algorithms/windows.py`: per-head tree choices for each window at a price.
-- `algorithms/controller.py`: the online price controller and the offline
-  price fit.
-- `algorithms/methods.py`: `SpatialConfig`, the two registered methods and
-  the cache hook that runs `spatial_online` during decode.
+This remains an accuracy/storage simulation: tensors are reconstructed in
+PyTorch. Simulated compressed byte counts do not mean smaller allocated GPU
+cache tensors or a measured hardware speedup.
 
-```python
-from compression_topics.spatial.algorithms.methods import SpatialConfig
+## Storage contract
 
-kv = SpatialConfig(algorithm='online', max_group=8, query_aware=True,
-                   query_weights=path, query_weights_sha256=digest).pipeline(
-    0.3, k_layers=[0, 1], v_layers=[])
-```
+New chunk results have `storage_contract_version=2`:
 
-## Studies
+- `storage` is **prefill-only** when continuation NLL is scored. It contains
+  per-layer K/V `slots` and whole-model `targets`.
+- `cache_storage` records the **entire cache**, including continuation tokens.
+- `gate_stats` records algorithm/controller observations over the full evaluation.
+  These counters are not the source of prefix budgets in new records.
 
-`scripts/study.py` holds the shared protocol: screen and refine per-slot
-savings on WikiText train chunks, allocate a global budget greedily across
-layers, validate on WikiText validation chunks, then run 5-shot C-Eval.
+Calibration reads explicit slot bytes. Historical files without slot snapshots
+are interpreted only by `calibration_slot_bytes`; the old streaming
+prefill-only conversion lives there. Historical result files are never rewritten.
+Chunk extension preserves storage scopes, scoring definitions, and maximum
+controller deviations. Dense baselines use the same slot schema as compression.
 
-- `scripts/ladder.py`: arms `pairs`, `hierarchy` and `query_hierarchy` at global
-  budgets 30/40/50 percent; `--algorithm online|offline` (default online). The
-  pairs 50 percent point is the minimum-storage endpoint (online only).
-- `scripts/fixed_rungs.py`: `no_residual` and `fixed_residual` pair baselines at
-  10 to 40 percent.
-- `scripts/pair_similarity_profile.py`: pair similarity profile.
+## Experiment protocol
 
-DGX launches (one job per arm):
+Each arm calibrates its own layer policies on WikiText training chunks, using
+separate screening and refinement chunks. A common measured-byte allocator
+produces whole-model budgets. Validation uses separate held-out chunks before
+full 1,346-question five-shot C-Eval. Completed outputs are reused only when
+model, policy, and sample identities match.
 
-```bash
-for arm in pairs hierarchy query_hierarchy; do
-  sbatch --job-name=ladder_${arm} compression_topics/spatial/scripts/ladder_dgx.sh \
-    --arms "$arm" --out compression_topics/spatial/figures/ladder_${arm}
-done
-for arm in no_residual fixed_residual; do
-  sbatch --job-name=rungs_${arm} compression_topics/spatial/scripts/fixed_rungs_dgx.sh \
-    --arms "$arm" --out compression_topics/spatial/figures/fixed_rungs_${arm}
-done
-```
+A candidate that misses its local byte target is recorded in
+`*_rejected_candidates.json` and excluded. Identity, sample, or accounting errors
+still fail immediately. Whole-model validation remains strict and is rechecked
+when resuming directly at accuracy.
 
-Each job runs `unit_tests.test_spatial_algorithms` and
-`unit_tests.test_spatial_studies` first.
+The fixed-hierarchy and quad-only simplification studies use two screen chunks,
+twelve refinement chunks, and sixteen holdout chunks. They reuse the archived
+query weights and reevaluate the archived adaptive policy on the same holdout.
+Their heuristic gate requires savings within one percentage point and no more
+than a 2% perplexity increase. It does not guarantee accuracy equivalence. Final
+comparisons report both accuracy and actual bytes, with a one-point accuracy
+screening tolerance. Historical reference screening used four chunks.
 
-## Past results
+## Entry points
 
-Folders under `figures/` were produced by earlier versions of the code and are
-kept as recorded results. `clean_online_ladder_{pairs,hierarchy,query_hierarchy}`
-match the current online method on C-Eval (the decisions are identical on
-prompts). Their plans cannot be resumed with the new scripts.
+- `ladder.py` / `ladder_dgx.sh`: pairs, hierarchy, query hierarchy (30/40/50%).
+- `fixed_rungs.py` / `fixed_rungs_dgx.sh`: no-residual and fixed-residual pairs
+  (10/20/30/40%).
+- `fixed_hierarchy.py` / `fixed_hierarchy_dgx.sh`: one residual per enabled group
+  size per layer/K-V slot, targeting 40%.
+- `quad_only.py` / `quad_only_dgx.sh`: dense or a fixed quad format, targeting 40%.
+- `pair_diagnostic.py` / `pair_diagnostic_dgx.sh`: bounded dense-state diagnostic,
+  not a full accuracy experiment or replacement runtime algorithm.
+- `pair_similarity_profile.py`: profiling/capture utility.
 
-## Small fixed/adaptive pairs diagnostic
+Output plans are immutable. Resume with the original script and output directory
+only when its plan matches; use a fresh directory for a changed protocol.
+Launchers run regression checks first and print stage/preliminary progress.
+Slurm resource requests may be overridden at submission. Multiple GPUs speed
+parallel calibration configurations; a single accuracy configuration still runs
+on one GPU.
 
-`pair_diagnostic.py --execute` compares recorded 40% allocations, then captures
-five dense layers (0/8/16/24/31) on two train and two validation WikiText prompts,
-each 512 prefix tokens plus 32 observed continuation queries. At each selected
-K/V slot it uses the fixed arm's layer target for both residual policies and
-measures reconstruction, attention logits, attention output, and output after
-that layer's learned output projection. Only one K or V slot is altered at a
-time in these captured-state measurements. This is not downstream perplexity or
-accuracy evaluation.
+## Recorded evidence and safe synchronization
 
-Variants: fixed/adaptive with the existing causal controller; fixed/adaptive
-with a static price fitted on the independent training captures; and an
-analysis-only adaptive whole-prefix price reference fitted to the fixed
-controller's actual bytes on each validation capture. The last is deliberately
-noncausal, used to diagnose the error objective at similar bytes, not proposed
-as runtime. All actual byte gaps are recorded; frozen/controller variants must
-not be treated as matched if their savings differ. No query weighting or token
-importance is added. Existing runtime settings are unchanged.
+`clean_online_ladder_*` and `online_fixed_rungs_*` retain the pre-cleanup
+presentation results and their original policy/sample identities. New field and
+method names do not retrospectively change those records. Accounting audits
+verify their summaries against raw task results; this is not a re-execution of
+the historical model. Old algorithm revisions remain recoverable through Git.
 
-The one-GPU `pair_diagnostic_dgx.sh` has a 30-minute wall-time cap and writes
-`preliminary.json` after each slot and `summary.json` on completion. Running the
-Python script without `--execute` only compares the existing results.
-
-## Fixed-residual hierarchy simplification at 40%
-
-`fixed_hierarchy.py` fixes one residual count for each enabled group size via
-`SpatialConfig(residual_counts={'2': r2, '4': r4, '8': r8})`. Settings are per
-layer K/V slot, shared by its heads; group-size choices remain per-head. Only
-three merged candidates are reconstructed, rather than the seven merged
-candidates in the adaptive menu. Dense remains allowed. Query-aware key
-selection and scoring, RoPE, scales, and the controller remain unchanged.
-
-Twelve combinations are screened on two training chunks. One winner per
-slot/local budget is refined on twelve disjoint training chunks; the common
-measured-byte allocator creates one 40% whole-model policy. Sixteen validation
-chunks compare it with the archived adaptive policy, using the exact archived
-query weights. Both use `prefill_only=True`, preserving the historical dense
-continuation protocol despite the cleanup adding decode compression by default.
-The public default streaming behavior is unchanged.
-
-Full 1,346-question five-shot C-Eval runs only if actual holdout byte savings
-match within one point and fixed-policy PPL is no more than 2% above the
-reevaluated reference. This heuristic gate is checked on resumed task runs too.
-Final accuracy is compared against historical 53.05% at 39.47% actual saving,
-with a one-point accuracy tolerance, always reporting the actual byte gap.
-Screening used two chunks versus the historical reference's four; refinement
-uses twelve for both. This is an independently calibrated simplification test,
-not a claim of identical calibration effort or statistical equivalence.
-
-`fixed_hierarchy_dgx.sh` requests four GPUs for parallel calibration. It evaluates
-one compressed C-Eval setting, which itself is not spread across those GPUs.
-
-## Quad-only simplification
-
-`quad_only.py` evaluates dense-or-4-to-1 only at a 40% total KV target. Each
-layer K/V slot calibrates a fixed quad residual count of zero or 16 per token.
-The slot's heads decide independently; pair fallback and eight-token merges are
-disabled using `merge_sizes=[4]`. Within an eight-token controller window, the
-two quads are separate decisions. Dense quads are internally represented by two
-dense pair records under the same conservative 3-bit-tag accounting as the
-reference. No unsupported merged representations are constructed.
-
-Query-aware key selection/scoring, original query weights, RoPE, norms and
-controller settings are retained. Values use ordinary reconstruction error.
-The protocol uses 2 screening train chunks, 12 disjoint refinement train chunks,
-and 16 validation chunks. It preserves historical prefill-only behavior, compares
-holdout quality/bytes with the archived adaptive query hierarchy, and gates one
-full C-Eval point using the same heuristic gate as fixed_hierarchy. Calibration
-is per layer K/V slot, not per head. Results use a fresh `quad_only_40` directory.
-`quad_only_dgx.sh` requests four GPUs; command-line Slurm overrides may request
-more GPUs for parallel calibration, but the final setting runs on one GPU.
+Do not update a DGX checkout while jobs may still launch workers from it. Finish
+and save that run first, or use a separate checkout. Local cleanup never changes
+the running remote checkout automatically. Results, reports, and untracked
+outputs are retained unless explicitly retired.

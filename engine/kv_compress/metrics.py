@@ -4,6 +4,7 @@ Kernels report representation bytes in STATS. The cache records dense bytes for
 all slots, including unchanged slots, so totals do not assume equal layer sizes.
 Byte counts describe simulated storage, not allocated PyTorch memory.
 """
+
 STATS = {}
 _OBSERVED = {}
 _SELECTED = set()
@@ -28,9 +29,12 @@ def observe(keys, values, layer, spec):
         key = f"{target}_layer_{layer}"
         # Current simulation formats define dense vectors as 16-bit values.
         _OBSERVED[key] = _OBSERVED.get(key, 0) + tensor.numel() * 16
-        steps = [step for step in spec.pipeline
-                 if getattr(step, target + "_layers") == "all" or
-                 layer in getattr(step, target + "_layers")]
+        steps = [
+            step
+            for step in spec.pipeline
+            if getattr(step, target + "_layers") == "all"
+            or layer in getattr(step, target + "_layers")
+        ]
         if len(steps) > 1:
             _OVERLAPPING.add(key)
         elif steps:
@@ -47,15 +51,40 @@ def storage_summary():
         row = STATS.get(key, {})
         if "dense_bits" not in row or "stored_bits" not in row:
             return None
+    slots = {}
+    for key, dense in _OBSERVED.items():
+        row = STATS.get(key, {})
+        saved = row.get("dense_bits", 0) - row.get("stored_bits", 0)
+        slots[key] = {
+            "dense_bits": dense,
+            "stored_bits": dense - saved,
+            "compression": saved / dense if dense else 0.0,
+        }
     totals = {}
     for target in ("k", "v"):
-        dense = sum(value for key, value in _OBSERVED.items() if key.startswith(target + "_"))
-        saved = sum(row["dense_bits"] - row["stored_bits"] for key, row in STATS.items()
-                    if key.startswith(target + "_layer_") and "dense_bits" in row)
-        totals[target] = {"dense_bits": dense, "stored_bits": dense - saved,
-                          "compression": saved / dense if dense else 0.}
+        dense = sum(
+            value for key, value in _OBSERVED.items() if key.startswith(target + "_")
+        )
+        saved = sum(
+            row["dense_bits"] - row["stored_bits"]
+            for key, row in STATS.items()
+            if key.startswith(target + "_layer_") and "dense_bits" in row
+        )
+        totals[target] = {
+            "dense_bits": dense,
+            "stored_bits": dense - saved,
+            "compression": saved / dense if dense else 0.0,
+        }
     dense = sum(row["dense_bits"] for row in totals.values())
     stored = sum(row["stored_bits"] for row in totals.values())
-    totals["kv"] = {"dense_bits": dense, "stored_bits": stored,
-                    "compression": 1 - stored / dense if dense else 0.}
-    return {"scope": "simulated_cache_storage", "dense_value_bits": 16, "targets": totals}
+    totals["kv"] = {
+        "dense_bits": dense,
+        "stored_bits": stored,
+        "compression": 1 - stored / dense if dense else 0.0,
+    }
+    return {
+        "scope": "simulated_cache_storage",
+        "dense_value_bits": 16,
+        "targets": totals,
+        "slots": slots,
+    }

@@ -16,5 +16,5 @@ export OMP_NUM_THREADS=8
 export PYTHONUNBUFFERED=1
 echo "Slurm job ${SLURM_JOB_ID:-manual}; GPUs ${CUDA_VISIBLE_DEVICES:-unset}"
 git log -1 --oneline
-python -m unittest unit_tests.test_spatial_algorithms unit_tests.test_spatial_studies
+python -m unittest unit_tests.test_storage_contract unit_tests.test_spatial_recorded_results unit_tests.test_spatial_algorithms unit_tests.test_spatial_studies
 python -u compression_topics/spatial/scripts/ladder.py --execute "$@"

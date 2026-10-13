@@ -11,6 +11,7 @@ only) weights each dimension by the calibrated query energy E[q_d^2] and is
 absolute: sum_d E[q_d^2] (k_hat_d - k_d)^2, an estimate of E[(q . (k_hat - k))^2].
 The same weights then rank which residual entries are kept.
 """
+
 from dataclasses import dataclass
 from functools import lru_cache
 import hashlib
@@ -25,10 +26,12 @@ ROOT = Path(__file__).resolve().parents[3]
 
 @dataclass
 class Groups:
-    source: torch.Tensor     # [1, heads, groups, size, dim], RoPE-aligned keys or values
-    norms: torch.Tensor      # [1, heads, groups, size, 1]
-    mean: torch.Tensor       # [1, heads, groups, 1, dim], mean unit direction
-    deviation: torch.Tensor  # pairs: [.., 1, dim] half-difference; larger groups: [.., size, dim]
+    source: torch.Tensor  # [1, heads, groups, size, dim], RoPE-aligned keys or values
+    norms: torch.Tensor  # [1, heads, groups, size, 1]
+    mean: torch.Tensor  # [1, heads, groups, 1, dim], mean unit direction
+    deviation: (
+        torch.Tensor
+    )  # pairs: [.., 1, dim] half-difference; larger groups: [.., size, dim]
     size: int
     cos: object
     sin: object
@@ -37,26 +40,40 @@ class Groups:
 def prepare(tensor, *, target, size, rope_tables):
     """Group a [1, heads, tokens, dim] slice whose length is a multiple of ``size``."""
     if tensor.ndim != 4 or tensor.shape[0] != 1:
-        raise ValueError('spatial compression requires batch-one [1, heads, tokens, dim] tensors')
+        raise ValueError(
+            "spatial compression requires batch-one [1, heads, tokens, dim] tensors"
+        )
     length = tensor.shape[-2]
     if length % size or not length:
-        raise ValueError('slice must hold whole groups')
+        raise ValueError("slice must hold whole groups")
     source = tensor.float()
     cos = sin = None
-    if target == 'k':
-        if rope_tables is None or rope_tables.attention_scaling != 1.:
-            raise ValueError('keys require pure-rotation RoPE tables')
+    if target == "k":
+        if rope_tables is None or rope_tables.attention_scaling != 1.0:
+            raise ValueError("keys require pure-rotation RoPE tables")
         offsets = torch.arange(length, device=tensor.device) % size
         cos, sin = rope_tables.cos_sin(offsets, torch.float32)
         source = apply_rope(source, cos, sin, inverse=True)
-    elif target != 'v':
+    elif target != "v":
         raise ValueError("target must be 'k' or 'v'")
     norms = source.norm(dim=-1, keepdim=True)
     shape = (1, tensor.shape[1], length // size, size, tensor.shape[-1])
     unit = torch.nn.functional.normalize(source, dim=-1).reshape(shape)
     mean = unit.mean(-2, keepdim=True)
-    deviation = (unit[..., 0, :] - unit[..., 1, :]).unsqueeze(-2) / 2 if size == 2 else unit - mean
-    return Groups(source.reshape(shape), norms.reshape(*shape[:-1], 1), mean, deviation, size, cos, sin)
+    deviation = (
+        (unit[..., 0, :] - unit[..., 1, :]).unsqueeze(-2) / 2
+        if size == 2
+        else unit - mean
+    )
+    return Groups(
+        source.reshape(shape),
+        norms.reshape(*shape[:-1], 1),
+        mean,
+        deviation,
+        size,
+        cos,
+        sin,
+    )
 
 
 def reconstruct(groups, residual, *, dtype, query_energy=None):
@@ -70,11 +87,15 @@ def reconstruct(groups, residual, *, dtype, query_energy=None):
         index = score.topk(residual, dim=-1).indices
         kept.scatter_(-1, index, groups.deviation.gather(-1, index))
     kept = kept.to(dtype).float()
-    unit = torch.cat((mean + kept, mean - kept), -2) if groups.size == 2 else mean + kept
+    unit = (
+        torch.cat((mean + kept, mean - kept), -2) if groups.size == 2 else mean + kept
+    )
     size = unit.norm(dim=-1, keepdim=True)
     scale = (groups.norms / size.clamp_min(1e-12)).to(dtype).float()
     restored = unit * scale
-    valid = (groups.norms.squeeze(-1) > 1e-12).all(-1) & (size.squeeze(-1) > 1e-6).all(-1)
+    valid = (groups.norms.squeeze(-1) > 1e-12).all(-1) & (size.squeeze(-1) > 1e-6).all(
+        -1
+    )
     valid &= torch.isfinite(restored).all(-1).all(-1)
     return restored, valid
 
@@ -100,8 +121,10 @@ def _weights(path, digest):
     file = file if file.is_absolute() else ROOT / file
     data = file.read_bytes()
     if hashlib.sha256(data).hexdigest() != digest:
-        raise ValueError('query weight file changed; recalibration requires a new output directory')
-    weights = torch.load(file, map_location='cpu', weights_only=True)['weights'].float()
+        raise ValueError(
+            "query weight file changed; recalibration requires a new output directory"
+        )
+    weights = torch.load(file, map_location="cpu", weights_only=True)["weights"].float()
     # Average each RoPE plane (j, j + D/2) so the weights do not depend on rotation.
     half = weights.shape[-1] // 2
     tied = (weights[..., :half] + weights[..., half:]) / 2
@@ -111,6 +134,10 @@ def _weights(path, digest):
 def query_energy(path, digest, layer_idx, tensor):
     """Calibrated E[q^2] per KV head, shaped to broadcast over grouped tokens."""
     weights = _weights(str(path), digest)[layer_idx].to(tensor.device)
-    if weights.shape != (tensor.shape[1], tensor.shape[-1]) or not torch.isfinite(weights).all() or (weights < 0).any():
-        raise ValueError('query weights do not match the loaded layer/head shape')
+    if (
+        weights.shape != (tensor.shape[1], tensor.shape[-1])
+        or not torch.isfinite(weights).all()
+        or (weights < 0).any()
+    ):
+        raise ValueError("query weights do not match the loaded layer/head shape")
     return weights.reshape(1, tensor.shape[1], 1, 1, tensor.shape[-1])
