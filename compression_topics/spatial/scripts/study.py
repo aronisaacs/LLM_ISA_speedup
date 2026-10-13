@@ -76,7 +76,26 @@ def slot_measurement(payload):
     row = next(iter(stats.values()))
     if row.get('accounting') != ACCOUNTING or row.get('dense_bits', 0) <= 0:
         raise ValueError('missing spatial byte accounting')
-    return dict(compression=1 - row['stored_bits'] / row['dense_bits'], shortfall_updates=0, stats=stats)
+    dense = row['dense_bits']
+    stored = row['stored_bits']
+    # Streaming methods count dense continuation appends in gate_stats, while
+    # this calibration allocates only the prefix cache. Historical prefill-only
+    # methods did not count continuation appends, so restrict this correction
+    # to the explicit new protocol rather than altering historical measurements.
+    steps = payload.get('simulation', {}).get('kv', {}).get('pipeline', [])
+    if any(step.get('method') == 'spatial_online' and step.get('prefill_only') for step in steps):
+        prefix = payload.get('scoring', {}).get('prefix_tokens')
+        scores = payload.get('chunk_scores', [])
+        if prefix is not None:
+            if not scores or prefix <= 0 or payload.get('storage', {}).get('scope') != 'simulated_prefill_cache_storage':
+                raise ValueError('missing prefill calibration accounting')
+            total_prefix = len(scores) * prefix
+            total_tokens = total_prefix + sum(score['tokens'] for score in scores)
+            prefill_dense = dense * total_prefix / total_tokens
+            # Only prefix bytes change; continuation is explicitly dense.
+            stored = prefill_dense - (dense - stored)
+            dense = prefill_dense
+    return dict(compression=1 - stored / dense, shortfall_updates=0, stats=stats)
 
 
 def measure(study, rows, stage):

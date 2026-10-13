@@ -28,18 +28,18 @@ def fake_chunks(path, *, endpoint_saving=None):
             achieved = endpoint_saving if step.get('minimum_storage') and endpoint_saving else step['saving']
             for target in ('k', 'v'):
                 for layer in step[target + '_layers']:
-                    stats[f'{target}_layer_{layer}'] = {'dense_bits': 100000, 'stored_bits': 100000 * (1 - achieved),
+                    stats[f'{target}_layer_{layer}'] = {'dense_bits': 100000, 'stored_bits': 100000 * (1 - achieved * (sampling['scoring_prefix'] / sampling['seq_len'] if step.get('prefill_only') else 1)),
                                                         'accounting': ACCOUNTING, 'updates': sampling['chunks'],
                                                         'controller_bound_hits': 0, 'max_final_target_deviation': 0.}
                     saving += achieved / (2 * run['model_shape']['layers'])
         nll = 1. + .01 * saving
         payload = {'simulation': identity(config, sampling, run),
                    'results': {'wikitext_chunks': {'token_perplexity,none': math.exp(nll)}},
-                   'chunk_scores': [dict(chunk=i, nll=nll, tokens=16)
+                   'chunk_scores': [dict(chunk=i, nll=nll, tokens=sampling['seq_len']-sampling['scoring_prefix'])
                                     for i in range(sampling['offset'], sampling['offset'] + sampling['chunks'])],
                    'scoring': {'prefix_tokens': sampling['scoring_prefix']}, 'gate_stats': stats}
         if steps:
-            payload['storage'] = {'targets': {'kv': {'compression': saving}}}
+            payload['storage'] = {'scope':'simulated_prefill_cache_storage','targets': {'kv': {'compression': saving}}}
         write_json(config['output_path'], payload)
 
 

@@ -36,6 +36,15 @@ class QuadTests(unittest.TestCase):
             with patch.object(study.base,'execute_tasks',side_effect=fake_tasks):study.run_stage(p,'tasks')
             report=study.base.load(Path(folder)/'summary.json');self.assertEqual(report['completed'],2)
             self.assertIn('reference_comparison',report)
+    def test_prefill_measurement_excludes_dense_continuation(self):
+        payload={'gate_stats':{'k_layer_0':{'accounting':study.base.ACCOUNTING,'dense_bits':4096,'stored_bits':2867.2}},
+            'simulation':{'kv':{'pipeline':[{'method':'spatial_online','prefill_only':True}]}},
+            'scoring':{'prefix_tokens':1536},'chunk_scores':[{'tokens':512}],
+            'storage':{'scope':'simulated_prefill_cache_storage'}}
+        self.assertAlmostEqual(study.base.slot_measurement(payload)['compression'],.4)
+        payload['simulation']['kv']['pipeline'][0]['prefill_only']=False
+        self.assertAlmostEqual(study.base.slot_measurement(payload)['compression'],.3)
+
     def test_live_query_and_prefill_only(self):
         import hashlib
         from transformers import LlamaConfig,LlamaForCausalLM
@@ -46,8 +55,11 @@ class QuadTests(unittest.TestCase):
             path=Path(folder)/'q.pt';torch.save({'weights':torch.ones(1,1,64)},path)
             config=SpatialConfig(max_group=4,merge_sizes=(4,),residual_counts={'4':16},prefill_only=True,
                 query_aware=True,query_weights=str(path),query_weights_sha256=hashlib.sha256(path.read_bytes()).hexdigest())
-            result=evaluate_chunks(model,[torch.arange(72)%32],config.pipeline(.2,k_layers=[0],v_layers=[0]),[0],scoring_prefix=64)
+            result=evaluate_chunks(model,[torch.arange(72)%32],config.pipeline(.2,k_layers=[0],v_layers=[]),[0],scoring_prefix=64)
             self.assertTrue(torch.isfinite(torch.tensor(result['chunk_scores'][0]['nll'])))
+            result['simulation']={'kv':config.pipeline(.2,k_layers=[0],v_layers=[])}
+            measured=study.base.slot_measurement(result)
+            self.assertAlmostEqual(measured['compression'],result['storage']['targets']['k']['compression'],places=6)
             for stat in result['gate_stats'].values():
                 self.assertEqual(stat.get('format_g2_r0',0),0)
                 self.assertEqual(stat.get('format_g8_r0',0),0)
