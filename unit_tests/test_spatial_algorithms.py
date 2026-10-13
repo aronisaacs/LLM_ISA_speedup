@@ -248,6 +248,15 @@ class SimplificationTests(unittest.TestCase):
         out, bits, _ = windows.compress(x, target='v', saving=.45, max_group=2, keep_norms=False)
         torch.testing.assert_close(out, x, atol=3e-2, rtol=3e-2)  # identical pairs rebuild exactly
 
+    @unittest.skipUnless(torch.cuda.is_available() or torch.backends.mps.is_available(), "needs a GPU")
+    def test_pairs_on_gpu(self):
+        device = "cuda" if torch.cuda.is_available() else "mps"
+        x = correlated(64).to(device)
+        for options in ({}, dict(per_head_budget=True), dict(keep_norms=False)):
+            out, bits, _ = windows.compress(x, target='v', saving=.3, max_group=2, **options)
+            self.assertEqual(out.device.type, device)
+            self.assertEqual(bits, windows.compress(x.cpu(), target='v', saving=.3, max_group=2, **options)[1])
+
     def test_without_rope_alignment_keys_change(self):
         rope = RopeTables(rope_theta=10000., head_dim=128)
         x = correlated(128, noise=.3)

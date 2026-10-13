@@ -169,7 +169,8 @@ def solve_pairs(losses, dim, saving, norms=True, per_head=False):
     saving on its own instead of sharing the window's budget. Returns (bits per
     window, codes), as :func:`solve`.
     """
-    table = losses[2].to(torch.float64)  # [heads, pairs, 3]: PR0, PR16, PR32
+    # Small per-window bookkeeping: done on the CPU whatever device the cache is on.
+    table = losses[2].to("cpu", torch.float64)  # [heads, pairs, 3]: PR0, PR16, PR32
     heads, pairs = table.shape[:2]
     windows = pairs * 2 // WINDOW
     dense = dense_bits(2, dim)
