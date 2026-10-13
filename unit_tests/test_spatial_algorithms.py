@@ -82,6 +82,16 @@ class WindowTests(unittest.TestCase):
             chosen = sum(loss(i, int(code[i // 4, 0, 2 * (i % 4)])) for i in range(8))
             self.assertLessEqual(chosen, best * 1.5 + 1e-6)
 
+    def test_pair_sort_matches_price_search(self):
+        for seed, noise in ((0, .4), (1, .8), (2, 1.5)):
+            x = correlated(256, heads=8, noise=noise, seed=seed) * torch.rand(1, 8, 1, 1, generator=torch.Generator().manual_seed(seed)) * 2
+            losses, _ = windows.candidates(x, target='v', max_group=2)
+            for saving in (.1, .3, .4, .5):
+                bits, code = windows.solve_pairs(losses, 128, saving)
+                old_bits, old_code = windows.solve(losses, 128, saving)
+                self.assertTrue(torch.equal(code, old_code))
+                self.assertTrue(torch.equal(bits, old_bits))
+
     def test_tree_merges_eights_when_tokens_agree(self):
         x = correlated(64, noise=0.)
         _, code = per_window(x, .5)

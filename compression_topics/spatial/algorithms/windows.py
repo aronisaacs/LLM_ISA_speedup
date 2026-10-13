@@ -2,17 +2,23 @@
 
 Every completed window gets the same bit budget, (1 - saving) x its dense bits,
 shared by all KV heads of the slot. Inside that budget the heads' formats are
-chosen together for the least total loss, so a head whose neighbours agree can
+chosen together for the least total reconstruction error, so a head whose neighbours agree can
 merge more and leave bits to a head that needs a residual. Nothing carries over
 from one window to the next.
 
-Each head chooses its layout with a bottom-up tree: each pair takes its best
-format (dense, or merged with 0/16/32 residual entries), each quad compares its
-quad formats against its two pairs, and the eight against its two quads, scoring
-loss + price x bits. The price of each window is bisected to the smallest value
-whose formats fit the budget; heads that jump to smaller formats at exactly that
-price then use the bits left over. A window that cannot reach the budget takes
-its most compressed formats.
+With pairs only (``max_group=2``) the choice is a sort: every pair can step
+from dense towards PR32, PR16 and PR0, each step saving bits for added error.
+All steps of a window are sorted by error added per bit saved and taken in that
+order until the window fits (:func:`solve_pairs`).
+
+With quads and eights each head chooses its layout with a bottom-up tree: each
+pair takes its best format, each quad compares its quad formats against its two
+pairs, and the eight against its two quads, scoring error + price x bits. The
+price of each window is bisected to the smallest value whose formats fit the
+budget; heads that jump to smaller formats at exactly that price then use the
+bits left over (:func:`solve`). For pairs both give the same formats.
+
+A window that cannot reach the budget takes its most compressed formats.
 """
 
 import torch
@@ -150,6 +156,67 @@ def solve(losses, dim, saving):
     return bits.sum(0).cpu(), code
 
 
+def solve_pairs(losses, dim, saving):
+    """Pairs only: sort the merge steps of a window and take them until it fits.
+
+    Each pair can move from dense to its merged formats in steps along its lower
+    convex hull of (bits saved, error): every step saves some bits for some extra
+    error. All steps of a window, over all heads, are sorted by error added per
+    bit saved and taken in that order until the window meets its budget (or every
+    step is taken). Returns (bits per window, codes), as :func:`solve`.
+    """
+    table = losses[2].to(torch.float64)  # [heads, pairs, 3]: PR0, PR16, PR32
+    heads, pairs = table.shape[:2]
+    windows = pairs * 2 // WINDOW
+    dense = dense_bits(2, dim)
+    # Formats from least to most saving: PR32, PR16, PR0 (codes 3, 2, 1).
+    order = [2, 1, 0]
+    saved = torch.tensor([dense - group_bits(MENUS[2][j], dim, 2) for j in order], dtype=torch.float64)
+    error = table[..., order]  # [heads, pairs, 3]
+    # Lower convex hull from (0 saved, 0 error): repeatedly take the cheapest next point.
+    steps_saved, steps_error, steps_code = [], [], []
+    at_saved = torch.zeros(heads, pairs, dtype=torch.float64)
+    at_error = torch.zeros_like(at_saved)
+    at_code = torch.zeros(heads, pairs, dtype=torch.long)
+    for _ in range(len(order)):
+        gain = saved.view(1, 1, -1) - at_saved.unsqueeze(-1)
+        rate = torch.where(gain > 0, (error - at_error.unsqueeze(-1)) / gain.clamp_min(1),
+                           torch.full_like(error, float("inf")))
+        best = rate.argmin(-1)  # ties keep the format that saves less
+        best_rate = rate.gather(-1, best.unsqueeze(-1)).squeeze(-1)
+        ok = torch.isfinite(best_rate)
+        new_saved = torch.where(ok, saved[best], at_saved)
+        new_error = torch.where(ok, error.gather(-1, best.unsqueeze(-1)).squeeze(-1), at_error)
+        new_code = torch.where(ok, torch.tensor(order)[best] + 1, at_code)
+        steps_saved.append(new_saved - at_saved)
+        steps_error.append(torch.where(ok, best_rate, torch.full_like(best_rate, float("inf"))))
+        steps_code.append(new_code)
+        at_saved, at_error, at_code = new_saved, new_error, new_code
+    # [windows, heads * 4 pairs * 3 steps], in pair-then-step order so a stable sort
+    # never takes a pair's later step before its earlier one.
+    def per_window(x):
+        x = torch.stack(x, -1).view(heads, windows, WINDOW // 2, len(order))
+        return x.permute(1, 0, 2, 3).reshape(windows, -1)
+
+    step_saved, step_rate, step_code = map(per_window, (steps_saved, steps_error, steps_code))
+    need = saving * heads * dense_bits(WINDOW, dim) + heads * (WINDOW // 2) * TAG_BITS
+    rank = torch.sort(step_rate, dim=1, stable=True).indices
+    cumulative = step_saved.gather(1, rank).cumsum(1)
+    before = cumulative - step_saved.gather(1, rank)
+    take = torch.zeros_like(step_rate, dtype=torch.bool).scatter(
+        1, rank, (before < need) & torch.isfinite(step_rate.gather(1, rank)))
+    taken = (take.view(windows, heads, WINDOW // 2, -1) * torch.arange(1, len(order) + 1)).amax(-1)
+    codes = torch.stack(steps_code, -1).view(heads, windows, WINDOW // 2, -1)
+    pair_code = torch.where(
+        taken.permute(1, 0, 2) > 0,
+        codes.gather(-1, (taken.permute(1, 0, 2) - 1).clamp_min(0).unsqueeze(-1)).squeeze(-1),
+        torch.zeros(heads, windows, WINDOW // 2, dtype=torch.long))
+    bits_of = torch.tensor([dense] + [group_bits(r, dim, 2) for r in MENUS[2]], dtype=torch.float64) + TAG_BITS
+    bits = bits_of[pair_code].sum((0, 2))
+    code = pair_code.unsqueeze(-1).expand(heads, windows, WINDOW // 2, 2).reshape(heads, windows, WINDOW)
+    return bits, code
+
+
 def compress(tensor, *, target, saving, max_group=8, rope_tables=None, query_energy=None):
     """Compress the whole windows of ``tensor``.
 
@@ -163,7 +230,7 @@ def compress(tensor, *, target, saving, max_group=8, rope_tables=None, query_ene
         query_energy=query_energy,
     )
     heads, length, dim = tensor.shape[1:]
-    bits, code = solve(losses, dim, saving)
+    bits, code = solve_pairs(losses, dim, saving) if max_group == 2 else solve(losses, dim, saving)
     code = code.reshape(1, heads, length, 1).to(tensor.device)
     out = tensor.clone()
     counts = {"format_dense_pair": int((code == 0).sum()) // 2}
