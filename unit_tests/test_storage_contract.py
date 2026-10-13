@@ -40,9 +40,7 @@ class StorageContractTests(unittest.TestCase):
         return result
 
     def test_variable_continuations_have_explicit_prefix_bytes(self):
-        kv = SpatialConfig(
-            max_group=4, merge_sizes=(4,), residual_counts={"4": 16}, prefill_only=True
-        ).pipeline(0.2, k_layers=[0], v_layers=[])
+        kv = SpatialConfig(max_group=4).pipeline(0.2, k_layers=[0], v_layers=[])
         r = self.run_chunk(kv)
         slot = r["storage"]["slots"]["k_layer_0"]
         self.assertEqual(slot["dense_bits"], 2 * 64 * 64 * 16)
@@ -54,15 +52,10 @@ class StorageContractTests(unittest.TestCase):
         self.assertAlmostEqual(
             m["compression"], r["storage"]["targets"]["k"]["compression"] * 2
         )
-        self.assertAlmostEqual(
+        self.assertGreater(  # continuation windows are compressed too
             r["cache_storage"]["slots"]["k_layer_0"]["dense_bits"]
             - r["cache_storage"]["slots"]["k_layer_0"]["stored_bits"],
             slot["dense_bits"] - slot["stored_bits"],
-        )
-        legacy = deepcopy(r)
-        del legacy["storage"]["slots"]
-        self.assertAlmostEqual(
-            slot_measurement(legacy)["compression"], m["compression"]
         )
 
     def test_dense_and_decode_use_same_scope_contract(self):
@@ -70,9 +63,7 @@ class StorageContractTests(unittest.TestCase):
         self.assertEqual(len(dense["storage"]["slots"]), 4)
         self.assertEqual(dense["storage"]["targets"]["kv"]["compression"], 0)
         streaming = self.run_chunk(
-            SpatialConfig(
-                max_group=4, merge_sizes=(4,), residual_counts={"4": 0}
-            ).pipeline(0.2, k_layers=[0], v_layers=[])
+            SpatialConfig(max_group=4).pipeline(0.2, k_layers=[0], v_layers=[])
         )
         self.assertEqual(
             streaming["storage"]["slots"]["k_layer_0"]["dense_bits"], 2 * 64 * 64 * 16
@@ -83,7 +74,7 @@ class StorageContractTests(unittest.TestCase):
         )
 
     def test_extension_keeps_storage_and_maximum_diagnostics(self):
-        kv = SpatialConfig(max_group=2, prefill_only=True).pipeline(
+        kv = SpatialConfig(max_group=2).pipeline(
             0.2, k_layers=[0], v_layers=[]
         )
         a = self.run_chunk(kv, lengths=(72,), ids=(1,))
@@ -110,11 +101,7 @@ class StorageContractTests(unittest.TestCase):
         from unit_tests.test_spatial_algorithms import cache_run, correlated
         from compression_topics.spatial.algorithms.formats import HEADER_BITS
 
-        _, r = cache_run(
-            correlated(64),
-            [32, 32],
-            dict(saving=0.5, max_group=2, minimum_storage=True),
-        )
+        _, r = cache_run(correlated(64), [32, 32], saving=0.5, max_group=2)
         count = r["format_g2_r0"]
         self.assertEqual(r["metadata_bits"], HEADER_BITS + count * 3)
 

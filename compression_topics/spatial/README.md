@@ -1,55 +1,38 @@
 # Spatial compression
 
-Adjacent token vectors are merged **within each KV head**. Heads choose their
-own formats; the heads of one layer's keys share a controller, and that layer's
-values have a separate controller. Calibration allocates different byte budgets
-across these layer/K-V slots.
+Adjacent token vectors are merged **within each KV head**, in fixed windows of
+eight consecutive tokens. Each window of a layer's keys (or values) is
+compressed to that layer slot's saving; calibration allocates different savings
+across the layer/K-V slots.
 
 ## Algorithm
 
-All current spatial variants share RoPE alignment for keys, directional
-reconstruction with BF16 per-token scales, and conservative packed-format byte
-accounting. Query awareness uses calibrated query energy both to select key
-residual features and to score reconstruction error. Its error is absolute
-weighted squared error; ordinary key/value scoring is relative squared error.
-Values do not use query weights. No attention-importance weighting or shared
-quad/eight masks is included in the current path.
+1. **Preprocessing.** Keys undo RoPE by each token's offset inside its group, so
+   the members share one frame. Every vector is split into a unit direction and
+   a bf16 norm.
+2. **Formats.** Per head, a window is covered by dense pairs and merged groups:
+   pairs with 0/16/32 residual entries, quads and eights with 0/16 entries per
+   token (`max_group` 2, 4 or 8). A merged group stores the mean direction plus
+   the largest entries of each deviation, with a position mask.
+3. **Loss.** Values use relative squared error. Keys may use the query-aware
+   loss: squared error weighted by the calibrated query energy E[q_d^2], which
+   also ranks the residual entries to keep.
+4. **Budget per window.** When a window's eighth token is written, in the prompt
+   or during decode, the heads' formats are chosen together for the least total
+   loss within (1 - saving) x the window's dense bits. Nothing carries over
+   between windows; unfinished windows stay dense.
 
-The default menu is dense, pairs with 0/16/32 residual entries, quads with
-0/16 entries per token, and eights with 0/16 entries per token. A bottom-up tree
-compares larger groups against smaller ones inside each eight-token window.
+The method is registered as `spatial` (`SpatialConfig(max_group, query_aware,
+query_weights, query_weights_sha256)`).
 
-- `spatial_online` fits lambda from the first 32 observed tokens, then updates
-  it every eight-token window. State survives cache appends, so it supports
-  compression during decode. Unfinished windows stay dense.
-- `spatial_chunked` keeps no state between windows: every completed eight-token
-  window, in the prompt and during decode, is compressed on its own to the
-  slot's saving. Within the window's bit budget the heads' formats are chosen
-  together for the least total loss (`algorithms/chunked.py`). Unfinished
-  windows stay dense; there is no startup.
-- `spatial_offline` fits one price over the whole observed prompt; generated
-  tokens stay dense. This is a diagnostic/reference method.
-- `prefill_only=True` explicitly leaves continuation/decode appends dense,
-  preserving the protocol used by the recorded presentation experiments.
+## Code
 
-Fixed residuals restrict the menu through `residual_counts`, one count per
-enabled group size. `merge_sizes=[4]` permits only quad merges; failed quads stay
-dense without pair fallback. These are configuration choices in the same kernel,
-not separate compression implementations.
-
-## Code boundaries
-
-- `algorithms/formats.py`: menus, bit costs, and format validation.
+- `algorithms/formats.py`: menus and bit costs.
 - `algorithms/representation.py`: RoPE alignment, reconstruction, query weights,
-  and the error objective.
-- `algorithms/windows.py`: per-head format choices and reconstruction.
-- `algorithms/controller.py`: offline price fit and causal online feedback.
-- `algorithms/chunked.py`: per-window budget solver for `spatial_chunked`.
-- `algorithms/methods.py`: configuration and cache integration.
-- `scripts/study.py`: common calibration, allocation, validation, and accuracy
-  execution. Candidate generation remains specific to each experiment.
-- `scripts/comparison.py`: common archived-reference and holdout-quality gates
-  for simplification experiments.
+  and the loss.
+- `algorithms/windows.py`: candidate formats and the per-window budget solver.
+- `algorithms/methods.py`: configuration and the cache hook.
+- `scripts/study.py`: calibration, allocation, validation and C-Eval execution.
 - `engine/eval_runner/storage.py`: explicit byte scopes and the isolated reader
   for historical storage records.
 
@@ -64,14 +47,13 @@ New chunk results have `storage_contract_version=2`:
 - `storage` is **prefill-only** when continuation NLL is scored. It contains
   per-layer K/V `slots` and whole-model `targets`.
 - `cache_storage` records the **entire cache**, including continuation tokens.
-- `gate_stats` records algorithm/controller observations over the full evaluation.
+- `gate_stats` records algorithm observations over the full evaluation.
   These counters are not the source of prefix budgets in new records.
 
 Calibration reads explicit slot bytes. Historical files without slot snapshots
 are interpreted only by `calibration_slot_bytes`; the old streaming
 prefill-only conversion lives there. Historical result files are never rewritten.
-Chunk extension preserves storage scopes, scoring definitions, and maximum
-controller deviations. Dense baselines use the same slot schema as compression.
+Chunk extension preserves storage scopes and scoring definitions. Dense baselines use the same slot schema as compression.
 
 ## Experiment protocol
 
@@ -86,25 +68,11 @@ A candidate that misses its local byte target is recorded in
 still fail immediately. Whole-model validation remains strict and is rechecked
 when resuming directly at accuracy.
 
-The fixed-hierarchy and quad-only simplification studies use two screen chunks,
-twelve refinement chunks, and sixteen holdout chunks. They reuse the archived
-query weights and reevaluate the archived adaptive policy on the same holdout.
-Their heuristic gate requires savings within one percentage point and no more
-than a 2% perplexity increase. It does not guarantee accuracy equivalence. Final
-comparisons report both accuracy and actual bytes, with a one-point accuracy
-screening tolerance. Historical reference screening used four chunks.
-
 ## Entry points
 
-- `ladder.py` / `ladder_dgx.sh`: pairs, hierarchy, query hierarchy, query pairs (30/40/50%);
-  `--algorithm online|chunked|offline`.
-- `fixed_rungs.py` / `fixed_rungs_dgx.sh`: no-residual and fixed-residual pairs
-  (10/20/30/40%).
-- `fixed_hierarchy.py` / `fixed_hierarchy_dgx.sh`: one residual per enabled group
-  size per layer/K-V slot, targeting 40%.
-- `quad_only.py` / `quad_only_dgx.sh`: dense or a fixed quad format, targeting 40%.
-- `pair_diagnostic.py` / `pair_diagnostic_dgx.sh`: bounded dense-state diagnostic,
-  not a full accuracy experiment or replacement runtime algorithm.
+- `ladder.py` / `ladder_dgx.sh`: pairs, hierarchy, query pairs and query
+  hierarchy at 30/40/50%. Pairs cannot reach 50%; their 50% point merges every
+  pair with no residual.
 - `pair_similarity_profile.py`: profiling/capture utility.
 
 Output plans are immutable. Resume with the original script and output directory
@@ -114,13 +82,20 @@ Slurm resource requests may be overridden at submission. Multiple GPUs speed
 parallel calibration configurations; a single accuracy configuration still runs
 on one GPU.
 
+```bash
+for arm in query_hierarchy query_pairs; do
+  sbatch --gres=gpu:4 --job-name=ladder_${arm} compression_topics/spatial/scripts/ladder_dgx.sh \
+    --arms "$arm" --out compression_topics/spatial/figures/ladder_${arm}
+done
+```
+
 ## Recorded evidence and safe synchronization
 
-`clean_online_ladder_*` and `online_fixed_rungs_*` retain the pre-cleanup
-presentation results and their original policy/sample identities. New field and
-method names do not retrospectively change those records. Accounting audits
-verify their summaries against raw task results; this is not a re-execution of
-the historical model. Old algorithm revisions remain recoverable through Git.
+Folders under `figures/` were produced by earlier versions of the code, including
+the λ-controller (`clean_online_ladder_*`, `online_fixed_rungs_*`) and the first
+fixed-window runs (`chunked_*`). They keep their original policy/sample
+identities and cannot be resumed with the current scripts. Old algorithm
+revisions remain recoverable through Git.
 
 Do not update a DGX checkout while jobs may still launch workers from it. Finish
 and save that run first, or use a separate checkout. Local cleanup never changes

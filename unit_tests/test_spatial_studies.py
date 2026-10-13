@@ -1,4 +1,4 @@
-"""The staged ladder and fixed-rung studies: candidates, calibration, allocation, gates and tasks."""
+"""The staged ladder study: candidates, calibration, allocation, gates and tasks."""
 
 from copy import deepcopy
 import json
@@ -11,7 +11,7 @@ from unittest.mock import patch
 import torch
 
 from compression_topics.spatial.algorithms.formats import ACCOUNTING
-from compression_topics.spatial.scripts import fixed_rungs, ladder, study
+from compression_topics.spatial.scripts import ladder, study
 from engine.eval_runner.cache import simulation_identity
 from engine.eval_runner.chunks import identity
 from engine.eval_runner.files import write_json
@@ -19,51 +19,29 @@ from engine.kv_compress import parse_kv_spec
 
 
 def fake_chunks(path, *, endpoint_saving=None):
-    """Pretend each slot met its target; optionally pin minimum-storage runs."""
+    """Pretend each slot met its target; pair slots at 50% reach ``endpoint_saving``."""
     run = json.loads(Path(path).read_text())
     sampling = run["sampling"]
     for config in run["configurations"]:
         steps = config["kv"]["pipeline"]
-        stats, saving = {}, 0.0
+        stats, slots, saving = {}, {}, 0.0
         for step in steps:
-            achieved = (
-                endpoint_saving
-                if step.get("minimum_storage") and endpoint_saving
-                else step["saving"]
-            )
+            endpoint = step["max_group"] == 2 and step["saving"] == 0.5
+            achieved = endpoint_saving if endpoint and endpoint_saving else step["saving"]
             for target in ("k", "v"):
                 for layer in step[target + "_layers"]:
-                    stats[f"{target}_layer_{layer}"] = {
-                        "dense_bits": 100000,
-                        "stored_bits": 100000
-                        * (
-                            1
-                            - achieved
-                            * (
-                                sampling["scoring_prefix"] / sampling["seq_len"]
-                                if step.get("prefill_only")
-                                else 1
-                            )
-                        ),
-                        "accounting": ACCOUNTING,
-                        "updates": sampling["chunks"],
-                        "controller_bound_hits": 0,
-                        "max_final_target_deviation": 0.0,
-                    }
+                    key = f"{target}_layer_{layer}"
+                    bits = {"dense_bits": 100000, "stored_bits": 100000 * (1 - achieved)}
+                    slots[key] = bits
+                    stats[key] = dict(bits, accounting=ACCOUNTING, updates=sampling["chunks"])
                     saving += achieved / (2 * run["model_shape"]["layers"])
         nll = 1.0 + 0.01 * saving
         payload = {
             "simulation": identity(config, sampling, run),
             "results": {"wikitext_chunks": {"token_perplexity,none": math.exp(nll)}},
             "chunk_scores": [
-                dict(
-                    chunk=i,
-                    nll=nll,
-                    tokens=sampling["seq_len"] - sampling["scoring_prefix"],
-                )
-                for i in range(
-                    sampling["offset"], sampling["offset"] + sampling["chunks"]
-                )
+                dict(chunk=i, nll=nll, tokens=sampling["seq_len"] - sampling["scoring_prefix"])
+                for i in range(sampling["offset"], sampling["offset"] + sampling["chunks"])
             ],
             "scoring": {"prefix_tokens": sampling["scoring_prefix"]},
             "gate_stats": stats,
@@ -71,6 +49,7 @@ def fake_chunks(path, *, endpoint_saving=None):
         if steps:
             payload["storage"] = {
                 "scope": "simulated_prefill_cache_storage",
+                "slots": slots,
                 "targets": {"kv": {"compression": saving}},
             }
         write_json(config["output_path"], payload)
@@ -93,38 +72,23 @@ def fake_tasks(destination, run, *, summarizer):
 
 
 class LadderTests(unittest.TestCase):
-    def test_candidates_per_arm_and_algorithm(self):
+    def test_candidates_per_arm(self):
         with tempfile.TemporaryDirectory() as folder:
             p = ladder.plan(Path(folder))
             torch.save({"weights": torch.ones(32, 8, 128)}, p["query_weights"])
             rows = ladder.candidates(p)
-            self.assertEqual(len(rows), 64 * (6 + 9 + 9 + 6))
+            self.assertEqual(len(rows), 64 * (6 + 9 + 6 + 9))
             for row in rows:
                 step = row["kv"]["pipeline"][0]
-                self.assertEqual(step["method"], "spatial_online")
+                self.assertEqual(step["method"], "spatial")
                 self.assertEqual(step["max_group"], 2 if row["arm"] in ladder.PAIR_ARMS else 8)
                 self.assertEqual(
                     step["query_aware"],
                     row["arm"] in ladder.QUERY_ARMS and row["target"] == "k",
                 )
-                self.assertEqual(step["minimum_storage"], row["maximum_feasible"])
-            offline = ladder.plan(
-                Path(folder) / "off", algorithm="offline", arms=("pairs", "hierarchy")
-            )
-            rows = ladder.candidates(offline)
-            self.assertEqual(len(rows), 64 * (5 + 9))
-            self.assertTrue(
-                all(r["kv"]["pipeline"][0]["method"] == "spatial_offline" for r in rows)
-            )
-            self.assertNotIn("control", offline)
-            chunked = ladder.plan(Path(folder) / "chunk", algorithm="chunked", arms=("pairs",))
-            rows = ladder.candidates(chunked)
-            self.assertEqual(len(rows), 64 * 6)
-            self.assertTrue(
-                all(r["kv"]["pipeline"][0]["method"] == "spatial_chunked" for r in rows)
-            )
-            self.assertEqual(sum(r["maximum_feasible"] for r in rows), 64)
-            self.assertNotIn("control", chunked)
+                self.assertEqual(
+                    row["maximum_feasible"], row["arm"] in ladder.PAIR_ARMS and row["budget"] == 0.5
+                )
 
     def test_validation_gate_and_endpoint(self):
         rows = [
@@ -181,38 +145,6 @@ class LadderTests(unittest.TestCase):
                 ):
                     ladder.run_stage(p, "tasks")
                 execute.assert_not_called()
-
-
-class FixedRungTests(unittest.TestCase):
-    def test_candidates_and_allocation(self):
-        with tempfile.TemporaryDirectory() as folder:
-            p = fixed_rungs.plan(Path(folder), layers=1)
-            p["dense_ceval_source"] = str(Path(folder) / "missing.json")
-            rows = fixed_rungs.candidates(p)
-            self.assertTrue(
-                all(
-                    r["residual_entries"] == 0
-                    for r in rows
-                    if r["arm"] == "no_residual"
-                )
-            )
-            self.assertEqual(
-                {r["residual_entries"] for r in rows if r["arm"] == "fixed_residual"},
-                {0, 16, 32},
-            )
-            self.assertTrue(
-                all(
-                    r["kv"]["pipeline"][0]["fixed_residual"] == r["residual_entries"]
-                    for r in rows
-                )
-            )
-            with patch.object(study, "execute_chunks", side_effect=fake_chunks):
-                for stage in ("screen", "refine", "allocate", "validate"):
-                    fixed_rungs.run_stage(p, stage)
-            selections = json.loads((Path(folder) / "selections.json").read_text())
-            self.assertEqual(len(selections), 8)
-            for selection in selections:
-                self.assertEqual(len(selection["kv"]["pipeline"]), 2)
 
 
 class StudyTests(unittest.TestCase):
@@ -272,15 +204,12 @@ class StudyTests(unittest.TestCase):
                 head_dim=128,
             )
         ).eval()
-        for algorithm in ("online", "offline", "chunked"):
-            policy = SpatialConfig(algorithm=algorithm).pipeline(
-                0.4, k_layers=[0], v_layers=[]
-            )
-            payload = evaluate_chunks(
-                model, [torch.randint(0, 32, (72,))], policy, [1], scoring_prefix=64
-            )
-            measured = study.slot_measurement(payload)
-            self.assertGreater(measured["compression"], 0.2)
+        policy = SpatialConfig().pipeline(0.4, k_layers=[0], v_layers=[])
+        payload = evaluate_chunks(
+            model, [torch.randint(0, 32, (72,))], policy, [1], scoring_prefix=64
+        )
+        measured = study.slot_measurement(payload)
+        self.assertGreaterEqual(measured["compression"], 0.4)
 
 
 if __name__ == "__main__":

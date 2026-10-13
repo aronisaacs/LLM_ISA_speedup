@@ -1,5 +1,6 @@
-"""Spatial formats, per-head tree choices, the online controller across decode, and offline."""
+"""Spatial formats, per-window budgets, query-aware keys, and compression across decode."""
 import hashlib
+import itertools
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,8 +8,8 @@ from pathlib import Path
 import torch
 
 from compression_topics.spatial.algorithms import methods, windows
-from compression_topics.spatial.algorithms.controller import Control, Online, offline_price
-from compression_topics.spatial.algorithms.formats import HEADER_BITS, TAG_BITS, group_bits, max_saving
+from compression_topics.spatial.algorithms.formats import (
+    HEADER_BITS, TAG_BITS, WINDOW, dense_bits, group_bits, max_saving)
 from compression_topics.spatial.algorithms.methods import SpatialConfig
 from engine.kv_compress import metrics, parse_kv_spec
 from engine.kv_compress.rope import RopeTables
@@ -20,6 +21,23 @@ def correlated(length=256, heads=2, dim=128, noise=.3, seed=0):
     base = torch.randn(1, heads, blocks, 1, dim, generator=g).expand(1, heads, blocks, 8, dim)
     x = (base + noise * torch.randn(1, heads, blocks, 8, dim, generator=g)).reshape(1, heads, 8 * blocks, dim)
     return x[..., :length, :].contiguous()
+
+
+def per_window(x, saving, **options):
+    losses, _ = windows.candidates(x, target='v', **options)
+    return windows.solve(losses, x.shape[-1], saving)
+
+
+def cache_run(x, sizes, **step):
+    """Feed ``x`` through the cache hook in updates of ``sizes`` tokens (a growing cache)."""
+    methods.reset()
+    metrics.reset_stats()
+    cache, start = x[..., :0, :].clone(), 0
+    for size in sizes:
+        cache = torch.cat((cache, x[..., start:start + size, :]), -2)
+        methods.after_append(cache, target='v', layer_idx=0, start=start, end=start + size, **step)
+        start += size
+    return cache, dict(metrics.STATS['v_layer_0'])
 
 
 class FormatTests(unittest.TestCase):
@@ -34,80 +52,53 @@ class FormatTests(unittest.TestCase):
 
 
 class WindowTests(unittest.TestCase):
-    def test_heads_choose_independently_at_one_price(self):
-        x = torch.randn(1, 2, 64, 128)
-        x[:, 0, 1::2] = x[:, 0, ::2]  # head 0: identical neighbours
-        table, _ = windows.build(x, target='v', max_group=2)
-        choice = table.choose(0, .01)
-        self.assertEqual(choice.heads[0].segments[0], (0, 2, 0))
-        self.assertEqual(choice.heads[1].segments[0], (0, 2, None))
+    def test_every_window_meets_the_saving(self):
+        x = correlated(512, heads=4, noise=.5)
+        for saving, options in ((.3, {}), (.4, {}), (.6, {}), (.3, dict(max_group=2))):
+            bits, _ = per_window(x, saving, **options)
+            limit = (1 - saving) * 4 * dense_bits(WINDOW, 128)
+            self.assertTrue(bool((bits <= limit).all()))
+            self.assertGreater(1 - bits.sum() / (len(bits) * 4 * dense_bits(WINDOW, 128)), saving)
 
-    def test_tree_prefers_larger_groups_when_tokens_agree(self):
+    def test_heads_share_the_window_budget(self):
+        x = correlated(64, noise=.6)
+        x[:, 0, 1::2] = x[:, 0, ::2]  # head 0: identical neighbours, merging costs nothing
+        _, code = per_window(x, .3, max_group=2)
+        self.assertTrue(bool((code[0] == 1).all()))  # head 0 merges every pair, no residual
+        self.assertGreater(int((code[1] != 1).sum()), 0)  # head 1 keeps residuals or dense pairs
+
+    def test_close_to_exhaustive_search(self):
+        x = correlated(8, heads=2, noise=.6)
+        losses, _ = windows.candidates(x, target='v', max_group=2)
+        bits = [dense_bits(2, 128)] + [group_bits(r, 128, 2) for r in (0, 16, 32)]
+        loss = lambda i, c: 0. if c == 0 else float(losses[2][i // 4, i % 4, c - 1])
+        for saving in (.1, .25, .4):
+            limit = (1 - saving) * 2 * dense_bits(WINDOW, 128)
+            best = min(sum(loss(i, c) for i, c in enumerate(combo))
+                       for combo in itertools.product(range(4), repeat=8)
+                       if sum(bits[c] + TAG_BITS for c in combo) <= limit)
+            used, code = windows.solve(losses, 128, saving)
+            self.assertLessEqual(float(used[0]), limit)
+            chosen = sum(loss(i, int(code[i // 4, 0, 2 * (i % 4)])) for i in range(8))
+            self.assertLessEqual(chosen, best * 1.5 + 1e-6)
+
+    def test_tree_merges_eights_when_tokens_agree(self):
         x = correlated(64, noise=0.)
-        table, recon = windows.build(x, target='v', max_group=8)
-        choice = table.choose(0, 1.)
-        self.assertEqual(choice.heads[0].segments, ((0, 8, 0),))
-        out = windows.restore(x, [table.choose(w, 1.) for w in range(len(table))], recon)
-        torch.testing.assert_close(out, x, atol=2e-2, rtol=2e-2)
+        _, code = per_window(x, .5)
+        eight_r0 = windows.options(8).index((8, 0)) + 1
+        self.assertTrue(bool((code == eight_r0).any()))
 
-    def test_fixed_residual_restricts_pairs(self):
-        x = correlated(128)
-        table, _ = windows.build(x, target='v', max_group=2, fixed_residual=16)
-        for w in range(len(table)):
-            for price in (0., .1, 1e6):
-                for head in table.choose(w, price).heads:
-                    self.assertTrue(all(size == 2 and r in (None, 16) for _, size, r in head.segments))
-        with self.assertRaises(ValueError):
-            windows.build(x, target='v', max_group=8, fixed_residual=16)
-
-
-class ControllerTests(unittest.TestCase):
-    def run_online(self, x, saving, **options):
-        table, _ = windows.build(x, target='v', **options)
-        c = Online(saving, Control())
-        c.start(table)
-        return c, [c.decide(table, w)[0] for w in range(len(table))]
-
-    def test_online_reaches_target_and_is_causal(self):
-        x = correlated(2048, noise=.5)
-        c, choices = self.run_online(x, .4)
-        self.assertLess(abs((1 - c.stored / c.dense) - .4), .03)
+    def test_windows_are_independent(self):
+        x = correlated(256, noise=.5)
         changed = x.clone()
-        changed[:, :, 1024:] *= 3
-        _, again = self.run_online(changed, .4)
-        self.assertEqual([ch.heads for ch in choices[:128]], [ch.heads for ch in again[:128]])
+        changed[..., 128:, :] *= -3
+        self.assertTrue(torch.equal(per_window(x, .4)[1][:, :16], per_window(changed, .4)[1][:, :16]))
 
-    def test_minimum_storage_merges_every_pair(self):
-        x = correlated(128)
-        table, _ = windows.build(x, target='v', max_group=2)
-        c = Online(.5, Control(), minimum_storage=True)
-        c.start(table)
-        choices = [c.decide(table, w)[0] for w in range(len(table))]
-        self.assertTrue(all(s[1:] == (2, 0) for ch in choices for h in ch.heads for s in h.segments))
-        pairs = 2 * 64
-        self.assertEqual(c.stored, pairs * (group_bits(0, 128, 2) + TAG_BITS) + HEADER_BITS)
-
-    def test_offline_meets_budget(self):
-        x = correlated(512, noise=.5)
-        table, _ = windows.build(x, target='v', max_group=8)
-        price = offline_price(table, .5)
-        stored = sum(table.choose(w, price).bits for w in range(len(table))) + HEADER_BITS
-        saving = 1 - stored / (len(table) * table.window_bits)
-        self.assertGreaterEqual(saving, .5)
-        self.assertLess(saving, .52)
-
-
-def cache_run(x, chunks, step):
-    """Feed ``x`` through ``online_after_append`` in ``chunks`` (a growing cache tensor)."""
-    methods.reset()
-    metrics.reset_stats()
-    cache = x[..., :0, :].clone()
-    start = 0
-    for size in chunks:
-        cache = torch.cat((cache, x[..., start:start + size, :]), -2)
-        methods.online_after_append(cache, target='v', layer_idx=0, start=start, end=start + size, **step)
-        start += size
-    return cache, dict(metrics.STATS['v_layer_0'])
+    def test_unreachable_pair_target_merges_every_pair(self):
+        bits, code = per_window(correlated(64), .5, max_group=2)
+        self.assertTrue(bool((code == 1).all()))
+        self.assertAlmostEqual(float(1 - bits.sum() / (len(bits) * 2 * dense_bits(WINDOW, 128))),
+                               max_saving(128), places=6)
 
 
 class StreamingTests(unittest.TestCase):
@@ -117,40 +108,36 @@ class StreamingTests(unittest.TestCase):
 
     def test_prefill_then_decode_equals_one_pass(self):
         x = correlated(203, noise=.4)
-        step = dict(saving=.3, max_group=8)
-        whole, whole_stats = cache_run(x, [203], step)
-        streamed, stream_stats = cache_run(x, [21] + [1] * 182, step)  # short prompt, then decode
+        whole, whole_stats = cache_run(x, [203], saving=.35)
+        streamed, stream_stats = cache_run(x, [21] + [1] * 182, saving=.35)
         torch.testing.assert_close(streamed, whole)
         for key in ('dense_bits', 'stored_bits', 'metadata_bits'):
             self.assertEqual(stream_stats[key], whole_stats[key])
-        self.assertTrue(torch.equal(streamed[..., 200:, :], x[..., 200:, :]))  # unfinished window stays dense
-        self.assertFalse(torch.equal(streamed[..., :8, :], x[..., :8, :]))
+        self.assertTrue(torch.equal(streamed[..., 200:, :], x[..., 200:, :]))  # open window
+        tail = 2 * dense_bits(3, 128)
+        saving = 1 - (whole_stats['stored_bits'] - HEADER_BITS - tail) / (whole_stats['dense_bits'] - tail)
+        self.assertGreaterEqual(saving, .35)
 
-    def test_tokens_wait_for_startup(self):
-        x = correlated(40)
-        cache, _ = cache_run(x, [24], dict(saving=.3))
-        self.assertTrue(torch.equal(cache, x[..., :24, :]))  # fewer than 32 tokens: still dense
-        cache, stats = cache_run(x, [24] + [1] * 16, dict(saving=.3))
-        self.assertFalse(torch.equal(cache[..., :32, :], x[..., :32, :]))
-        self.assertGreater(stats['dense_bits'], stats['stored_bits'])
+    def test_first_window_is_compressed_immediately(self):
+        x = correlated(16)
+        cache, stats = cache_run(x, [8], saving=.3)
+        self.assertFalse(torch.equal(cache, x[..., :8, :]))
+        self.assertEqual(stats['metadata_bits'], HEADER_BITS + TAG_BITS * sum(
+            v for k, v in stats.items() if k.startswith('format_')))
 
-    def test_new_sequence_resets_state(self):
+    def test_new_sequence_restarts(self):
         x = correlated(64)
-        first, _ = cache_run(x, [64], dict(saving=.3))
-        methods.online_after_append(x.clone(), target='v', layer_idx=0, start=0, end=64, saving=.3)
+        first, _ = cache_run(x, [64], saving=.3)
         again = x.clone()
-        methods.online_after_append(again, target='v', layer_idx=0, start=0, end=64, saving=.3)
+        methods.after_append(again, target='v', layer_idx=0, start=0, end=64, saving=.3)
         torch.testing.assert_close(again, first)
 
 
 class ConfigTests(unittest.TestCase):
     def test_pipeline_and_validation(self):
-        step = SpatialConfig(algorithm='offline', max_group=4).pipeline(.3, k_layers=[1], v_layers=[])
-        spec = parse_kv_spec(step)
-        self.assertEqual(spec.pipeline[0].method, 'spatial_offline')
-        for options in (dict(max_group=3), dict(query_aware=True), dict(algorithm='offline', control={}),
-                        dict(max_group=8, fixed_residual=16), dict(algorithm='offline', minimum_storage=True),
-                        dict(max_group=8, minimum_storage=True)):
+        step = SpatialConfig(max_group=4).pipeline(.3, k_layers=[1], v_layers=[])
+        self.assertEqual(parse_kv_spec(step).pipeline[0].method, 'spatial')
+        for options in (dict(max_group=3), dict(query_aware=True)):
             with self.assertRaises(ValueError):
                 SpatialConfig(**options)
         with self.assertRaises(ValueError):
@@ -158,8 +145,7 @@ class ConfigTests(unittest.TestCase):
 
 
 class QueryAwareTests(unittest.TestCase):
-    def test_query_weights_change_key_choices_only(self):
-        torch.manual_seed(1)
+    def test_query_weights_change_keys_only(self):
         rope = RopeTables(rope_theta=10000., head_dim=128)
         x = correlated(256, noise=.6)
         with tempfile.TemporaryDirectory() as folder:
@@ -169,17 +155,20 @@ class QueryAwareTests(unittest.TestCase):
             weights[..., 64:72] = 50.
             torch.save({'weights': weights}, path)
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            options = dict(layer_idx=0, saving=.4, rope_tables=rope)
-            plain = methods.offline(x, target='k', **options)
-            aware = methods.offline(x, target='k', query_aware=True, query_weights=str(path),
-                                    query_weights_sha256=digest, **options)
-            self.assertFalse(torch.equal(plain, aware))
-            values = methods.offline(x, target='v', query_aware=True, query_weights=str(path),
-                                     query_weights_sha256=digest, **options)
-            torch.testing.assert_close(values, methods.offline(x, target='v', **options))
+            aware = dict(query_aware=True, query_weights=str(path), query_weights_sha256=digest)
+
+            def run(target, **options):
+                methods.reset()
+                cache = x.clone()
+                methods.after_append(cache, target=target, layer_idx=0, start=0, end=256,
+                                     saving=.4, rope_tables=rope, **options)
+                return cache
+
+            self.assertFalse(torch.equal(run('k'), run('k', **aware)))
+            torch.testing.assert_close(run('v'), run('v', **aware))
             with self.assertRaises(ValueError):
-                methods.offline(x, target='k', query_aware=True, query_weights=str(path),
-                                query_weights_sha256='0' * 64, **options)
+                run('k', **dict(aware, query_weights_sha256='0' * 64))
+        methods.reset()
         metrics.reset_stats()
 
 
@@ -202,28 +191,24 @@ class LiveModelTests(unittest.TestCase):
             with torch.inference_mode():
                 cache = DynamicCache()
                 ids = torch.arange(prompt).remainder(32).unsqueeze(0)
-                out = model(input_ids=ids, past_key_values=cache, use_cache=True)
+                model(input_ids=ids, past_key_values=cache, use_cache=True)
                 for position in range(prompt, prompt + new):  # fixed tokens: layer-0 keys depend only on ids
-                    token = torch.tensor([[(7 * position) % 32]])
-                    out = model(input_ids=token, past_key_values=cache, use_cache=True)
+                    model(input_ids=torch.tensor([[(7 * position) % 32]]), past_key_values=cache, use_cache=True)
             return cache.layers[0].keys.clone(), metrics.pop_stats()
         finally:
             uninstall()
 
-    def test_online_compresses_generated_tokens_offline_does_not(self):
+    def test_generated_windows_are_compressed(self):
         model = self.model()
         dense_keys, _ = self.generate(model, {'pipeline': []})
-        online_keys, online = self.generate(model, SpatialConfig(max_group=8).pipeline(.4))
-        offline_keys, offline = self.generate(model, SpatialConfig(algorithm='offline').pipeline(.4))
-        self.assertEqual(online_keys.shape[-2], 70)
-        decoded = slice(48, 64)  # windows written entirely during generation
-        self.assertFalse(torch.equal(online_keys[..., decoded, :], dense_keys[..., decoded, :]))
-        torch.testing.assert_close(offline_keys[..., decoded, :], dense_keys[..., decoded, :])
-        torch.testing.assert_close(online_keys[..., 64:, :], dense_keys[..., 64:, :])  # open window
-        for stats in (online, offline):
-            self.assertEqual(stats['k_layer_0']['dense_bits'], 70 * 64 * 16)
-        self.assertGreater(online['k_layer_0']['dense_bits'] - online['k_layer_0']['stored_bits'],
-                           offline['k_layer_0']['dense_bits'] - offline['k_layer_0']['stored_bits'])
+        keys, stats = self.generate(model, SpatialConfig().pipeline(.4))
+        self.assertEqual(keys.shape[-2], 70)
+        self.assertFalse(torch.equal(keys[..., 48:64, :], dense_keys[..., 48:64, :]))  # written in decode
+        torch.testing.assert_close(keys[..., 64:, :], dense_keys[..., 64:, :])  # open window
+        row = stats['k_layer_0']
+        self.assertEqual(row['dense_bits'], 70 * 64 * 16)
+        compressed = row['dense_bits'] - dense_bits(6, 64)
+        self.assertGreaterEqual(1 - (row['stored_bits'] - HEADER_BITS - dense_bits(6, 64)) / compressed, .4)
 
 
 if __name__ == '__main__':

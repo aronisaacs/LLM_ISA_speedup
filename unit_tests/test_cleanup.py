@@ -84,12 +84,12 @@ class LedgerTests(unittest.TestCase):
 class InterfaceTests(unittest.TestCase):
     def test_unknown_option_fails_before_model_loading(self):
         with self.assertRaisesRegex(ValueError, 'unknown options'):
-            parse_kv_spec({'pipeline': [{'method': 'spatial_offline', 'saving': .2,
+            parse_kv_spec({'pipeline': [{'method': 'spatial', 'saving': .2,
                                         'max_grup': 8, 'k_layers': [0]}]})
 
     def test_measured_bytes_include_dense_layers_of_different_sizes(self):
         metrics.reset_stats()
-        spec = parse_kv_spec({'pipeline': [{'method': 'spatial_offline', 'saving': .2, 'k_layers': [0]}]})
+        spec = parse_kv_spec({'pipeline': [{'method': 'spatial', 'saving': .2, 'k_layers': [0]}]})
         small = torch.zeros(1, 1, 4, 8)
         large = torch.zeros(1, 2, 4, 8)
         metrics.observe(small, small, 0, spec)

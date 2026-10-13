@@ -13,7 +13,6 @@ Plans are immutable per output directory; use a fresh ``--out`` for a new protoc
 import json
 import subprocess
 import sys
-from dataclasses import asdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -21,7 +20,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from catalog.models import LLAMA31_8B
 from catalog.tasks import CEVAL_VALID_5SHOT, WIKITEXT_FULL
-from compression_topics.spatial.algorithms.controller import Control
 from compression_topics.spatial.algorithms.formats import ACCOUNTING, MENUS
 from engine.eval_runner.cache import identities_match, simulation_identity
 from engine.eval_runner.files import write_json
@@ -57,7 +55,6 @@ def base_plan(
         seed=83,
         seq_len=2048,
         scoring_prefix=1536,
-        control=asdict(Control()),
         menus={str(g): list(m) for g, m in MENUS.items()},
         accounting=ACCOUNTING,
         allocation_basis="measured_calibration_bytes",
@@ -229,11 +226,6 @@ def summarize(
         count = payload["n-samples"]["ceval-valid"]["effective"]
         if count != 1346:
             raise ValueError(f"expected full 1346-question C-Eval, found {count}")
-        stats = [
-            r
-            for r in payload.get("gate_stats", {}).values()
-            if "controller_bound_hits" in r
-        ]
         saving = (
             payload["storage"]["targets"]["kv"]["compression"]
             if config["kv"]["pipeline"]
@@ -245,10 +237,6 @@ def summarize(
             "accuracy": payload["results"]["ceval-valid"]["acc,none"],
             "questions": count,
             "actual_kv_saving": saving,
-            "max_local_target_deviation": max(
-                (r["max_final_target_deviation"] for r in stats), default=None
-            ),
-            "controller_bound_hits": sum(r["controller_bound_hits"] for r in stats),
         }
         if "global_budget" in row:
             row["saving_deviation_points"] = 100 * (saving - row["global_budget"])

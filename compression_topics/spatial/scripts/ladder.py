@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-"""Spatial ladder at 30/40/50%: pairs, hierarchy, query-aware hierarchy.
+"""Spatial ladder at 30/40/50%.
 
 Arms (each calibrated and allocated independently):
 * pairs: dense or pairs with 0/16/32 residual entries;
 * hierarchy: the same pairs plus quads and eights with 0/16 entries;
-* query_hierarchy: the hierarchy with query-aware loss and residuals on keys;
-* query_pairs: the pairs with query-aware loss and residuals on keys.
+* query_pairs: pairs with query-aware loss and residuals on keys;
+* query_hierarchy: the hierarchy with query-aware loss and residuals on keys.
 
-``--algorithm online`` (default) steers the price causally and also compresses
-generated tokens; ``--algorithm chunked`` compresses every eight-token window to
-the slot's saving on its own, also during generation; ``--algorithm offline``
-fits one price per slot over the prompt. Pairs cannot reach 50%; online and
-chunked, its 50% point is the labeled minimum-storage endpoint (every pair
-merged, no residual, about 49.15%); offline skips it.
+Every eight-token window of a layer slot is compressed to that slot's saving.
+Pairs cannot reach 50%; their 50% point is the labeled endpoint where every pair
+is merged with no residual (about 49.15%).
 """
 
 import argparse
@@ -29,16 +26,14 @@ from compression_topics.spatial.scripts import study as base
 from engine.eval_runner.files import write_json
 from engine.layer_select.study import require_matched_savings, select_settings
 
-ARMS = ("pairs", "hierarchy", "query_hierarchy", "query_pairs")
+ARMS = ("pairs", "hierarchy", "query_pairs", "query_hierarchy")
 PAIR_ARMS = ("pairs", "query_pairs")
-QUERY_ARMS = ("query_hierarchy", "query_pairs")
+QUERY_ARMS = ("query_pairs", "query_hierarchy")
 BUDGETS = (0.3, 0.4, 0.5)
-OUT = ROOT / "compression_topics/spatial/figures/clean_ladder"
+OUT = ROOT / "compression_topics/spatial/figures/ladder"
 
 
-def plan(
-    out, *, arms=ARMS, algorithm="online", layers=32, screen=4, refine=12, validation=16
-):
+def plan(out, *, arms=ARMS, layers=32, screen=4, refine=12, validation=16):
     p = base.base_plan(
         out,
         layers=layers,
@@ -48,34 +43,26 @@ def plan(
         validation=validation,
     )
     p.update(
-        version=1,
-        protocol="spatial_ladder_offline_online_v1",
-        algorithm=algorithm,
+        version=2,
+        protocol="spatial_ladder_fixed_windows_v2",
         arms=list(arms),
         pair_local_budgets=[0.1, 0.25, 0.4, 0.47, 0.49],
         local_budgets=[0.1, 0.25, 0.4, 0.47, 0.49, 0.55, 0.7, 0.8, 0.85],
         query_weights=str(Path(out) / "query_weights.pt"),
         query_chunks=2,
         query_prefix=1536,
-        pair_endpoint="minimum_storage_online_only",
+        pair_endpoint="every_pair_merged",
     )
-    if algorithm == "chunked":
-        p["pair_endpoint"] = "minimum_storage_chunked"
-    if algorithm != "online":
-        p.pop("control")
     return p
 
 
-def _config(study, arm, target, digest, minimum_storage=False):
+def _config(study, arm, target, digest):
     aware = arm in QUERY_ARMS and target == "k"
     return SpatialConfig(
-        algorithm=study["algorithm"],
         max_group=2 if arm in PAIR_ARMS else 8,
         query_aware=aware,
         query_weights=study["query_weights"] if aware else None,
         query_weights_sha256=digest if aware else None,
-        control=study.get("control"),
-        minimum_storage=minimum_storage,
     )
 
 
@@ -87,15 +74,12 @@ def candidates(study):
     digest = hashlib.sha256(path.read_bytes()).hexdigest() if query else None
     rows = []
     for arm in study["arms"]:
-        budgets = (
-            study["pair_local_budgets"] if arm in PAIR_ARMS else study["local_budgets"]
-        )
-        endpoint = arm in PAIR_ARMS and study["algorithm"] != "offline"
+        pairs = arm in PAIR_ARMS
+        budgets = study["pair_local_budgets"] if pairs else study["local_budgets"]
         for layer in range(study["layers"]):
             for target in ("k", "v"):
-                for budget in budgets + ([0.5] if endpoint else []):
-                    minimum = endpoint and budget == 0.5
-                    config = _config(study, arm, target, digest, minimum)
+                config = _config(study, arm, target, digest)
+                for budget in budgets + ([0.5] if pairs else []):
                     rows.append(
                         dict(
                             name=f"{arm}_L{layer:02d}_{target}_b{round(100 * budget):02d}",
@@ -103,7 +87,7 @@ def candidates(study):
                             layer=layer,
                             target=target,
                             budget=budget,
-                            maximum_feasible=minimum,
+                            maximum_feasible=pairs and budget == 0.5,
                             kv=config.pipeline(budget, **base.slot(layer, target)),
                         )
                     )
@@ -124,7 +108,7 @@ def allocations(study, calibration):
         ):
             selection.update(maximum_feasible=False)
             result.append(selection)
-        if arm in PAIR_ARMS and study["algorithm"] != "offline":
+        if arm in PAIR_ARMS:
             settings = select_settings(
                 calibration,
                 include=lambda r, arm=arm: r["arm"] == arm and r.get("maximum_feasible"),
@@ -142,7 +126,7 @@ def allocations(study, calibration):
                     assignment=settings,
                     compression=sum(r["measured_saving"] for r in settings)
                     / len(settings),
-                    allocation_basis="measured_calibration_minimum_storage_endpoint",
+                    allocation_basis="measured_calibration_every_pair_merged",
                 )
             )
     return result
@@ -158,7 +142,7 @@ def check_validation(rows, budgets, arms, *, tolerance):
                 eligible,
                 tolerance=tolerance,
             )
-    ceiling = max_saving(128)  # one mean, two norms and a tag per pair; slightly lower with headers
+    ceiling = max_saving(128)  # one mean, two norms and a tag per pair
     for arm in PAIR_ARMS:
         endpoint = [r for r in rows if r["arm"] == arm and r["budget"] == 0.5]
         if endpoint and (
@@ -189,12 +173,12 @@ def summarize(out, run, *, require_complete=False):
         require_complete=require_complete,
         arm_pairs=(
             ("pairs", "hierarchy"),
-            ("hierarchy", "query_hierarchy"),
             ("pairs", "query_pairs"),
+            ("hierarchy", "query_hierarchy"),
             ("query_pairs", "query_hierarchy"),
         ),
-        scope="spatial ladder; per-head decisions; full C-Eval 5-shot",
-        comparison="independent calibration per arm; pair 50% is a minimum-storage endpoint",
+        scope="spatial ladder; fixed eight-token windows; full C-Eval 5-shot",
+        comparison="independent calibration per arm; pair 50% is the every-pair-merged endpoint",
     )
     for comparison in report["comparisons"]:
         if comparison["budget"] == 0.5 and comparison["reference_arm"] in PAIR_ARMS:
@@ -228,19 +212,14 @@ def main():
     )
     parser.add_argument("--out", type=Path, default=OUT)
     parser.add_argument("--arms", choices=ARMS, nargs="+", default=list(ARMS))
-    parser.add_argument("--algorithm", choices=("online", "chunked", "offline"), default="online")
     parser.add_argument("--from", dest="start", choices=base.STAGES, default="screen")
     parser.add_argument("--through", choices=base.STAGES, default="summary")
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
-    study = plan(
-        args.out.resolve(),
-        arms=tuple(dict.fromkeys(args.arms)),
-        algorithm=args.algorithm,
-    )
+    study = plan(args.out.resolve(), arms=tuple(dict.fromkeys(args.arms)))
     base.write_plan(study)
     print(
-        f"Spatial ladder ({args.algorithm}): {', '.join(study['arms'])} at 30/40/50%; "
+        f"Spatial ladder: {', '.join(study['arms'])} at 30/40/50%; "
         "4+12 train and 16 holdout chunks, full C-Eval.",
         flush=True,
     )
