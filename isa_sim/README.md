@@ -61,3 +61,26 @@ magnitudes was kept count as matching (`torch.topk` breaks ties in no fixed orde
 
 `isa_sim/data/wiki.test.raw` is written from the local Hugging Face cache and is
 not committed.
+
+## Standalone kernel (for gem5)
+
+`kernel/vc_attn.c` is one decode step of attention over one KV head, copied from
+llama.cpp's CPU flash-attention loop, with no ggml dependency so it cross-compiles
+to a static binary. `attn_f16` accumulates values in f16 like ggml; `attn_vc50`
+scores q·k over the kept pairs and decompresses values to f32, also like ggml.
+
+`kernel/test_vs_ggml.c` checks it against llama.cpp on the Mac: packing is
+byte-identical to ggml's vck50/vcv50, `attn_vc50` matches `ggml_flash_attn_ext`
+to 6e-8, and `attn_f16` to 1.6e-3 (f16 rounding; ggml splits long caches into
+chunks and merges them).
+
+```bash
+L=../llama.cpp
+clang -O2 -I$L/ggml/include isa_sim/kernel/vc_attn.c isa_sim/kernel/test_vs_ggml.c -L$L/build-cpu/bin \
+  -lggml-base -lggml-cpu -Wl,-rpath,$PWD/$L/build-cpu/bin -o isa_sim/golden/build/test_vs_ggml
+isa_sim/golden/build/test_vs_ggml
+```
+
+`kernel/bench.c <f16|vc50> <n_kv>` is the gem5 binary. With `-DM5OPS` the
+attention is bracketed by m5 reset/dump stats. Both kernels are plain C so far;
+SVE versions come once gem5 is built.
