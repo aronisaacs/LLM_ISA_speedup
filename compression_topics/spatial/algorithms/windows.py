@@ -158,7 +158,7 @@ def solve(losses, dim, saving, norms=True):
     return bits.sum(0).cpu(), code
 
 
-def solve_pairs(losses, dim, saving, norms=True, per_head=False):
+def solve_pairs(losses, dim, saving, norms=True, per_head=False, window=WINDOW):
     """Pairs only: sort the merge steps of a window and take them until it fits.
 
     Each pair can move from dense to its merged formats in steps along its lower
@@ -167,12 +167,13 @@ def solve_pairs(losses, dim, saving, norms=True, per_head=False):
     bit saved and taken in that order until the window meets its budget (or every
     step is taken). With ``per_head`` every head of the window must meet the
     saving on its own instead of sharing the window's budget. Returns (bits per
-    window, codes), as :func:`solve`.
+    window, codes), as :func:`solve`. ``window`` is the number of tokens decided
+    together (8 by default; 16 waits for twice as many tokens).
     """
     # Small per-window bookkeeping: done on the CPU whatever device the cache is on.
     table = losses[2].to("cpu", torch.float64)  # [heads, pairs, 3]: PR0, PR16, PR32
     heads, pairs = table.shape[:2]
-    windows = pairs * 2 // WINDOW
+    windows = pairs * 2 // window
     dense = dense_bits(2, dim)
     # Formats from least to most saving: PR32, PR16, PR0 (codes 3, 2, 1).
     order = [2, 1, 0]
@@ -200,31 +201,31 @@ def solve_pairs(losses, dim, saving, norms=True, per_head=False):
     # [windows, heads * 4 pairs * 3 steps], in pair-then-step order so a stable sort
     # never takes a pair's later step before its earlier one.
     def per_window(x):
-        x = torch.stack(x, -1).view(heads, windows, WINDOW // 2, len(order))
+        x = torch.stack(x, -1).view(heads, windows, window // 2, len(order))
         return x.permute(1, 0, 2, 3).reshape(windows * (heads if per_head else 1), -1)
 
     step_saved, step_rate, step_code = map(per_window, (steps_saved, steps_error, steps_code))
     sharing = 1 if per_head else heads  # heads that share one budget
-    need = sharing * (saving * dense_bits(WINDOW, dim) + (WINDOW // 2) * TAG_BITS)
+    need = sharing * (saving * dense_bits(window, dim) + (window // 2) * TAG_BITS)
     rank = torch.sort(step_rate, dim=1, stable=True).indices
     cumulative = step_saved.gather(1, rank).cumsum(1)
     before = cumulative - step_saved.gather(1, rank)
     take = torch.zeros_like(step_rate, dtype=torch.bool).scatter(
         1, rank, (before < need) & torch.isfinite(step_rate.gather(1, rank)))
-    taken = (take.view(windows, heads, WINDOW // 2, -1) * torch.arange(1, len(order) + 1)).amax(-1)
-    codes = torch.stack(steps_code, -1).view(heads, windows, WINDOW // 2, -1)
+    taken = (take.view(windows, heads, window // 2, -1) * torch.arange(1, len(order) + 1)).amax(-1)
+    codes = torch.stack(steps_code, -1).view(heads, windows, window // 2, -1)
     pair_code = torch.where(
         taken.permute(1, 0, 2) > 0,
         codes.gather(-1, (taken.permute(1, 0, 2) - 1).clamp_min(0).unsqueeze(-1)).squeeze(-1),
-        torch.zeros(heads, windows, WINDOW // 2, dtype=torch.long))
+        torch.zeros(heads, windows, window // 2, dtype=torch.long))
     bits_of = torch.tensor([dense] + [group_bits(r, dim, 2, norms) for r in MENUS[2]], dtype=torch.float64) + TAG_BITS
     bits = bits_of[pair_code].sum((0, 2))
-    code = pair_code.unsqueeze(-1).expand(heads, windows, WINDOW // 2, 2).reshape(heads, windows, WINDOW)
+    code = pair_code.unsqueeze(-1).expand(heads, windows, window // 2, 2).reshape(heads, windows, window)
     return bits, code
 
 
 def compress(tensor, *, target, saving, max_group=8, rope_tables=None, query_energy=None,
-             align_rope=True, keep_norms=True, per_head_budget=False):
+             align_rope=True, keep_norms=True, per_head_budget=False, window=WINDOW):
     """Compress the whole windows of ``tensor``.
 
     Returns (reconstructed tensor, stored bits, segment count per format).
@@ -240,7 +241,7 @@ def compress(tensor, *, target, saving, max_group=8, rope_tables=None, query_ene
     )
     heads, length, dim = tensor.shape[1:]
     if max_group == 2:
-        bits, code = solve_pairs(losses, dim, saving, keep_norms, per_head_budget)
+        bits, code = solve_pairs(losses, dim, saving, keep_norms, per_head_budget, window)
     else:
         bits, code = solve(losses, dim, saving, keep_norms)
     code = code.reshape(1, heads, length, 1).to(tensor.device)

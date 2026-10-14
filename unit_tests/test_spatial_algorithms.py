@@ -242,6 +242,21 @@ class SimplificationTests(unittest.TestCase):
         _, shared = windows.solve_pairs(losses, 128, .3)
         self.assertFalse(torch.equal(code, shared))
 
+    def test_sixteen_token_windows(self):
+        x = correlated(256, heads=4, noise=.6)
+        losses, _ = windows.candidates(x, target='v', max_group=2)
+        bits, code = windows.solve_pairs(losses, 128, .3, per_head=True, window=16)
+        self.assertEqual(len(bits), 16)  # 256 tokens / 16
+        bits_of = torch.tensor([dense_bits(2, 128)] + [group_bits(r, 128, 2) for r in (0, 16, 32)]) + TAG_BITS
+        per_head = bits_of[code[..., ::2]].sum(-1)  # [heads, 16-token windows]
+        self.assertTrue(bool((per_head <= .7 * dense_bits(16, 128)).all()))
+        whole, whole_stats = cache_run(x[:, :2], [203 - 3], saving=.3, max_group=2, window=16)
+        streamed, stream_stats = cache_run(x[:, :2], [21] + [1] * 179, saving=.3, max_group=2, window=16)
+        torch.testing.assert_close(streamed, whole)
+        self.assertTrue(torch.equal(streamed[..., 192:, :], x[:, :2, 192:200]))  # open 16-token window
+        with self.assertRaises(ValueError):
+            SpatialConfig(window=16)  # pairs only
+
     def test_without_norms_bits_and_reconstruction(self):
         self.assertEqual(group_bits(0, 128, 2, norms=False), group_bits(0, 128, 2) - 32)
         x = correlated(64, noise=0.) * 3

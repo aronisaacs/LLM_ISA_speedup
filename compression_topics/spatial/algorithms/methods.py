@@ -33,6 +33,7 @@ class SpatialConfig:
     per_head_budget: bool = False  # each head meets the saving alone (pairs only)
     align_rope: bool = True  # undo RoPE on keys before merging
     keep_norms: bool = True  # store per-token norms and merge unit directions
+    window: int = WINDOW  # tokens decided together; 16 is supported for pairs
 
     def __post_init__(self):
         sizes(self.max_group)
@@ -41,6 +42,10 @@ class SpatialConfig:
                 raise ValueError(f"{flag} is a boolean")
         if self.per_head_budget and self.max_group != 2:
             raise ValueError("per-head budgets are implemented for pairs only")
+        if self.window not in (WINDOW, 2 * WINDOW) or isinstance(self.window, bool):
+            raise ValueError("window must be 8 or 16 tokens")
+        if self.window != WINDOW and self.max_group != 2:
+            raise ValueError("16-token windows are implemented for pairs only")
         if self.query_aware != (
             self.query_weights is not None and self.query_weights_sha256 is not None
         ):
@@ -57,7 +62,7 @@ class SpatialConfig:
         return {"pipeline": [dict(step, **options)]}
 
 
-_STUDY_DEFAULTS = dict(per_head_budget=False, align_rope=True, keep_norms=True)
+_STUDY_DEFAULTS = dict(per_head_budget=False, align_rope=True, keep_norms=True, window=WINDOW)
 
 
 def _stats(target, layer_idx):
@@ -86,6 +91,7 @@ def store(
     per_head_budget=False,
     align_rope=True,
     keep_norms=True,
+    window=WINDOW,
     **context,
 ):
     """New tokens are stored as written; :func:`after_append` compresses whole windows."""
@@ -112,8 +118,9 @@ def after_append(
     per_head_budget=False,
     align_rope=True,
     keep_norms=True,
+    window=WINDOW,
 ):
-    """Compress, in place, every eight-token window completed by this cache update."""
+    """Compress, in place, every window (8 or 16 tokens) completed by this cache update."""
     if cache_tensor.ndim != 4 or cache_tensor.shape[0] != 1:
         raise ValueError("spatial compression requires batch size one")
     key = (layer_idx, target)
@@ -125,7 +132,7 @@ def after_append(
     new = heads * dense_bits(end - start, dim)
     row["dense_bits"] += new
     row["stored_bits"] += new
-    complete = end // WINDOW * WINDOW
+    complete = end // window * window
     if complete <= done:
         return
     body = cache_tensor[..., done:complete, :]
@@ -142,6 +149,7 @@ def after_append(
         align_rope=align_rope,
         keep_norms=keep_norms,
         per_head_budget=per_head_budget,
+        window=window,
     )
     cache_tensor[..., done:complete, :] = out
     header = HEADER_BITS if done == 0 else 0
