@@ -529,7 +529,7 @@ def calibrate_head_savings(study, budgets):
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from transformers.cache_utils import Cache
     from compression_topics.spatial.algorithms import windows
-    from compression_topics.spatial.algorithms.formats import WINDOW, max_saving
+    from compression_topics.spatial.algorithms.formats import WINDOW, head_levels, max_saving
     from compression_topics.spatial.algorithms.representation import query_energy
     from engine.eval_runner.text_chunks import wikitext_chunks
     from engine.kv_compress.install import _rope_tables
@@ -579,14 +579,17 @@ def calibrate_head_savings(study, budgets):
                 print(f"Head budget calibration {n + 1}/{len(prompts)}", flush=True)
     finally:
         Cache.update = original
-    table = {}
+    table, rounded = {}, {}
+    levels = head_levels(study["head_dim"])
     for (layer, target, budget), (s, n) in sorted(totals.items()):
         share = s / n
         share = share * budget / share.mean().clamp_min(1e-9)  # heads average to the budget
-        share = share.clamp(0.0, ceiling)
-        table.setdefault(str(layer), {}).setdefault(target, {})[str(budget)] = [
-            round(float(v), 6) for v in share]
-    write_json(path, {"protocol": {"study": study, "budgets": list(budgets)}, "savings": table})
+        share = [round(float(v), 6) for v in share.clamp(0.0, ceiling)]
+        table.setdefault(str(layer), {}).setdefault(target, {})[str(budget)] = share
+        rounded.setdefault(str(layer), {}).setdefault(target, {})[str(budget)] = (
+            windows.round_to_levels(share, budget, levels))
+    write_json(path, {"protocol": {"study": study, "budgets": list(budgets)},
+                      "savings": table, "levels": rounded, "level_values": list(levels)})
     print(f"Saved per-head budgets for {len(table)} layers to {path}", flush=True)
 
 

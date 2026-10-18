@@ -33,6 +33,13 @@ def dense_bits(tokens, dim):
     return VALUE_BITS * tokens * dim
 
 
+def head_levels(dim, norms=True):
+    """Allowed fixed per-head savings: 0, 1/8, 1/4 and 3/8 of a head's dense bits, and
+    the most a head can save with pairs (every pair merged with no residual)."""
+    most = 1 - group_bits(0, dim, 2, norms) / dense_bits(2, dim)
+    return (0.0, 0.125, 0.25, 0.375, most)
+
+
 def max_saving(dim, size=2, residual=0):
     """Saving of a slot stored entirely in one format, ignoring the header."""
     return 1 - (group_bits(residual, dim, size) + TAG_BITS) / dense_bits(size, dim)

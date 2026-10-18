@@ -35,6 +35,7 @@ class SpatialConfig:
     keep_norms: bool = True  # store per-token norms and merge unit directions
     window: int = WINDOW  # tokens decided together; 16 is supported for pairs
     head_savings: tuple | None = None  # fixed saving per KV head (pairs only)
+    pad_heads: bool = False  # count each head's reserved budget, not the bits it used
 
     def __post_init__(self):
         sizes(self.max_group)
@@ -54,6 +55,8 @@ class SpatialConfig:
                 for v in values
             ):
                 raise ValueError("head_savings is one saving in [0, 1) per KV head, pairs only")
+        if not isinstance(self.pad_heads, bool) or (self.pad_heads and self.head_savings is None):
+            raise ValueError("pad_heads is a boolean and needs head_savings")
         if self.query_aware != (
             self.query_weights is not None and self.query_weights_sha256 is not None
         ):
@@ -73,7 +76,8 @@ class SpatialConfig:
 
 
 _STUDY_DEFAULTS = dict(
-    per_head_budget=False, align_rope=True, keep_norms=True, window=WINDOW, head_savings=None
+    per_head_budget=False, align_rope=True, keep_norms=True, window=WINDOW, head_savings=None,
+    pad_heads=False,
 )
 
 
@@ -105,6 +109,7 @@ def store(
     keep_norms=True,
     window=WINDOW,
     head_savings=None,
+    pad_heads=False,
     **context,
 ):
     """New tokens are stored as written; :func:`after_append` compresses whole windows."""
@@ -133,6 +138,7 @@ def after_append(
     keep_norms=True,
     window=WINDOW,
     head_savings=None,
+    pad_heads=False,
 ):
     """Compress, in place, every window (8 or 16 tokens) completed by this cache update."""
     if cache_tensor.ndim != 4 or cache_tensor.shape[0] != 1:
@@ -164,6 +170,7 @@ def after_append(
         keep_norms=keep_norms,
         per_head_budget=per_head_budget or head_savings is not None,
         window=window,
+        pad_heads=pad_heads,
     )
     cache_tensor[..., done:complete, :] = out
     header = HEADER_BITS if done == 0 else 0

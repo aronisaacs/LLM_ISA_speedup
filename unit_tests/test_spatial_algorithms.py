@@ -9,6 +9,7 @@ import torch
 
 from compression_topics.spatial.algorithms import methods, windows
 from compression_topics.spatial.algorithms.formats import (
+    head_levels,
     HEADER_BITS, TAG_BITS, WINDOW, dense_bits, group_bits, max_saving)
 from compression_topics.spatial.algorithms.methods import SpatialConfig
 from engine.kv_compress import metrics, parse_kv_spec
@@ -276,6 +277,29 @@ class SimplificationTests(unittest.TestCase):
         cache, _ = cache_run(x[:, :2], [64], saving=.3, max_group=2, head_savings=shares[:2])
         with self.assertRaises(ValueError):
             SpatialConfig(head_savings=(.3, .3))  # pairs only
+
+    def test_head_levels_and_padding(self):
+        levels = head_levels(128)
+        self.assertEqual(levels[:4], (0.0, .125, .25, .375))
+        self.assertAlmostEqual(levels[4], 1 - 2080 / 4096)
+        rounded = windows.round_to_levels([.45, .30, .20, .05], .25, levels)
+        self.assertTrue(all(r in levels for r in rounded))
+        self.assertGreaterEqual(sum(rounded) / 4, .25)
+        self.assertLessEqual(rounded[3], .125)  # the hardest head stays low
+        x = correlated(128, heads=4, noise=.6)
+        shares = [.375, .25, .125, 0.0]
+        _, used, _ = windows.compress(x, target='v', saving=shares, max_group=2, per_head_budget=True)
+        _, padded, _ = windows.compress(x, target='v', saving=shares, max_group=2, per_head_budget=True,
+                                        pad_heads=True)
+        reserved = sum((1 - s) * dense_bits(WINDOW, 128) + 4 * TAG_BITS for s in shares) * 16
+        self.assertEqual(padded, reserved)  # exactly the reserved size, every window
+        out, _, counts = windows.compress(x, target='v', saving=[0.0] * 4, max_group=2,
+                                          per_head_budget=True, pad_heads=True)
+        self.assertTrue(torch.equal(out, x))  # a 0% head stays dense
+        step = SpatialConfig(max_group=2, head_savings=tuple(shares), pad_heads=True).pipeline(.2)
+        self.assertTrue(step['pipeline'][0]['pad_heads'])
+        with self.assertRaises(ValueError):
+            SpatialConfig(max_group=2, pad_heads=True)
 
     def test_without_norms_bits_and_reconstruction(self):
         self.assertEqual(group_bits(0, 128, 2, norms=False), group_bits(0, 128, 2) - 32)

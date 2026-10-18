@@ -115,11 +115,17 @@ class LadderTests(unittest.TestCase):
             budgets = ladder.head_split_budgets(p)
             self.assertNotIn(0.5, budgets)
             shares = {str(l): {t: {str(b): [b] * 8 for b in budgets} for t in "kv"} for l in range(2)}
-            write_json(p["head_savings"], {"savings": shares})
+            levels = {str(l): {t: {str(b): [.25] * 8 for b in budgets} for t in "kv"} for l in range(2)}
+            write_json(p["head_savings"], {"savings": shares, "levels": levels})
             rows = ladder.candidates(p)
             self.assertEqual(len(rows), 2 * 2 * len(budgets))
             for row in rows:
                 self.assertEqual(row["kv"]["pipeline"][0]["head_savings"], [row["budget"]] * 8)
+                self.assertNotIn("pad_heads", row["kv"]["pipeline"][0])
+            p["arms"] = [ladder.HEAD_LEVELS]
+            for row in ladder.candidates(p):
+                step = row["kv"]["pipeline"][0]
+                self.assertEqual((step["head_savings"], step["pad_heads"]), ([.25] * 8, True))
 
     def test_validation_gate_and_endpoint(self):
         rows = [

@@ -14,7 +14,9 @@ Simplifications of query_pairs (each calibrated on its own):
 * query_pairs_no_rope_no_norms: both of the above;
 * query_pairs_per_head_w16: per-head budgets over 16-token windows (decisions wait 16 tokens);
 * query_pairs_head_split: a fixed budget per head that differs by head, set once from
-  each head's share under the shared window budget.
+  each head's share under the shared window budget;
+* query_pairs_head_levels: that split rounded to 0/12.5/25/37.5/49% per head, with
+  each head's budget reserved (padded) in every window.
 
 Every eight-token window of a layer slot is compressed to that slot's saving.
 Pairs cannot reach 50%; their 50% point is the labeled endpoint where every pair
@@ -47,9 +49,12 @@ SIMPLIFICATIONS = {
 # Per-head budgets that differ by head: each head's fixed share is measured once
 # (study.calibrate_head_savings) and stays the same for every window.
 HEAD_SPLIT = "query_pairs_head_split"
-ARMS = ("pairs", "hierarchy", "query_pairs", "query_hierarchy", *SIMPLIFICATIONS, HEAD_SPLIT)
-PAIR_ARMS = ("pairs", "query_pairs", *SIMPLIFICATIONS, HEAD_SPLIT)
-QUERY_ARMS = ("query_pairs", "query_hierarchy", *SIMPLIFICATIONS, HEAD_SPLIT)
+# The same split rounded to a few levels, with each head's budget reserved in full.
+HEAD_LEVELS = "query_pairs_head_levels"
+HEAD_ARMS = (HEAD_SPLIT, HEAD_LEVELS)
+ARMS = ("pairs", "hierarchy", "query_pairs", "query_hierarchy", *SIMPLIFICATIONS, *HEAD_ARMS)
+PAIR_ARMS = ("pairs", "query_pairs", *SIMPLIFICATIONS, *HEAD_ARMS)
+QUERY_ARMS = ("query_pairs", "query_hierarchy", *SIMPLIFICATIONS, *HEAD_ARMS)
 BUDGETS = (0.3, 0.4, 0.5)
 OUT = ROOT / "compression_topics/spatial/figures/ladder"
 
@@ -74,7 +79,7 @@ def plan(out, *, arms=ARMS[:4], budgets=BUDGETS, layers=32, screen=4, refine=12,
         query_prefix=1536,
         pair_endpoint="every_pair_merged",
     )
-    if HEAD_SPLIT in arms:
+    if any(a in HEAD_ARMS for a in arms):
         p["head_savings"] = str(Path(out) / "head_savings.json")
     return p
 
@@ -102,11 +107,11 @@ def candidates(study):
         raise ValueError("fresh query calibration required")
     digest = hashlib.sha256(path.read_bytes()).hexdigest() if query else None
     shares = None
-    if HEAD_SPLIT in study["arms"]:
+    if any(a in HEAD_ARMS for a in study["arms"]):
         source = Path(study["head_savings"])
         if not source.exists():
             raise ValueError("per-head budget calibration required")
-        shares = json.loads(source.read_text())["savings"]
+        shares = json.loads(source.read_text())
     rows = []
     for arm in study["arms"]:
         pairs = arm in PAIR_ARMS
@@ -116,9 +121,10 @@ def candidates(study):
             for target in ("k", "v"):
                 config = _config(study, arm, target, digest)
                 for budget in budgets + ([0.5] if endpoint else []):
-                    if arm == HEAD_SPLIT:
+                    if arm in HEAD_ARMS:
+                        table = shares["savings" if arm == HEAD_SPLIT else "levels"]
                         config = replace(config, head_savings=tuple(
-                            shares[str(layer)][target][str(budget)]))
+                            table[str(layer)][target][str(budget)]), pad_heads=arm == HEAD_LEVELS)
                     rows.append(
                         dict(
                             name=f"{arm}_L{layer:02d}_{target}_b{round(100 * budget):02d}",
@@ -268,7 +274,7 @@ def main():
     if args.execute:
         if any(a in QUERY_ARMS for a in study["arms"]):
             base.calibrate_queries(study)
-        if HEAD_SPLIT in study["arms"]:
+        if any(a in HEAD_ARMS for a in study["arms"]):
             base.calibrate_head_savings(study, head_split_budgets(study))
         base.run_stages(study, args.start, args.through, run_stage)
 

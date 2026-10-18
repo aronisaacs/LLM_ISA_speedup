@@ -158,7 +158,8 @@ def solve(losses, dim, saving, norms=True):
     return bits.sum(0).cpu(), code
 
 
-def solve_pairs(losses, dim, saving, norms=True, per_head=False, window=WINDOW):
+def solve_pairs(losses, dim, saving, norms=True, per_head=False, window=WINDOW,
+                tags_in_budget=True):
     """Pairs only: sort the merge steps of a window and take them until it fits.
 
     Each pair can move from dense to its merged formats in steps along its lower
@@ -213,7 +214,8 @@ def solve_pairs(losses, dim, saving, norms=True, per_head=False, window=WINDOW):
         if not per_head or target.shape != (heads,):
             raise ValueError("per-head savings need per_head and one value per KV head")
         target = target.repeat(windows).unsqueeze(1)
-    need = sharing * (target * dense_bits(window, dim) + (window // 2) * TAG_BITS)
+    tags = (window // 2) * TAG_BITS if tags_in_budget else 0  # padded heads reserve tags apart
+    need = sharing * (target * dense_bits(window, dim) + tags)
     rank = torch.sort(step_rate, dim=1, stable=True).indices
     cumulative = step_saved.gather(1, rank).cumsum(1)
     before = cumulative - step_saved.gather(1, rank)
@@ -249,11 +251,32 @@ def head_shares(losses, dim, saving, norms=True):
     return saving.sum(1), saving.shape[1]
 
 
+def round_to_levels(shares, saving, levels):
+    """Round per-head savings to ``levels`` so the heads still average at least ``saving``.
+
+    Every head first takes the largest level at or below its share; then the heads
+    that were rounded down the most move up one level until the average reaches
+    ``saving`` (or every head is at the top level).
+    """
+    levels = sorted(levels)
+    index = [max(i for i, v in enumerate(levels) if v <= s + 1e-12) for s in shares]
+    while sum(levels[i] for i in index) / len(index) < saving - 1e-12:
+        movable = [h for h, i in enumerate(index) if i + 1 < len(levels)]
+        if not movable:
+            break
+        h = max(movable, key=lambda h: shares[h] - levels[index[h]])
+        index[h] += 1
+    return [levels[i] for i in index]
+
+
 def compress(tensor, *, target, saving, max_group=8, rope_tables=None, query_energy=None,
-             align_rope=True, keep_norms=True, per_head_budget=False, window=WINDOW):
+             align_rope=True, keep_norms=True, per_head_budget=False, window=WINDOW,
+             pad_heads=False):
     """Compress the whole windows of ``tensor``.
 
-    Returns (reconstructed tensor, stored bits, segment count per format).
+    Returns (reconstructed tensor, stored bits, segment count per format). With
+    ``pad_heads`` (per-head savings), every head reserves exactly its budget in every
+    window, so stored bits count the reserved size rather than the bits used.
     """
     losses, reconstructions = candidates(
         tensor,
@@ -266,9 +289,18 @@ def compress(tensor, *, target, saving, max_group=8, rope_tables=None, query_ene
     )
     heads, length, dim = tensor.shape[1:]
     if max_group == 2:
-        bits, code = solve_pairs(losses, dim, saving, keep_norms, per_head_budget, window)
+        bits, code = solve_pairs(losses, dim, saving, keep_norms, per_head_budget, window,
+                                 tags_in_budget=not pad_heads)
     else:
         bits, code = solve(losses, dim, saving, keep_norms)
+    if pad_heads:
+        bits_of = torch.tensor(
+            [dense_bits(2, dim)] + [group_bits(r, dim, 2, keep_norms) for r in MENUS[2]],
+            dtype=torch.float64) + TAG_BITS
+        used = bits_of[code[..., ::2].cpu()].sum(-1)  # [heads, windows]
+        share = torch.as_tensor(saving, dtype=torch.float64).view(-1, 1)
+        reserved = (1 - share) * dense_bits(window, dim) + (window // 2) * TAG_BITS
+        bits = torch.maximum(used, reserved).sum(0)
     code = code.reshape(1, heads, length, 1).to(tensor.device)
     out = tensor.clone()
     counts = {"format_dense_pair": int((code == 0).sum()) // 2}
