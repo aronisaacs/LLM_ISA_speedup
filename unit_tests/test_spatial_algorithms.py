@@ -300,6 +300,10 @@ class SimplificationTests(unittest.TestCase):
         self.assertTrue(step['pipeline'][0]['pad_heads'])
         with self.assertRaises(ValueError):
             SpatialConfig(max_group=2, pad_heads=True)
+        _, uniform, _ = windows.compress(x, target='v', saving=.25, max_group=2, per_head_budget=True,
+                                         pad_heads=True)
+        self.assertEqual(uniform, 4 * 16 * (.75 * dense_bits(WINDOW, 128) + 4 * TAG_BITS))
+        SpatialConfig(max_group=2, per_head_budget=True, pad_heads=True)  # same budget for every head
 
     def test_without_norms_bits_and_reconstruction(self):
         self.assertEqual(group_bits(0, 128, 2, norms=False), group_bits(0, 128, 2) - 32)

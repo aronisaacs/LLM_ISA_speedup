@@ -55,8 +55,10 @@ class SpatialConfig:
                 for v in values
             ):
                 raise ValueError("head_savings is one saving in [0, 1) per KV head, pairs only")
-        if not isinstance(self.pad_heads, bool) or (self.pad_heads and self.head_savings is None):
-            raise ValueError("pad_heads is a boolean and needs head_savings")
+        if not isinstance(self.pad_heads, bool) or (
+            self.pad_heads and self.head_savings is None and not self.per_head_budget
+        ):
+            raise ValueError("pad_heads is a boolean and needs per-head budgets")
         if self.query_aware != (
             self.query_weights is not None and self.query_weights_sha256 is not None
         ):

@@ -45,6 +45,8 @@ SIMPLIFICATIONS = {
     "query_pairs_no_norms": dict(keep_norms=False),
     "query_pairs_no_rope_no_norms": dict(align_rope=False, keep_norms=False),
     "query_pairs_per_head_w16": dict(per_head_budget=True, window=16),
+    # Same budget for every head, each head's budget reserved in full every window.
+    "query_pairs_per_head_padded": dict(per_head_budget=True, pad_heads=True),
 }
 # Per-head budgets that differ by head: each head's fixed share is measured once
 # (study.calibrate_head_savings) and stays the same for every window.
