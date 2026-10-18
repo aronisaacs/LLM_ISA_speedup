@@ -31,6 +31,16 @@ HUMANEVAL_INSTRUCT = {
     "apply_chat_template": True,
 }
 
+# lm-eval's plain completion HumanEval, for base (non-instruct) code models.
+HUMANEVAL_BASE = {
+    "name_task": "humaneval_base",
+    "file": "humaneval_base",
+    "tasks": ["humaneval"],
+    "num_fewshot": 0,
+    "env": {"HF_ALLOW_CODE_EVAL": "1"},
+    "confirm_run_unsafe_code": True,
+}
+
 HUMANEVAL_CODELLAMA = {
     "name_task": "humaneval",
     "file": "humaneval",

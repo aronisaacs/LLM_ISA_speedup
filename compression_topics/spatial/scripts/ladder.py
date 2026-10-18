@@ -23,8 +23,10 @@ Simplifications of query_pairs (each calibrated on its own):
 
 The official method (locked in 2026-10-18) is query_pairs_per_head_padded_w16:
 pairs with query-aware keys, the same budget for every KV head reserved in full
-(fixed-size blocks), and 16-token windows. ``--official`` runs it on C-Eval,
-GSM8K and HumanEval at OFFICIAL_BUDGETS.
+(fixed-size blocks), and 16-token windows. ``--official`` runs it at
+OFFICIAL_BUDGETS: Llama 3.1 8B-Instruct on C-Eval, GSM8K and HumanEval-instruct,
+and ``--model codellama`` CodeLlama 7B on plain HumanEval. Each model gets its own
+query and layer calibration.
 
 Every window of a layer slot is compressed to that slot's saving.
 Pairs cannot reach 50%; their 50% point is the labeled endpoint where every pair
@@ -41,6 +43,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from catalog.models import CODELLAMA_7B, LLAMA31_8B
 from compression_topics.spatial.algorithms.formats import max_saving
 from compression_topics.spatial.algorithms.methods import SpatialConfig
 from compression_topics.spatial.scripts import study as base
@@ -66,8 +69,13 @@ HEAD_SPLIT = "query_pairs_head_split"
 HEAD_LEVELS = "query_pairs_head_levels"
 HEAD_ARMS = (HEAD_SPLIT, HEAD_LEVELS)
 OFFICIAL_ARM = "query_pairs_per_head_padded_w16"
-OFFICIAL_BUDGETS = (0.2, 0.3, 0.35, 0.4, 0.45)
-OFFICIAL_TASKS = ("ceval", "gsm8k", "humaneval")
+OFFICIAL_BUDGETS = (0.1, 0.2, 0.3, 0.35, 0.4)
+# Model: (model_args, official tasks).
+MODELS = {
+    "llama": (LLAMA31_8B, ("ceval", "gsm8k", "humaneval")),
+    "codellama": (CODELLAMA_7B, ("humaneval_base",)),
+}
+OFFICIAL_TASKS = MODELS["llama"][1]
 ARMS = ("pairs", "hierarchy", "query_pairs", "query_hierarchy", *SIMPLIFICATIONS, *HEAD_ARMS)
 PAIR_ARMS = ("pairs", "query_pairs", *SIMPLIFICATIONS, *HEAD_ARMS)
 QUERY_ARMS = ("query_pairs", "query_hierarchy", *SIMPLIFICATIONS, *HEAD_ARMS)
@@ -76,9 +84,10 @@ OUT = ROOT / "compression_topics/spatial/figures/ladder"
 
 
 def plan(out, *, arms=ARMS[:4], budgets=BUDGETS, layers=32, screen=4, refine=12, validation=16,
-         tasks=("ceval",)):
+         tasks=("ceval",), model_args=LLAMA31_8B):
     p = base.base_plan(
         out,
+        model_args=model_args,
         layers=layers,
         budgets=budgets,
         screen=screen,
@@ -284,14 +293,17 @@ def main():
     parser.add_argument("--from", dest="start", choices=base.STAGES, default="screen")
     parser.add_argument("--through", choices=base.STAGES, default="summary")
     parser.add_argument("--tasks", choices=tuple(base.TASKS), nargs="+", default=["ceval"])
+    parser.add_argument("--model", choices=tuple(MODELS), default="llama")
     parser.add_argument("--official", action="store_true",
-                        help="the official method on C-Eval, GSM8K and HumanEval at OFFICIAL_BUDGETS")
+                        help="the official method at OFFICIAL_BUDGETS on the model's official tasks")
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     if args.official:
-        args.arms, args.budgets, args.tasks = [OFFICIAL_ARM], list(OFFICIAL_BUDGETS), list(OFFICIAL_TASKS)
+        args.arms, args.budgets = [OFFICIAL_ARM], list(OFFICIAL_BUDGETS)
+        args.tasks = list(MODELS[args.model][1])
     study = plan(args.out.resolve(), arms=tuple(dict.fromkeys(args.arms)),
-                 budgets=tuple(args.budgets), tasks=tuple(dict.fromkeys(args.tasks)))
+                 budgets=tuple(args.budgets), tasks=tuple(dict.fromkeys(args.tasks)),
+                 model_args=MODELS[args.model][0])
     base.write_plan(study)
     print(
         f"Spatial ladder: {', '.join(study['arms'])} at "

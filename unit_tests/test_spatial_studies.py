@@ -210,6 +210,12 @@ class OfficialSweepTests(unittest.TestCase):
             report = ladder.summarize(out, run, require_complete=True)
             self.assertEqual(report["status"], "complete")
             self.assertEqual(set(report["dense_accuracy_by_task"]), {"ceval", "gsm8k", "humaneval"})
+            code = ladder.plan(out / "code", arms=(ladder.OFFICIAL_ARM,), budgets=ladder.OFFICIAL_BUDGETS,
+                               layers=1, tasks=ladder.MODELS["codellama"][1],
+                               model_args=ladder.MODELS["codellama"][0])
+            code_run = ladder.tasks(code, selections)
+            self.assertEqual({c["tasks"][0] for c in code_run["configurations"]}, {"humaneval"})
+            self.assertIn("CodeLlama", code_run["model_args"])
             step = SpatialConfig(max_group=2, **ladder.SIMPLIFICATIONS[ladder.OFFICIAL_ARM])
             self.assertEqual((step.window, step.per_head_budget, step.pad_heads), (16, True, True))
 

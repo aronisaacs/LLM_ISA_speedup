@@ -19,7 +19,13 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from catalog.models import LLAMA31_8B
-from catalog.tasks import CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT, WIKITEXT_FULL
+from catalog.tasks import (
+    CEVAL_VALID_5SHOT,
+    GSM8K_20PCT,
+    HUMANEVAL_BASE,
+    HUMANEVAL_INSTRUCT,
+    WIKITEXT_FULL,
+)
 from compression_topics.spatial.algorithms.formats import ACCOUNTING, MENUS
 from engine.eval_runner.cache import identities_match, simulation_identity
 from engine.eval_runner.files import write_json
@@ -39,6 +45,7 @@ TASKS = {
     "ceval": (CEVAL_VALID_5SHOT, "ceval-valid", "acc,none", 1346),
     "gsm8k": (GSM8K_20PCT, "gsm8k", "exact_match,flexible-extract", 1319),
     "humaneval": (HUMANEVAL_INSTRUCT, "humaneval_instruct", "pass@1,create_test", 164),
+    "humaneval_base": (HUMANEVAL_BASE, "humaneval", "pass@1,create_test", 164),
 }
 DENSE_CEVAL = (
     ROOT
@@ -47,13 +54,14 @@ DENSE_CEVAL = (
 
 
 def base_plan(
-    out, *, layers=32, budgets=(0.3, 0.4, 0.5), screen=4, refine=12, validation=16
+    out, *, layers=32, budgets=(0.3, 0.4, 0.5), screen=4, refine=12, validation=16,
+    model_args=LLAMA31_8B,
 ):
     return dict(
         out=str(out),
         layers=layers,
         head_dim=128,
-        model_args=LLAMA31_8B,
+        model_args=model_args,
         budgets=list(budgets),
         screen_chunks=screen,
         refine_chunks=refine,
@@ -188,7 +196,7 @@ def task_run(study, selections):
     """
     out = Path(study["out"])
     names = study.get("tasks", ["ceval"])
-    order = [n for n in ("gsm8k", "humaneval", "ceval") if n in names]
+    order = [n for n in ("gsm8k", "humaneval", "humaneval_base", "ceval") if n in names]
     configs = []
     for name in order:
         task = TASKS[name][0]
