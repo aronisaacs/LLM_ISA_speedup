@@ -11,6 +11,7 @@ from unittest.mock import patch
 import torch
 
 from compression_topics.spatial.algorithms.formats import ACCOUNTING
+from compression_topics.spatial.algorithms.methods import SpatialConfig
 from compression_topics.spatial.scripts import ladder, study
 from engine.eval_runner.cache import simulation_identity
 from engine.eval_runner.chunks import identity
@@ -57,10 +58,11 @@ def fake_chunks(path, *, endpoint_saving=None):
 
 def fake_tasks(destination, run, *, summarizer):
     for config in run["configurations"]:
+        _, key, metric, full = next(t for t in study.TASKS.values() if t[0]["tasks"] == config["tasks"])
         payload = {
             "simulation": simulation_identity(run, config, parse_kv_spec(config["kv"])),
-            "n-samples": {"ceval-valid": {"effective": 1346}},
-            "results": {"ceval-valid": {"acc,none": 0.5}},
+            "n-samples": {key: {"effective": full}},
+            "results": {key: {metric: 0.5}},
             "gate_stats": {},
         }
         if config["kv"]["pipeline"]:
@@ -187,6 +189,29 @@ class LadderTests(unittest.TestCase):
                 ):
                     ladder.run_stage(p, "tasks")
                 execute.assert_not_called()
+
+
+class OfficialSweepTests(unittest.TestCase):
+    def test_three_tasks_per_selection(self):
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder)
+            p = ladder.plan(out, arms=(ladder.OFFICIAL_ARM,), budgets=ladder.OFFICIAL_BUDGETS,
+                            layers=1, tasks=ladder.OFFICIAL_TASKS)
+            p["dense_ceval_source"] = str(out / "missing.json")
+            selections = [dict(arm=ladder.OFFICIAL_ARM, budget=b, tag=f"{ladder.OFFICIAL_ARM}_b{round(100 * b):02d}",
+                               kv={"pipeline": []}, maximum_feasible=False) for b in ladder.OFFICIAL_BUDGETS]
+            run = ladder.tasks(p, selections)
+            names = [c["name"] for c in run["configurations"]]
+            self.assertEqual(len(names), 3 * (1 + len(ladder.OFFICIAL_BUDGETS)))
+            self.assertTrue(names[0].startswith("dense_gsm8k"))  # slow generation runs dealt first
+            self.assertEqual({c["metadata"].get("operating_point") for c in run["configurations"]
+                              if c["name"].startswith(ladder.OFFICIAL_ARM)}, {"calibrated_budget"})
+            fake_tasks(out, run, summarizer=lambda *a, **k: None)
+            report = ladder.summarize(out, run, require_complete=True)
+            self.assertEqual(report["status"], "complete")
+            self.assertEqual(set(report["dense_accuracy_by_task"]), {"ceval", "gsm8k", "humaneval"})
+            step = SpatialConfig(max_group=2, **ladder.SIMPLIFICATIONS[ladder.OFFICIAL_ARM])
+            self.assertEqual((step.window, step.per_head_budget, step.pad_heads), (16, True, True))
 
 
 class StudyTests(unittest.TestCase):

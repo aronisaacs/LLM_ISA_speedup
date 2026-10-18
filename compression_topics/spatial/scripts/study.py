@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from catalog.models import LLAMA31_8B
-from catalog.tasks import CEVAL_VALID_5SHOT, WIKITEXT_FULL
+from catalog.tasks import CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT, WIKITEXT_FULL
 from compression_topics.spatial.algorithms.formats import ACCOUNTING, MENUS
 from engine.eval_runner.cache import identities_match, simulation_identity
 from engine.eval_runner.files import write_json
@@ -34,6 +34,12 @@ from engine.layer_select.study import (
 )
 
 STAGES = ("screen", "refine", "allocate", "validate", "tasks", "summary")
+# Downstream tasks by name: (task, lm-eval task key, metric, full item count).
+TASKS = {
+    "ceval": (CEVAL_VALID_5SHOT, "ceval-valid", "acc,none", 1346),
+    "gsm8k": (GSM8K_20PCT, "gsm8k", "exact_match,flexible-extract", 1319),
+    "humaneval": (HUMANEVAL_INSTRUCT, "humaneval_instruct", "pass@1,create_test", 164),
+}
 DENSE_CEVAL = (
     ROOT
     / "compression_topics/spatial/figures/online_pairs_accuracy_offline/tasks/dense_ceval.json"
@@ -175,34 +181,43 @@ def allocate(study, calibration, arm, budgets=None):
 
 
 def task_run(study, selections):
+    """Dense and every selection on each of the plan's tasks (C-Eval only by default).
+
+    Configurations are grouped by task, slowest first, because multi_run deals them
+    to GPUs by index: every GPU then gets a share of the long generation runs.
+    """
     out = Path(study["out"])
-    configs = [
-        configuration("dense_ceval", {"pipeline": []}, out / "tasks", CEVAL_VALID_5SHOT)
-    ]
-    configs += [
-        configuration(
-            s["tag"] + "_ceval",
-            s["kv"],
-            out / "tasks",
-            CEVAL_VALID_5SHOT,
-            arm=s["arm"],
-            global_budget=s["budget"],
-        )
-        for s in selections
-    ]
+    names = study.get("tasks", ["ceval"])
+    order = [n for n in ("gsm8k", "humaneval", "ceval") if n in names]
+    configs = []
+    for name in order:
+        task = TASKS[name][0]
+        configs.append(configuration(f"dense_{name}", {"pipeline": []}, out / "tasks", task))
+        configs += [
+            configuration(
+                f"{s['tag']}_{name}",
+                s["kv"],
+                out / "tasks",
+                task,
+                arm=s["arm"],
+                global_budget=s["budget"],
+            )
+            for s in selections
+        ]
     run = dict(
         model="hf", model_args=study["model_args"], batch_size=1, configurations=configs
     )
     source = Path(study["dense_ceval_source"])
-    if source.exists():
+    dense = next((c for c in configs if c["name"] == "dense_ceval"), None)
+    if dense is not None and source.exists():
         payload = load(source)
-        wanted = simulation_identity(run, configs[0], parse_kv_spec(configs[0]["kv"]))
+        wanted = simulation_identity(run, dense, parse_kv_spec(dense["kv"]))
         if (
             identities_match(payload.get("simulation", {}), wanted)
             and payload.get("n-samples", {}).get("ceval-valid", {}).get("effective")
             == 1346
         ):
-            write_json(configs[0]["output_path"], payload)
+            write_json(dense["output_path"], payload)
             record_simulation(
                 wanted, payload["results"], payload["n-samples"], root=out
             )
@@ -223,9 +238,11 @@ def summarize(
         wanted = simulation_identity(run, config, parse_kv_spec(config["kv"]))
         if not identities_match(payload.get("simulation", {}), wanted):
             raise ValueError(f"result identity differs: {path}")
-        count = payload["n-samples"]["ceval-valid"]["effective"]
-        if count != 1346:
-            raise ValueError(f"expected full 1346-question C-Eval, found {count}")
+        name = next(n for n, t in TASKS.items() if config["tasks"] == t[0]["tasks"])
+        _, key, metric, full = TASKS[name]
+        count = payload["n-samples"][key]["effective"]
+        if count != full:
+            raise ValueError(f"expected all {full} {name} items, found {count}")
         saving = (
             payload["storage"]["targets"]["kv"]["compression"]
             if config["kv"]["pipeline"]
@@ -233,25 +250,29 @@ def summarize(
         )
         row = {
             "name": config["name"],
+            "task": name,
             **config.get("metadata", {}),
-            "accuracy": payload["results"]["ceval-valid"]["acc,none"],
+            "accuracy": payload["results"][key][metric],
             "questions": count,
             "actual_kv_saving": saving,
         }
         if "global_budget" in row:
             row["saving_deviation_points"] = 100 * (saving - row["global_budget"])
         rows.append(row)
-    dense = next((r["accuracy"] for r in rows if r["name"] == "dense_ceval"), None)
+    dense_by_task = {r["task"]: r["accuracy"] for r in rows if r["name"] == f"dense_{r['task']}"}
+    dense = dense_by_task.get("ceval")
     for row in rows:
+        base = dense_by_task.get(row["task"])
         row["accuracy_change_points"] = (
-            100 * (row["accuracy"] - dense) if dense is not None else None
+            100 * (row["accuracy"] - base) if base is not None else None
         )
     complete = len(rows) == len(run["configurations"])
     if require_complete and not complete:
         raise ValueError("accuracy run incomplete")
     comparisons = []
     for budget in sorted({r["global_budget"] for r in rows if "global_budget" in r}):
-        by_arm = {r["arm"]: r for r in rows if r.get("global_budget") == budget}
+        by_arm = {r["arm"]: r for r in rows
+                  if r.get("global_budget") == budget and r["task"] == "ceval"}
         for left, right in arm_pairs:
             if left in by_arm and right in by_arm:
                 gap = (
@@ -273,6 +294,7 @@ def summarize(
         "completed": len(rows),
         "total": len(run["configurations"]),
         "dense_accuracy": dense,
+        "dense_accuracy_by_task": dense_by_task,
         "rows": rows,
         "comparisons": comparisons,
         "scope": scope,

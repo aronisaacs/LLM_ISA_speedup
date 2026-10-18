@@ -21,7 +21,12 @@ Simplifications of query_pairs (each calibrated on its own):
 * query_pairs_head_levels: that split rounded to 0/12.5/25/37.5/49% per head, with
   each head's budget reserved (padded) in every window.
 
-Every eight-token window of a layer slot is compressed to that slot's saving.
+The official method (locked in 2026-10-18) is query_pairs_per_head_padded_w16:
+pairs with query-aware keys, the same budget for every KV head reserved in full
+(fixed-size blocks), and 16-token windows. ``--official`` runs it on C-Eval,
+GSM8K and HumanEval at OFFICIAL_BUDGETS.
+
+Every window of a layer slot is compressed to that slot's saving.
 Pairs cannot reach 50%; their 50% point is the labeled endpoint where every pair
 is merged with no residual (about 49.15%).
 """
@@ -60,6 +65,9 @@ HEAD_SPLIT = "query_pairs_head_split"
 # The same split rounded to a few levels, with each head's budget reserved in full.
 HEAD_LEVELS = "query_pairs_head_levels"
 HEAD_ARMS = (HEAD_SPLIT, HEAD_LEVELS)
+OFFICIAL_ARM = "query_pairs_per_head_padded_w16"
+OFFICIAL_BUDGETS = (0.2, 0.3, 0.35, 0.4, 0.45)
+OFFICIAL_TASKS = ("ceval", "gsm8k", "humaneval")
 ARMS = ("pairs", "hierarchy", "query_pairs", "query_hierarchy", *SIMPLIFICATIONS, *HEAD_ARMS)
 PAIR_ARMS = ("pairs", "query_pairs", *SIMPLIFICATIONS, *HEAD_ARMS)
 QUERY_ARMS = ("query_pairs", "query_hierarchy", *SIMPLIFICATIONS, *HEAD_ARMS)
@@ -67,7 +75,8 @@ BUDGETS = (0.3, 0.4, 0.5)
 OUT = ROOT / "compression_topics/spatial/figures/ladder"
 
 
-def plan(out, *, arms=ARMS[:4], budgets=BUDGETS, layers=32, screen=4, refine=12, validation=16):
+def plan(out, *, arms=ARMS[:4], budgets=BUDGETS, layers=32, screen=4, refine=12, validation=16,
+         tasks=("ceval",)):
     p = base.base_plan(
         out,
         layers=layers,
@@ -87,6 +96,8 @@ def plan(out, *, arms=ARMS[:4], budgets=BUDGETS, layers=32, screen=4, refine=12,
         query_prefix=1536,
         pair_endpoint="every_pair_merged",
     )
+    if tuple(tasks) != ("ceval",):
+        p["tasks"] = list(tasks)
     if any(a in HEAD_ARMS for a in arms):
         p["head_savings"] = str(Path(out) / "head_savings.json")
     return p
@@ -207,7 +218,11 @@ def check_validation(rows, budgets, arms, *, tolerance):
 
 def tasks(study, selections):
     run = base.task_run(study, selections)
-    for config, selection in zip(run["configurations"][1:], selections):
+    by_tag = {s["tag"]: s for s in selections}
+    for config in run["configurations"]:
+        selection = by_tag.get(config["name"].rsplit("_", 1)[0])
+        if selection is None:
+            continue
         config["metadata"].update(
             maximum_feasible=selection["maximum_feasible"],
             operating_point=(
@@ -268,15 +283,20 @@ def main():
     parser.add_argument("--budgets", type=float, nargs="+", default=list(BUDGETS))
     parser.add_argument("--from", dest="start", choices=base.STAGES, default="screen")
     parser.add_argument("--through", choices=base.STAGES, default="summary")
+    parser.add_argument("--tasks", choices=tuple(base.TASKS), nargs="+", default=["ceval"])
+    parser.add_argument("--official", action="store_true",
+                        help="the official method on C-Eval, GSM8K and HumanEval at OFFICIAL_BUDGETS")
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
+    if args.official:
+        args.arms, args.budgets, args.tasks = [OFFICIAL_ARM], list(OFFICIAL_BUDGETS), list(OFFICIAL_TASKS)
     study = plan(args.out.resolve(), arms=tuple(dict.fromkeys(args.arms)),
-                 budgets=tuple(args.budgets))
+                 budgets=tuple(args.budgets), tasks=tuple(dict.fromkeys(args.tasks)))
     base.write_plan(study)
     print(
         f"Spatial ladder: {', '.join(study['arms'])} at "
         f"{'/'.join(str(round(100 * b)) for b in study['budgets'])}%; "
-        "4+12 train and 16 holdout chunks, full C-Eval.",
+        f"4+12 train and 16 holdout chunks; tasks: {', '.join(study.get('tasks', ['ceval']))}.",
         flush=True,
     )
     if args.execute:
