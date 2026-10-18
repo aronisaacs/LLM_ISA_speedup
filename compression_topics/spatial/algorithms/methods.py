@@ -34,6 +34,7 @@ class SpatialConfig:
     align_rope: bool = True  # undo RoPE on keys before merging
     keep_norms: bool = True  # store per-token norms and merge unit directions
     window: int = WINDOW  # tokens decided together; 16 is supported for pairs
+    head_savings: tuple | None = None  # fixed saving per KV head (pairs only)
 
     def __post_init__(self):
         sizes(self.max_group)
@@ -46,6 +47,13 @@ class SpatialConfig:
             raise ValueError("window must be 8 or 16 tokens")
         if self.window != WINDOW and self.max_group != 2:
             raise ValueError("16-token windows are implemented for pairs only")
+        if self.head_savings is not None:
+            values = list(self.head_savings)
+            if self.max_group != 2 or not values or any(
+                isinstance(v, bool) or not isinstance(v, (int, float)) or not 0 <= v < 1
+                for v in values
+            ):
+                raise ValueError("head_savings is one saving in [0, 1) per KV head, pairs only")
         if self.query_aware != (
             self.query_weights is not None and self.query_weights_sha256 is not None
         ):
@@ -59,10 +67,14 @@ class SpatialConfig:
         step = dict(method="spatial", saving=saving, k_layers=k_layers, v_layers=v_layers)
         options = {k: v for k, v in asdict(self).items()
                    if k not in _STUDY_DEFAULTS or v != _STUDY_DEFAULTS[k]}
+        if options.get("head_savings") is not None:
+            options["head_savings"] = [float(v) for v in options["head_savings"]]
         return {"pipeline": [dict(step, **options)]}
 
 
-_STUDY_DEFAULTS = dict(per_head_budget=False, align_rope=True, keep_norms=True, window=WINDOW)
+_STUDY_DEFAULTS = dict(
+    per_head_budget=False, align_rope=True, keep_norms=True, window=WINDOW, head_savings=None
+)
 
 
 def _stats(target, layer_idx):
@@ -92,6 +104,7 @@ def store(
     align_rope=True,
     keep_norms=True,
     window=WINDOW,
+    head_savings=None,
     **context,
 ):
     """New tokens are stored as written; :func:`after_append` compresses whole windows."""
@@ -119,6 +132,7 @@ def after_append(
     align_rope=True,
     keep_norms=True,
     window=WINDOW,
+    head_savings=None,
 ):
     """Compress, in place, every window (8 or 16 tokens) completed by this cache update."""
     if cache_tensor.ndim != 4 or cache_tensor.shape[0] != 1:
@@ -142,13 +156,13 @@ def after_append(
     out, bits, counts = windows.compress(
         body,
         target=target,
-        saving=saving,
+        saving=saving if head_savings is None else list(head_savings),
         max_group=max_group,
         rope_tables=rope_tables,
         query_energy=energy,
         align_rope=align_rope,
         keep_norms=keep_norms,
-        per_head_budget=per_head_budget,
+        per_head_budget=per_head_budget or head_savings is not None,
         window=window,
     )
     cache_tensor[..., done:complete, :] = out

@@ -168,7 +168,9 @@ def solve_pairs(losses, dim, saving, norms=True, per_head=False, window=WINDOW):
     step is taken). With ``per_head`` every head of the window must meet the
     saving on its own instead of sharing the window's budget. Returns (bits per
     window, codes), as :func:`solve`. ``window`` is the number of tokens decided
-    together (8 by default; 16 waits for twice as many tokens).
+    together (8 by default; 16 waits for twice as many tokens). With ``per_head``,
+    ``saving`` may also be one saving per KV head (each head keeps its own fixed
+    share of the slot's budget).
     """
     # Small per-window bookkeeping: done on the CPU whatever device the cache is on.
     table = losses[2].to("cpu", torch.float64)  # [heads, pairs, 3]: PR0, PR16, PR32
@@ -206,7 +208,12 @@ def solve_pairs(losses, dim, saving, norms=True, per_head=False, window=WINDOW):
 
     step_saved, step_rate, step_code = map(per_window, (steps_saved, steps_error, steps_code))
     sharing = 1 if per_head else heads  # heads that share one budget
-    need = sharing * (saving * dense_bits(window, dim) + (window // 2) * TAG_BITS)
+    target = torch.as_tensor(saving, dtype=torch.float64)
+    if target.ndim:  # one saving per head: groups are ordered (window, head)
+        if not per_head or target.shape != (heads,):
+            raise ValueError("per-head savings need per_head and one value per KV head")
+        target = target.repeat(windows).unsqueeze(1)
+    need = sharing * (target * dense_bits(window, dim) + (window // 2) * TAG_BITS)
     rank = torch.sort(step_rate, dim=1, stable=True).indices
     cumulative = step_saved.gather(1, rank).cumsum(1)
     before = cumulative - step_saved.gather(1, rank)
@@ -222,6 +229,24 @@ def solve_pairs(losses, dim, saving, norms=True, per_head=False, window=WINDOW):
     bits = bits_of[pair_code].sum((0, 2))
     code = pair_code.unsqueeze(-1).expand(heads, windows, window // 2, 2).reshape(heads, windows, window)
     return bits, code
+
+
+def head_shares(losses, dim, saving, norms=True):
+    """Saving each KV head reaches when the heads share each window's budget.
+
+    Returns (sum over windows of each head's saving, number of windows), in the
+    same units as a per-head ``saving`` for :func:`solve_pairs`.
+    """
+    _, code = solve_pairs(losses, dim, saving, norms)
+    bits_of = torch.tensor(
+        [dense_bits(2, dim)] + [group_bits(r, dim, 2, norms) for r in MENUS[2]],
+        dtype=torch.float64) + TAG_BITS
+    per_window = bits_of[code[..., ::2].cpu()].sum(-1)  # [heads, windows]
+    pairs = WINDOW // 2
+    # A head meets a per-head saving s when its bits, tags included, are at most
+    # (1 - s) x its dense bits plus its tags (see solve_pairs).
+    saving = (pairs * dense_bits(2, dim) - (per_window - pairs * TAG_BITS)) / dense_bits(WINDOW, dim)
+    return saving.sum(1), saving.shape[1]
 
 
 def compress(tensor, *, target, saving, max_group=8, rope_tables=None, query_energy=None,

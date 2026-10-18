@@ -257,6 +257,26 @@ class SimplificationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             SpatialConfig(window=16)  # pairs only
 
+    def test_fixed_budget_per_head(self):
+        x = correlated(256, heads=4, noise=.6)
+        x[:, 0, 1::2] = x[:, 0, ::2]  # head 0 merges for free
+        losses, _ = windows.candidates(x, target='v', max_group=2)
+        total, count = windows.head_shares(losses, 128, .3)
+        shares = total / count
+        self.assertGreaterEqual(float(shares.mean()), .3)
+        self.assertEqual(int(shares.argmax()), 0)  # the easy head takes the largest share
+        shares = (shares * .3 / shares.mean()).tolist()
+        _, code = windows.solve_pairs(losses, 128, shares, per_head=True)
+        bits_of = torch.tensor([dense_bits(2, 128)] + [group_bits(r, 128, 2) for r in (0, 16, 32)]) + TAG_BITS
+        per_head = bits_of[code[..., ::2]].sum(-1) - 4 * TAG_BITS  # [heads, windows], tags excluded
+        for h, s in enumerate(shares):
+            self.assertTrue(bool((per_head[h] <= (1 - s) * dense_bits(WINDOW, 128) + 1e-6).all()))
+        step = SpatialConfig(max_group=2, head_savings=tuple(shares)).pipeline(.3)['pipeline'][0]
+        self.assertEqual(len(step['head_savings']), 4)
+        cache, _ = cache_run(x[:, :2], [64], saving=.3, max_group=2, head_savings=shares[:2])
+        with self.assertRaises(ValueError):
+            SpatialConfig(head_savings=(.3, .3))  # pairs only
+
     def test_without_norms_bits_and_reconstruction(self):
         self.assertEqual(group_bits(0, 128, 2, norms=False), group_bits(0, 128, 2) - 32)
         x = correlated(64, noise=0.) * 3

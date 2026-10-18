@@ -106,6 +106,21 @@ class LadderTests(unittest.TestCase):
             w16 = flags["query_pairs_per_head_w16"]
             self.assertEqual((w16["window"], w16["per_head_budget"]), (16, True))
 
+    def test_head_split_arm_reads_per_head_budgets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p = ladder.plan(Path(folder), arms=(ladder.HEAD_SPLIT,), budgets=(0.3, 0.4), layers=2)
+            torch.save({"weights": torch.ones(2, 8, 128)}, p["query_weights"])
+            with self.assertRaises(ValueError):
+                ladder.candidates(p)  # needs the head calibration first
+            budgets = ladder.head_split_budgets(p)
+            self.assertNotIn(0.5, budgets)
+            shares = {str(l): {t: {str(b): [b] * 8 for b in budgets} for t in "kv"} for l in range(2)}
+            write_json(p["head_savings"], {"savings": shares})
+            rows = ladder.candidates(p)
+            self.assertEqual(len(rows), 2 * 2 * len(budgets))
+            for row in rows:
+                self.assertEqual(row["kv"]["pipeline"][0]["head_savings"], [row["budget"]] * 8)
+
     def test_validation_gate_and_endpoint(self):
         rows = [
             dict(
