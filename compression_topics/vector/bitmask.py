@@ -13,25 +13,26 @@ VALUE_BITS = 16
 PAIR_METHODS = ("vector_compress_pair", "vector_compress_pair_query")
 
 
-def bitmask_bits(method: str, target: str) -> int:
+def bitmask_bits(method: str, target: str, head_dim: int = HEAD_DIM) -> int:
     """Bitmask cost per compressed vector: one bit per value, or per pair for RoPE-paired keys."""
-    return HEAD_DIM // 2 if method in PAIR_METHODS and target == "k" else HEAD_DIM
+    return head_dim // 2 if method in PAIR_METHODS and target == "k" else head_dim
 
 
-def zeroed_values(method: str, target: str, level: int) -> int:
+def zeroed_values(method: str, target: str, level: int, head_dim: int = HEAD_DIM) -> int:
     """Values set to zero at ``level`` percent, as the methods round it."""
     if method in PAIR_METHODS and target == "k":
-        return 2 * ((HEAD_DIM // 2) * level // 100)
-    return HEAD_DIM * level // 100
+        return 2 * ((head_dim // 2) * level // 100)
+    return head_dim * level // 100
 
 
-def net_saving(method: str, target: str, level: int) -> float:
+def net_saving(method: str, target: str, level: int, head_dim: int = HEAD_DIM) -> float:
     """Fraction of the vector's bits saved after the bitmask. 0 when uncompressed."""
     if level <= 0:
         return 0.0
-    return (VALUE_BITS * zeroed_values(method, target, level) - bitmask_bits(method, target)) / (HEAD_DIM * VALUE_BITS)
+    removed = VALUE_BITS * zeroed_values(method, target, level, head_dim)
+    return (removed - bitmask_bits(method, target, head_dim)) / (head_dim * VALUE_BITS)
 
 
-def net_saving_for(method: str):
+def net_saving_for(method: str, head_dim: int = HEAD_DIM):
     """``saving(slot, rung)`` for the greedy: net of the bitmask."""
-    return lambda slot, rung: net_saving(method, slot.target, rung.level)
+    return lambda slot, rung: net_saving(method, slot.target, rung.level, head_dim)

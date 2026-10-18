@@ -20,13 +20,17 @@ def rank_fill(
     rungs=PRUNE,
     targets: tuple[str, ...] = ("k", "v"),
     saving=None,
+    layers=None,
 ) -> dict[Slot, int]:
     """Climb rungs until the mean compression of the ``targets`` slots reaches ``budget``.
 
     ``saving(slot, rung)`` is the fraction of the slot a rung saves, if it is not
-    the rung's own fraction (for example after metadata overhead).
+    the rung's own fraction (for example after metadata overhead). ``layers`` limits
+    the slots to the layers that hold a KV cache, when not all do (Qwen3.5).
     """
     slots = all_slots(n_layers, targets)
+    if layers is not None:
+        slots = tuple(slot for slot in slots if slot.layer in set(layers))
     table = score_table(rows)
     if dense_ppl is None:
         dense_ppl = _infer_dense_ppl(rows)

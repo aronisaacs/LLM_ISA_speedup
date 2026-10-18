@@ -21,19 +21,22 @@ TASKS = (CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT)
 FIGURES = "figures"
 
 
-def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS, targets=("k", "v"), saving=None):
+def selections_for_budgets(rows, n_layers, method_kv, dense_ppl, budgets=BUDGETS, targets=("k", "v"), saving=None,
+                           layers=None):
     """One rank-fill payload per budget. ``compression`` is the realized mean.
 
     With ``saving(slot, rung)``, budget and ``compression`` count that saving per
     slot instead of the rung fraction, and ``zeroed`` keeps the rung fractions.
+    ``layers`` limits the slots to the layers that hold a KV cache (Qwen3.5).
     """
     template = method_template(method_kv)
     rungs = rungs_for(template["pipeline"][0]["method"])
-    n_slots = len(all_slots(n_layers, targets))
+    slots = all_slots(n_layers, targets)
+    n_slots = len(slots if layers is None else [slot for slot in slots if slot.layer in set(layers)])
     payloads = []
     for budget in budgets:
         assignment = rank_fill(rows, n_layers, budget, dense_ppl=dense_ppl, rungs=rungs, targets=targets,
-                               saving=saving)
+                               saving=saving, layers=layers)
         compression = mean_compression(assignment, n_slots, rungs)
         extra = {}
         if saving is not None:
