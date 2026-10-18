@@ -105,6 +105,11 @@ class LadderTests(unittest.TestCase):
             self.assertFalse(both["align_rope"] or both["keep_norms"])
             w16 = flags["query_pairs_per_head_w16"]
             self.assertEqual((w16["window"], w16["per_head_budget"]), (16, True))
+            self.assertEqual(flags["query_pairs_w16"]["window"], 16)
+            self.assertNotIn("per_head_budget", flags["query_pairs_w16"])
+            padded = flags["query_pairs_per_head_padded_w16"]
+            self.assertEqual((padded["window"], padded["per_head_budget"], padded["pad_heads"]),
+                             (16, True, True))
 
     def test_head_split_arm_reads_per_head_budgets(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -293,6 +293,9 @@ class SimplificationTests(unittest.TestCase):
                                         pad_heads=True)
         reserved = sum((1 - s) * dense_bits(WINDOW, 128) + 4 * TAG_BITS for s in shares) * 16
         self.assertEqual(padded, reserved)  # exactly the reserved size, every window
+        _, padded16, _ = windows.compress(x, target='v', saving=.3, max_group=2, per_head_budget=True,
+                                          pad_heads=True, window=16)
+        self.assertAlmostEqual(padded16, 4 * 8 * ((1 - .3) * dense_bits(16, 128) + 8 * TAG_BITS), delta=1)
         out, _, counts = windows.compress(x, target='v', saving=[0.0] * 4, max_group=2,
                                           per_head_budget=True, pad_heads=True)
         self.assertTrue(torch.equal(out, x))  # a 0% head stays dense
