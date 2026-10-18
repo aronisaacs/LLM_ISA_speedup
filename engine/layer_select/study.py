@@ -122,7 +122,7 @@ def allocate_settings(calibration, settings, layers, targets, budget, *, trim_ov
     if 'assignment' not in result:
         return result
     result = deepcopy(result)
-    overshoot = (result['compression'] - budget) * len(targets) * layers
+    overshoot = (result['compression'] - budget) * len(targets) * (layers if isinstance(layers, int) else len(layers))
     if trim_overshoot and overshoot > 1e-10:
         row = max(result['assignment'], key=lambda r: r['budget'])
         if row['budget'] <= overshoot:

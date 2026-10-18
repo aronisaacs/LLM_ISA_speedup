@@ -213,6 +213,11 @@ class OfficialSweepTests(unittest.TestCase):
             code = ladder.plan(out / "code", arms=(ladder.OFFICIAL_ARM,), budgets=ladder.OFFICIAL_BUDGETS,
                                layers=1, tasks=ladder.MODELS["codellama"][1],
                                model_args=ladder.MODELS["codellama"][0])
+            qwen = ladder.plan(out / "qwen", arms=(ladder.OFFICIAL_ARM,), budgets=(0.3,),
+                               model_args=ladder.MODELS["qwen"][0], **ladder.MODELS["qwen"][2])
+            Path(qwen["out"]).mkdir()
+            torch.save({"weights": torch.ones(32, 4, 256)}, qwen["query_weights"])
+            self.assertEqual({r["layer"] for r in ladder.candidates(qwen)}, set(range(3, 32, 4)))
             code_run = ladder.tasks(code, selections)
             self.assertEqual({c["tasks"][0] for c in code_run["configurations"]}, {"humaneval"})
             self.assertIn("CodeLlama", code_run["model_args"])

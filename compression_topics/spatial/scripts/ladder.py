@@ -43,7 +43,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-from catalog.models import CODELLAMA_7B, LLAMA31_8B
+from catalog.models import CODELLAMA_7B, LLAMA31_8B, QWEN35_9B
 from compression_topics.spatial.algorithms.formats import max_saving
 from compression_topics.spatial.algorithms.methods import SpatialConfig
 from compression_topics.spatial.scripts import study as base
@@ -70,10 +70,13 @@ HEAD_LEVELS = "query_pairs_head_levels"
 HEAD_ARMS = (HEAD_SPLIT, HEAD_LEVELS)
 OFFICIAL_ARM = "query_pairs_per_head_padded_w16"
 OFFICIAL_BUDGETS = (0.1, 0.2, 0.3, 0.35, 0.4)
-# Model: (model_args, official tasks).
+# Model: (model_args, official tasks, shape). Qwen3.5-9B is hybrid: only every
+# fourth layer is full attention with a KV cache, and its heads hold 256 values.
 MODELS = {
-    "llama": (LLAMA31_8B, ("ceval", "gsm8k", "humaneval")),
-    "codellama": (CODELLAMA_7B, ("humaneval_base",)),
+    "llama": (LLAMA31_8B, ("ceval", "gsm8k", "humaneval"), {}),
+    "codellama": (CODELLAMA_7B, ("humaneval_base",), {}),
+    "qwen": (QWEN35_9B, ("ceval", "gsm8k", "humaneval"),
+             dict(head_dim=256, kv_layers=tuple(range(3, 32, 4)))),
 }
 OFFICIAL_TASKS = MODELS["llama"][1]
 ARMS = ("pairs", "hierarchy", "query_pairs", "query_hierarchy", *SIMPLIFICATIONS, *HEAD_ARMS)
@@ -84,10 +87,12 @@ OUT = ROOT / "compression_topics/spatial/figures/ladder"
 
 
 def plan(out, *, arms=ARMS[:4], budgets=BUDGETS, layers=32, screen=4, refine=12, validation=16,
-         tasks=("ceval",), model_args=LLAMA31_8B):
+         tasks=("ceval",), model_args=LLAMA31_8B, head_dim=128, kv_layers=None):
     p = base.base_plan(
         out,
         model_args=model_args,
+        head_dim=head_dim,
+        kv_layers=kv_layers,
         layers=layers,
         budgets=budgets,
         screen=screen,
@@ -145,7 +150,7 @@ def candidates(study):
         pairs = arm in PAIR_ARMS
         endpoint = pairs and 0.5 in study["budgets"]
         budgets = study["pair_local_budgets"] if pairs else study["local_budgets"]
-        for layer in range(study["layers"]):
+        for layer in base.kv_layers(study):
             for target in ("k", "v"):
                 config = _config(study, arm, target, digest)
                 for budget in budgets + ([0.5] if endpoint else []):
@@ -186,7 +191,7 @@ def allocations(study, calibration):
                 calibration,
                 include=lambda r, arm=arm: r["arm"] == arm and r.get("maximum_feasible"),
             )
-            if len(settings) != study["layers"] * 2:
+            if len(settings) != len(base.kv_layers(study)) * 2:
                 raise ValueError("missing pair endpoint calibration")
             pipeline = [step for r in settings for step in r["kv"]["pipeline"]]
             result.append(
@@ -215,7 +220,7 @@ def check_validation(rows, budgets, arms, *, tolerance):
                 eligible,
                 tolerance=tolerance,
             )
-    ceiling = max_saving(128)  # one mean, two norms and a tag per pair
+    ceiling = max_saving(128)  # one mean, two norms and a tag per pair (about the same at 256)
     for arm in PAIR_ARMS:
         endpoint = [r for r in rows if r["arm"] == arm and r["budget"] == 0.5]
         if endpoint and (
@@ -303,7 +308,7 @@ def main():
         args.tasks = list(MODELS[args.model][1])
     study = plan(args.out.resolve(), arms=tuple(dict.fromkeys(args.arms)),
                  budgets=tuple(args.budgets), tasks=tuple(dict.fromkeys(args.tasks)),
-                 model_args=MODELS[args.model][0])
+                 model_args=MODELS[args.model][0], **MODELS[args.model][2])
     base.write_plan(study)
     print(
         f"Spatial ladder: {', '.join(study['arms'])} at "

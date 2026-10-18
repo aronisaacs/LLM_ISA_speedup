@@ -55,12 +55,15 @@ DENSE_CEVAL = (
 
 def base_plan(
     out, *, layers=32, budgets=(0.3, 0.4, 0.5), screen=4, refine=12, validation=16,
-    model_args=LLAMA31_8B,
+    model_args=LLAMA31_8B, head_dim=128, kv_layers=None,
 ):
+    """``kv_layers`` lists the layers that hold a KV cache when not all do (Qwen3.5)."""
+    extra = {} if kv_layers is None else {"kv_layers": list(kv_layers)}
     return dict(
         out=str(out),
         layers=layers,
-        head_dim=128,
+        **extra,
+        head_dim=head_dim,
         model_args=model_args,
         budgets=list(budgets),
         screen_chunks=screen,
@@ -75,6 +78,11 @@ def base_plan(
         matching_tolerance=0.01,
         dense_ceval_source=str(DENSE_CEVAL),
     )
+
+
+def kv_layers(study):
+    """Layers whose K and V are cached and compressed."""
+    return study.get("kv_layers", list(range(study["layers"])))
 
 
 def load(path):
@@ -178,7 +186,7 @@ def allocate(study, calibration, arm, budgets=None):
         selection = allocate_settings(
             calibration,
             list(best.values()),
-            study["layers"],
+            kv_layers(study),
             ("k", "v"),
             budget,
             allocation_basis="measured",
@@ -516,7 +524,8 @@ def calibrate_queries(study):
     prompts, chosen = wikitext_chunks(
         tokenizer, study["query_chunks"], study["seq_len"], study["seed"], split="train"
     )
-    take, uninstall = capture_queries("llama")
+    config = getattr(model.config, "text_config", model.config)
+    take, uninstall = capture_queries("qwen3_5" if config.model_type.startswith("qwen3_5") else "llama")
     original = Cache.update
     sums, counts = {}, {}
 
@@ -539,8 +548,17 @@ def calibrate_queries(study):
     finally:
         Cache.update = original
         uninstall()
-    weights = torch.stack([sums[i] / counts[i] for i in range(study["layers"])])
-    torch.save(dict(weights=weights, chunks=chosen, protocol=study), path)
+    if set(sums) != set(kv_layers(study)):
+        raise ValueError(f"queries captured at layers {sorted(sums)}, expected {kv_layers(study)}")
+    # Layers without a KV cache get unit weights; they are never compressed.
+    shape = next(iter(sums.values())).shape
+    weights = torch.stack([sums[i] / counts[i] if i in sums else torch.ones(shape)
+                           for i in range(study["layers"])])
+    from engine.kv_compress.rope import rope_from_config
+
+    rope = rope_from_config(config)
+    torch.save(dict(weights=weights, chunks=chosen, protocol=study,
+                    rotary_dim=None if rope is None else rope.rotary_dim), path)
 
 
 def calibrate_head_savings(study, budgets):

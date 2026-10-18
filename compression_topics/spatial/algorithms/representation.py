@@ -19,6 +19,7 @@ from pathlib import Path
 
 import torch
 
+from compression_topics.spatial.algorithms.formats import kept_entries
 from engine.kv_compress.rope import apply_rope
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -86,7 +87,7 @@ def reconstruct(groups, residual, *, dtype, query_energy=None):
         score = groups.deviation.square()
         if query_energy is not None:
             score = score * query_energy
-        index = score.topk(residual, dim=-1).indices
+        index = score.topk(kept_entries(residual, score.shape[-1]), dim=-1).indices
         kept.scatter_(-1, index, groups.deviation.gather(-1, index))
     kept = kept.to(dtype).float()
     unit = (
@@ -130,11 +131,14 @@ def _weights(path, digest):
         raise ValueError(
             "query weight file changed; recalibration requires a new output directory"
         )
-    weights = torch.load(file, map_location="cpu", weights_only=True)["weights"].float()
-    # Average each RoPE plane (j, j + D/2) so the weights do not depend on rotation.
-    half = weights.shape[-1] // 2
-    tied = (weights[..., :half] + weights[..., half:]) / 2
-    return torch.cat((tied, tied), dim=-1)  # [layers, kv_heads, head_dim]
+    saved = torch.load(file, map_location="cpu", weights_only=True)
+    weights = saved["weights"].float()
+    # Average each RoPE plane (j, j + R/2) so the weights do not depend on rotation;
+    # with partial RoPE only the first R dimensions rotate.
+    rotary = saved.get("rotary_dim") or weights.shape[-1]
+    half = rotary // 2
+    tied = (weights[..., :half] + weights[..., half:rotary]) / 2
+    return torch.cat((tied, tied, weights[..., rotary:]), dim=-1)  # [layers, kv_heads, head_dim]
 
 
 def query_energy(path, digest, layer_idx, tensor):

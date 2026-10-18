@@ -44,11 +44,13 @@ def choose_candidates(choices, dense_ppl, budget, *, require_budget=True):
 
 
 def allocate(calibration, layers, targets, budget):
-    slots = [(layer, target) for layer in range(layers) for target in targets]
+    """``layers`` is a layer count, or the list of layers that hold a KV cache."""
+    layer_ids = range(layers) if isinstance(layers, int) else list(layers)
+    slots = [(layer, target) for layer in layer_ids for target in targets]
     choices = {slot: sorted([r for r in calibration["selected"]
                             if (r["layer"], r["target"]) == slot], key=lambda r: r.get("allocation_saving", r["budget"])) for slot in slots}
     selected, total = choose_candidates(choices, calibration["dense_ppl"], budget)
     assignment = list(selected.values())
     return {"budget": budget, "compression": total / len(slots),
-            "whole_kv_compression": total / (2 * layers), "assignment": assignment,
+            "whole_kv_compression": total / (2 * len(layer_ids)), "assignment": assignment,
             "kv": {"pipeline": [step for r in assignment for step in r["kv"]["pipeline"]]}}

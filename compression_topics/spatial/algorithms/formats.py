@@ -14,7 +14,14 @@ MENUS = {2: (0, 16, 32), 4: (0, 16), 8: (0, 16)}
 VALUE_BITS = 16
 TAG_BITS = 3
 HEADER_BITS = 16
+REFERENCE_DIM = 128  # menu residual counts are per this many values
 ACCOUNTING = "spatial_v3_per_head_bf16_norms_bitmap_tag3"
+
+
+def kept_entries(residual, dim):
+    """Residual entries kept for a menu entry: menus are per 128 values, so a
+    256-value head (Qwen3.5) keeps twice as many and PR32 is always a 25% residual."""
+    return residual * dim // REFERENCE_DIM
 
 
 def group_bits(residual, dim, size, norms=True):
@@ -26,7 +33,8 @@ def group_bits(residual, dim, size, norms=True):
         raise ValueError(f"no {size}-token format with {residual} residual entries")
     residuals = 1 if size == 2 else size
     mask = residuals * dim if residual else 0
-    return VALUE_BITS * (dim + residuals * residual + (size if norms else 0)) + mask
+    kept = kept_entries(residual, dim)
+    return VALUE_BITS * (dim + residuals * kept + (size if norms else 0)) + mask
 
 
 def dense_bits(tokens, dim):

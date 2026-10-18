@@ -52,6 +52,27 @@ class FormatTests(unittest.TestCase):
             group_bits(32, 128, 4)
 
 
+class QwenShapeTests(unittest.TestCase):
+    def test_partial_rope_and_wide_heads(self):
+        from compression_topics.spatial.algorithms.formats import group_bits, kept_entries
+        from engine.kv_compress.rope import apply_rope
+
+        rope = RopeTables(rope_theta=1e7, head_dim=256, rotary_dim=64)
+        cos, sin = rope.cos_sin(torch.arange(16), torch.float32)
+        self.assertEqual(cos.shape, (16, 64))
+        x = torch.randn(1, 4, 16, 256)
+        y = apply_rope(x, cos, sin, inverse=False)
+        self.assertTrue(torch.equal(y[..., 64:], x[..., 64:]))  # only the first 64 rotate
+        self.assertTrue(torch.allclose(apply_rope(y, cos, sin, inverse=True), x, atol=1e-5))
+        self.assertEqual((kept_entries(32, 128), kept_entries(32, 256)), (32, 64))
+        self.assertEqual(group_bits(32, 256, 2), 16 * (256 + 64 + 2) + 256)
+        # A wide head still merges pairs and meets a per-head padded budget.
+        out, bits, counts = windows.compress(x.to(torch.bfloat16), target="k", saving=.3, max_group=2,
+                                             rope_tables=rope, per_head_budget=True, pad_heads=True, window=16)
+        self.assertEqual(out.shape, x.shape)
+        self.assertLessEqual(bits, 4 * ((1 - .3) * dense_bits(16, 256) + 8 * TAG_BITS) + 1)
+
+
 class WindowTests(unittest.TestCase):
     def test_every_window_meets_the_saving(self):
         x = correlated(512, heads=4, noise=.5)

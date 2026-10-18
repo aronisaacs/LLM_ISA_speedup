@@ -1,6 +1,8 @@
 """Undo and reapply the Llama RoPE that Cache.update already sees on keys.
 
 ``k_embed = k * cos + rotate_half(k) * sin``. The inverse flips the sine sign.
+With partial RoPE (Qwen3.5) only the first ``rotary_dim`` dimensions rotate;
+the rest pass through unchanged.
 """
 
 from __future__ import annotations
@@ -22,20 +24,25 @@ class RopeTables:
     head_dim: int
     inv_freq: tuple[float, ...] | None = None
     attention_scaling: float = 1.0
+    rotary_dim: int | None = None  # None: the whole head rotates
+
+    @property
+    def rotated(self) -> int:
+        return self.head_dim if self.rotary_dim is None else self.rotary_dim
 
     def cos_sin(self, positions: torch.Tensor, dtype: torch.dtype) -> tuple[torch.Tensor, torch.Tensor]:
         if positions.ndim != 1:
             raise ValueError("RoPE positions must be a 1-D index")
         if self.inv_freq is None:
-            exponents = torch.arange(0, self.head_dim, 2, device=positions.device, dtype=torch.float32) / self.head_dim
+            exponents = torch.arange(0, self.rotated, 2, device=positions.device, dtype=torch.float32) / self.rotated
             inv_freq = 1.0 / (self.rope_theta ** exponents)
         else:
             inv_freq = torch.tensor(self.inv_freq, device=positions.device, dtype=torch.float32)
         freqs = torch.outer(positions.to(dtype=torch.float32), inv_freq)
         emb = torch.cat((freqs, freqs), dim=-1)
-        if emb.shape[-1] != self.head_dim:
+        if emb.shape[-1] != self.rotated:
             raise ValueError(
-                f"RoPE head_dim={self.head_dim} did not produce a matching table (got {emb.shape[-1]})"
+                f"RoPE rotary dim={self.rotated} did not produce a matching table (got {emb.shape[-1]})"
             )
         return (emb.cos() * self.attention_scaling).to(dtype=dtype), (emb.sin() * self.attention_scaling).to(dtype=dtype)
 
@@ -47,21 +54,29 @@ def rotate_half(tensor: torch.Tensor) -> torch.Tensor:
 
 
 def apply_rope(keys: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor, *, inverse: bool) -> torch.Tensor:
-    """Rotate ``keys`` shaped [batch, heads, sequence, head_dim]."""
-    if keys.shape[-1] != cos.shape[-1]:
-        raise ValueError(f"key head dim {keys.shape[-1]} does not match RoPE table {cos.shape[-1]}")
+    """Rotate ``keys`` shaped [batch, heads, sequence, head_dim].
+
+    A table narrower than the head rotates only the leading dimensions (partial RoPE).
+    """
+    if keys.shape[-1] < cos.shape[-1]:
+        raise ValueError(f"key head dim {keys.shape[-1]} is smaller than RoPE table {cos.shape[-1]}")
     if keys.shape[-2] != cos.shape[-2]:
         raise ValueError(f"key sequence {keys.shape[-2]} does not match RoPE positions {cos.shape[-2]}")
     signed = -sin if inverse else sin
     wide_cos = cos.unsqueeze(0).unsqueeze(0)
     wide_sin = signed.unsqueeze(0).unsqueeze(0)
-    return keys * wide_cos + rotate_half(keys) * wide_sin
+    rotary = cos.shape[-1]
+    if rotary == keys.shape[-1]:
+        return keys * wide_cos + rotate_half(keys) * wide_sin
+    rot, rest = keys[..., :rotary], keys[..., rotary:]
+    return torch.cat((rot * wide_cos + rotate_half(rot) * wide_sin, rest), dim=-1)
 
 
 def rope_from_config(config) -> RopeTables | None:
     """Read ``rope_theta`` and head dim off a decoder config. Missing theta skips RoPE."""
     if config is None:
         return None
+    config = getattr(config, "text_config", None) or config
     parameters = getattr(config, "rope_parameters", None)
     if parameters is None and isinstance(config, dict):
         parameters = config.get("rope_parameters")
@@ -84,4 +99,8 @@ def rope_from_config(config) -> RopeTables | None:
         if not isinstance(hidden, int) or not isinstance(heads, int) or heads <= 0:
             return None
         head_dim = hidden // heads
-    return RopeTables(rope_theta=float(theta), head_dim=int(head_dim))
+    partial = getattr(config, "partial_rotary_factor", None)
+    if partial is None and isinstance(parameters, dict):
+        partial = parameters.get("partial_rotary_factor")
+    rotary = None if partial in (None, 1, 1.0) else int(head_dim * partial)
+    return RopeTables(rope_theta=float(theta), head_dim=int(head_dim), rotary_dim=rotary)
