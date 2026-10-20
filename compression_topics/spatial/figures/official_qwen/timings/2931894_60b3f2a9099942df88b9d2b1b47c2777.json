@@ -1,0 +1,386 @@
+{
+  "name": "query_pairs_per_head_padded_w16_b20_ceval",
+  "run": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/official_qwen/tasks_run.json",
+  "worker": 2,
+  "simulation": {
+    "pretrained": "Qwen/Qwen3.5-9B",
+    "dtype": "bfloat16",
+    "model_options": {
+      "enable_thinking": false
+    },
+    "model": "hf",
+    "evaluation_options": {},
+    "tasks": [
+      "ceval-valid"
+    ],
+    "num_fewshot": 5,
+    "limit": null,
+    "gen_kwargs": null,
+    "apply_chat_template": true,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "k_layers": [],
+          "v_layers": [
+            3
+          ],
+          "saving": 0.49,
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "per_head_budget": true,
+          "window": 16,
+          "pad_heads": true
+        },
+        {
+          "method": "spatial",
+          "k_layers": [],
+          "v_layers": [
+            7
+          ],
+          "saving": 0.25,
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "per_head_budget": true,
+          "window": 16,
+          "pad_heads": true
+        },
+        {
+          "method": "spatial",
+          "k_layers": [
+            11
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/official_qwen/query_weights.pt",
+          "query_weights_sha256": "37dfb0aba3f303ffd33339e00c5e27c9c618e430cb875ae9e97cba25d3383627",
+          "per_head_budget": true,
+          "window": 16,
+          "pad_heads": true
+        },
+        {
+          "method": "spatial",
+          "k_layers": [],
+          "v_layers": [
+            15
+          ],
+          "saving": 0.4,
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "per_head_budget": true,
+          "window": 16,
+          "pad_heads": true
+        },
+        {
+          "method": "spatial",
+          "k_layers": [],
+          "v_layers": [
+            19
+          ],
+          "saving": 0.49,
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "per_head_budget": true,
+          "window": 16,
+          "pad_heads": true
+        },
+        {
+          "method": "spatial",
+          "k_layers": [
+            23
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/official_qwen/query_weights.pt",
+          "query_weights_sha256": "37dfb0aba3f303ffd33339e00c5e27c9c618e430cb875ae9e97cba25d3383627",
+          "per_head_budget": true,
+          "window": 16,
+          "pad_heads": true
+        },
+        {
+          "method": "spatial",
+          "k_layers": [],
+          "v_layers": [
+            23
+          ],
+          "saving": 0.47,
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "per_head_budget": true,
+          "window": 16,
+          "pad_heads": true
+        },
+        {
+          "method": "spatial",
+          "k_layers": [
+            27
+          ],
+          "v_layers": [],
+          "saving": 0.25,
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/official_qwen/query_weights.pt",
+          "query_weights_sha256": "37dfb0aba3f303ffd33339e00c5e27c9c618e430cb875ae9e97cba25d3383627",
+          "per_head_budget": true,
+          "window": 16,
+          "pad_heads": true
+        },
+        {
+          "method": "spatial",
+          "k_layers": [],
+          "v_layers": [
+            27
+          ],
+          "saving": 0.4,
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "per_head_budget": true,
+          "window": 16,
+          "pad_heads": true
+        }
+      ]
+    }
+  },
+  "host": "DGX-host-01",
+  "machine": "x86_64",
+  "pid": 2931894,
+  "slurm_job_id": "1555",
+  "visible_gpus": "2",
+  "cpu_threads": "8",
+  "started_at": "2026-10-19T05:37:06.522256+00:00",
+  "status": "complete",
+  "phases": {
+    "model_load_or_reuse": 0.000592842698097229,
+    "evaluation": 517.7697317991406
+  },
+  "elapsed_seconds": 517.9222317710519,
+  "device": "cuda",
+  "model_reloaded": false,
+  "samples": {
+    "ceval-valid_computer_network": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_operating_system": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_computer_architecture": {
+      "original": 21,
+      "effective": 21
+    },
+    "ceval-valid_college_programming": {
+      "original": 37,
+      "effective": 37
+    },
+    "ceval-valid_college_physics": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_college_chemistry": {
+      "original": 24,
+      "effective": 24
+    },
+    "ceval-valid_advanced_mathematics": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_probability_and_statistics": {
+      "original": 18,
+      "effective": 18
+    },
+    "ceval-valid_discrete_mathematics": {
+      "original": 16,
+      "effective": 16
+    },
+    "ceval-valid_electrical_engineer": {
+      "original": 37,
+      "effective": 37
+    },
+    "ceval-valid_metrology_engineer": {
+      "original": 24,
+      "effective": 24
+    },
+    "ceval-valid_high_school_mathematics": {
+      "original": 18,
+      "effective": 18
+    },
+    "ceval-valid_high_school_physics": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_high_school_chemistry": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_high_school_biology": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_middle_school_mathematics": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_middle_school_biology": {
+      "original": 21,
+      "effective": 21
+    },
+    "ceval-valid_middle_school_physics": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_middle_school_chemistry": {
+      "original": 20,
+      "effective": 20
+    },
+    "ceval-valid_veterinary_medicine": {
+      "original": 23,
+      "effective": 23
+    },
+    "ceval-valid_college_economics": {
+      "original": 55,
+      "effective": 55
+    },
+    "ceval-valid_business_administration": {
+      "original": 33,
+      "effective": 33
+    },
+    "ceval-valid_marxism": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_mao_zedong_thought": {
+      "original": 24,
+      "effective": 24
+    },
+    "ceval-valid_education_science": {
+      "original": 29,
+      "effective": 29
+    },
+    "ceval-valid_teacher_qualification": {
+      "original": 44,
+      "effective": 44
+    },
+    "ceval-valid_high_school_politics": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_high_school_geography": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_middle_school_politics": {
+      "original": 21,
+      "effective": 21
+    },
+    "ceval-valid_middle_school_geography": {
+      "original": 12,
+      "effective": 12
+    },
+    "ceval-valid_modern_chinese_history": {
+      "original": 23,
+      "effective": 23
+    },
+    "ceval-valid_ideological_and_moral_cultivation": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_logic": {
+      "original": 22,
+      "effective": 22
+    },
+    "ceval-valid_law": {
+      "original": 24,
+      "effective": 24
+    },
+    "ceval-valid_chinese_language_and_literature": {
+      "original": 23,
+      "effective": 23
+    },
+    "ceval-valid_art_studies": {
+      "original": 33,
+      "effective": 33
+    },
+    "ceval-valid_professional_tour_guide": {
+      "original": 29,
+      "effective": 29
+    },
+    "ceval-valid_legal_professional": {
+      "original": 23,
+      "effective": 23
+    },
+    "ceval-valid_high_school_chinese": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_high_school_history": {
+      "original": 20,
+      "effective": 20
+    },
+    "ceval-valid_middle_school_history": {
+      "original": 22,
+      "effective": 22
+    },
+    "ceval-valid_civil_servant": {
+      "original": 47,
+      "effective": 47
+    },
+    "ceval-valid_sports_science": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_plant_protection": {
+      "original": 22,
+      "effective": 22
+    },
+    "ceval-valid_basic_medicine": {
+      "original": 19,
+      "effective": 19
+    },
+    "ceval-valid_clinical_medicine": {
+      "original": 22,
+      "effective": 22
+    },
+    "ceval-valid_urban_and_rural_planner": {
+      "original": 46,
+      "effective": 46
+    },
+    "ceval-valid_accountant": {
+      "original": 49,
+      "effective": 49
+    },
+    "ceval-valid_fire_engineer": {
+      "original": 31,
+      "effective": 31
+    },
+    "ceval-valid_environmental_impact_assessment_engineer": {
+      "original": 31,
+      "effective": 31
+    },
+    "ceval-valid_tax_accountant": {
+      "original": 49,
+      "effective": 49
+    },
+    "ceval-valid_physician": {
+      "original": 49,
+      "effective": 49
+    }
+  },
+  "finished_at": "2026-10-19T05:45:44.444426+00:00"
+}

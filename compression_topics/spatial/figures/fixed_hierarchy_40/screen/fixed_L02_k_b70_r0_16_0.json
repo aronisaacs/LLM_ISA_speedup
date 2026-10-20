@@ -1,0 +1,115 @@
+{
+  "results": {
+    "wikitext_chunks": {
+      "token_perplexity,none": 6.222414168104925,
+      "mean_nll,none": 1.8281579613685608
+    }
+  },
+  "chunk_scores": [
+    {
+      "chunk": 632,
+      "nll": 1.803302526473999,
+      "tokens": 512
+    },
+    {
+      "chunk": 775,
+      "nll": 1.8530133962631226,
+      "tokens": 512
+    }
+  ],
+  "gate_stats": {
+    "k_layer_2": {
+      "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+      "dense_bits": 67108864,
+      "stored_bits": 32151043,
+      "metadata_bits": 14339,
+      "updates": 2,
+      "controller_bound_hits": 0,
+      "max_final_target_deviation": 0.009756159782409624,
+      "format_g4_r16": 3385,
+      "format_g8_r0": 1378,
+      "format_g2_r0": 6
+    }
+  },
+  "timing": {
+    "evaluation_seconds": 0.7304200539365411,
+    "chunks": 2,
+    "tokens": 1024
+  },
+  "storage": {
+    "scope": "simulated_prefill_cache_storage",
+    "targets": {
+      "k": {
+        "dense_bits": 1610612736,
+        "stored_bits": 1575654915,
+        "compression": 0.021704671904444695
+      },
+      "v": {
+        "dense_bits": 1610612736,
+        "stored_bits": 1610612736,
+        "compression": 0.0
+      },
+      "kv": {
+        "dense_bits": 3221225472,
+        "stored_bits": 3186267651,
+        "compression": 0.010852335952222347
+      }
+    }
+  },
+  "scoring": {
+    "prefix_tokens": 1536,
+    "definition": "continuation token NLL only; prefix logits excluded"
+  },
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial_online",
+          "k_layers": [
+            2
+          ],
+          "v_layers": [],
+          "saving": 0.7,
+          "max_group": 8,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/clean_online_ladder_query_hierarchy/query_weights.pt",
+          "query_weights_sha256": "d93ebef9e13556468178b09e25bf1ccba8ec354b49032878e22078b3ba0945d8",
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "fixed_residual": null,
+          "minimum_storage": false,
+          "residual_counts": {
+            "2": 0,
+            "4": 16,
+            "8": 0
+          },
+          "prefill_only": true
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 14,
+      "offset": 0,
+      "chunks": 2,
+      "seed": 83,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  }
+}

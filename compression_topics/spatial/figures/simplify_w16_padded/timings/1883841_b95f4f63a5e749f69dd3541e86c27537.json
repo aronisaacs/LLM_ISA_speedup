@@ -1,0 +1,55 @@
+{
+  "name": "query_pairs_per_head_padded_w16_L20_k_b49",
+  "run": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_w16_padded/screen_run.json",
+  "worker": 1,
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "k_layers": [
+            20
+          ],
+          "v_layers": [],
+          "saving": 0.49,
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_w16_padded/query_weights.pt",
+          "query_weights_sha256": "8dcd77e279d86bec485daead3e92d0ae25610177673567a48e9904000a647893",
+          "per_head_budget": true,
+          "window": 16,
+          "pad_heads": true
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 16,
+      "offset": 0,
+      "chunks": 4,
+      "seed": 83,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  },
+  "host": "DGX-host-01",
+  "machine": "x86_64",
+  "pid": 1883841,
+  "slurm_job_id": "1549",
+  "visible_gpus": "1",
+  "cpu_threads": "8",
+  "started_at": "2026-10-18T14:13:29.499504+00:00",
+  "status": "complete",
+  "phases": {
+    "model_load_or_reuse": 0.0005180705338716507
+  },
+  "elapsed_seconds": 0.8159522479400039,
+  "finished_at": "2026-10-18T14:13:30.315385+00:00"
+}

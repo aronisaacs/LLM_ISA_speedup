@@ -1,0 +1,70 @@
+{
+  "name": "fixed_L22_v_b40_r32_16_0",
+  "run": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/fixed_hierarchy_40/screen_run.json",
+  "worker": 4,
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial_online",
+          "k_layers": [],
+          "v_layers": [
+            22
+          ],
+          "saving": 0.4,
+          "max_group": 8,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "control": {
+            "startup_tokens": 32,
+            "memory_pairs": 10.0,
+            "recent_deadband": 0.02,
+            "cumulative_deadband": 0.03,
+            "recent_gain": 4.0,
+            "cumulative_gain": 8.0,
+            "max_log_step": 0.2,
+            "price_span": 10000.0
+          },
+          "fixed_residual": null,
+          "minimum_storage": false,
+          "residual_counts": {
+            "2": 32,
+            "4": 16,
+            "8": 0
+          },
+          "prefill_only": true
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 14,
+      "offset": 0,
+      "chunks": 2,
+      "seed": 83,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  },
+  "host": "DGX-host-01",
+  "machine": "x86_64",
+  "pid": 1242342,
+  "slurm_job_id": "1503",
+  "visible_gpus": "4",
+  "cpu_threads": "8",
+  "started_at": "2026-10-12T18:54:40.049497+00:00",
+  "status": "complete",
+  "phases": {
+    "model_load_or_reuse": 0.0004934240132570267
+  },
+  "elapsed_seconds": 0.9407218541018665,
+  "finished_at": "2026-10-12T18:54:40.990158+00:00"
+}

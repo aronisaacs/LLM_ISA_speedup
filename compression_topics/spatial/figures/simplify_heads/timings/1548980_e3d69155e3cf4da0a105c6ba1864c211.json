@@ -1,0 +1,62 @@
+{
+  "name": "query_pairs_head_split_L26_v_b10",
+  "run": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/screen_run.json",
+  "worker": 2,
+  "simulation": {
+    "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+    "dtype": "bfloat16",
+    "model_options": {},
+    "model": "hf",
+    "tasks": [
+      "wikitext_chunks"
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "k_layers": [],
+          "v_layers": [
+            26
+          ],
+          "saving": 0.1,
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.102087,
+            0.069184,
+            0.162052,
+            0.052406,
+            0.099058,
+            0.072993,
+            0.178782,
+            0.06344
+          ]
+        }
+      ]
+    },
+    "sampling": {
+      "split": "train",
+      "pool_chunks": 16,
+      "offset": 0,
+      "chunks": 4,
+      "seed": 83,
+      "seq_len": 2048,
+      "scoring_prefix": 1536
+    }
+  },
+  "host": "DGX-host-01",
+  "machine": "x86_64",
+  "pid": 1548980,
+  "slurm_job_id": "1547",
+  "visible_gpus": "2",
+  "cpu_threads": "8",
+  "started_at": "2026-10-18T11:05:17.558293+00:00",
+  "status": "complete",
+  "phases": {
+    "model_load_or_reuse": 0.0004891464486718178
+  },
+  "elapsed_seconds": 0.8073019878938794,
+  "finished_at": "2026-10-18T11:05:18.365554+00:00"
+}

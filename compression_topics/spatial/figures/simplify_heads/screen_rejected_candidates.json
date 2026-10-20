@@ -1,0 +1,6996 @@
+[
+  {
+    "name": "query_pairs_head_split_L00_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 0,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            0
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.286287,
+            0.286053,
+            0.117325,
+            0.330309,
+            0.311226,
+            0.321524,
+            0.180465,
+            0.16681
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2863267262776693,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2863267262776693,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_0": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 95792000,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5974,
+          "format_g2_r0": 1448,
+          "format_g2_r16": 2847,
+          "format_g2_r32": 22499
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71840704,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L00_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 0,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            0
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.140087,
+            0.013571,
+            0.07864,
+            0.015028,
+            0.03206,
+            0.156398,
+            0.05543,
+            0.308787
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13648605346679688,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13648605346679688,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_0": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115847744,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19464,
+          "format_g2_r0": 250,
+          "format_g2_r16": 8,
+          "format_g2_r32": 13046
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86924160,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L00_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 0,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            0
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.30335,
+            0.165992,
+            0.241017,
+            0.191989,
+            0.177474,
+            0.320244,
+            0.264782,
+            0.335152
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2829329172770182,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2829329172770182,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_0": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96228672,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5228,
+          "format_g2_r0": 291,
+          "format_g2_r16": 24,
+          "format_g2_r32": 27225
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72182336,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L01_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 1,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            1
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.083686,
+            0.027382,
+            0.317026,
+            0.111405,
+            0.035281,
+            0.141813,
+            0.041131,
+            0.042276
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1463756561279297,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1463756561279297,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_1": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114572736,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18472,
+          "format_g2_r0": 49,
+          "format_g2_r16": 159,
+          "format_g2_r32": 14088
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85928640,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L01_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 1,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            1
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.099851,
+            0.027849,
+            0.168342,
+            0.012575,
+            0.071678,
+            0.309227,
+            0.065104,
+            0.045375
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1461801528930664,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1461801528930664,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_1": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114604256,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18463,
+          "format_g2_r0": 38,
+          "format_g2_r16": 15,
+          "format_g2_r32": 14252
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85948320,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L01_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 1,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            1
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.276387,
+            0.199019,
+            0.306617,
+            0.150857,
+            0.271797,
+            0.333649,
+            0.247246,
+            0.214429
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2827533086140951,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2827533086140951,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_1": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96264608,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5201,
+          "format_g2_r0": 156,
+          "format_g2_r16": 76,
+          "format_g2_r32": 27335
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72200416,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L02_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 2,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            2
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.102432,
+            0.297517,
+            0.04008,
+            0.014154,
+            0.150247,
+            0.031846,
+            0.036842,
+            0.126882
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14645099639892578,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14645099639892578,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_2": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114556000,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18447,
+          "format_g2_r0": 53,
+          "format_g2_r16": 80,
+          "format_g2_r32": 14188
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85921056,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L02_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 2,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            2
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.25689,
+            0.343504,
+            0.191263,
+            0.18204,
+            0.308308,
+            0.209831,
+            0.241229,
+            0.266935
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2946767807006836,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2946767807006836,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_2": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94677056,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4252,
+          "format_g2_r0": 85,
+          "format_g2_r16": 1354,
+          "format_g2_r32": 27077
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71000160,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L02_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 2,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            2
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.01461,
+            0.036014,
+            0.025087,
+            0.102388,
+            0.018719,
+            0.299885,
+            0.26217,
+            0.041127
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.15668741861979163,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.15668741861979163,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_2": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 113193984,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 17434,
+          "format_g2_r32": 15294,
+          "format_g2_r0": 32,
+          "format_g2_r16": 8
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 84890624,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L03_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 3,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            3
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.103449,
+            0.031574,
+            0.049816,
+            0.090116,
+            0.193032,
+            0.167199,
+            0.031783,
+            0.133032
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14612325032552087,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14612325032552087,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_3": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114615104,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18472,
+          "format_g2_r16": 61,
+          "format_g2_r32": 14213,
+          "format_g2_r0": 22
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85954048,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L03_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 3,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            3
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.254437,
+            0.18116,
+            0.209276,
+            0.236305,
+            0.32924,
+            0.309154,
+            0.181054,
+            0.299375
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29245408376057946,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29245408376057946,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_3": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94952128,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4284,
+          "format_g2_r16": 459,
+          "format_g2_r32": 27943,
+          "format_g2_r0": 82
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71223904,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L03_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 3,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            3
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.088357,
+            0.106169,
+            0.074874,
+            0.090521,
+            0.152054,
+            0.063799,
+            0.059431,
+            0.164795
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13531907399495446,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13531907399495446,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_3": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 116072704,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19538,
+          "format_g2_r16": 77,
+          "format_g2_r32": 13123,
+          "format_g2_r0": 30
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 87041632,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L03_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 3,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            3
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.239413,
+            0.268847,
+            0.238899,
+            0.209541,
+            0.315443,
+            0.227453,
+            0.203694,
+            0.296709
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.28308327992757165,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.28308327992757165,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_3": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96204320,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5157,
+          "format_g2_r0": 142,
+          "format_g2_r16": 110,
+          "format_g2_r32": 27359
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72167200,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L04_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 4,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            4
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.12037,
+            0.034647,
+            0.195912,
+            0.107875,
+            0.013536,
+            0.127112,
+            0.158064,
+            0.042484
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14629999796549475,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14629999796549475,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_4": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114577824,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18437,
+          "format_g2_r16": 56,
+          "format_g2_r32": 14268,
+          "format_g2_r0": 7
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85936256,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L04_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 4,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            4
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.267509,
+            0.168477,
+            0.319609,
+            0.288875,
+            0.160851,
+            0.283349,
+            0.319232,
+            0.192099
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29363536834716797,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29363536834716797,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_4": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94807328,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4189,
+          "format_g2_r0": 48,
+          "format_g2_r16": 599,
+          "format_g2_r32": 27932
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71104992,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L04_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 4,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            4
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.046033,
+            0.088355,
+            0.161752,
+            0.08415,
+            0.149971,
+            0.071444,
+            0.149763,
+            0.048532
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1355330149332682,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1355330149332682,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_4": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 116031712,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19491,
+          "format_g2_r16": 47,
+          "format_g2_r32": 13225,
+          "format_g2_r0": 5
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 87020096,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L04_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 4,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            4
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.19995,
+            0.214051,
+            0.300611,
+            0.270215,
+            0.305034,
+            0.233428,
+            0.296062,
+            0.180649
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2934192021687826,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2934192021687826,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_4": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94829600,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4109,
+          "format_g2_r0": 46,
+          "format_g2_r16": 87,
+          "format_g2_r32": 28526
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71126752,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L05_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 5,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            5
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.049138,
+            0.035813,
+            0.052469,
+            0.089323,
+            0.051428,
+            0.119306,
+            0.29217,
+            0.110353
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14642842610677087,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14642842610677087,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_5": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114562624,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18436,
+          "format_g2_r0": 7,
+          "format_g2_r16": 110,
+          "format_g2_r32": 14215
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85923328,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L05_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 5,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            5
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.208467,
+            0.173042,
+            0.213605,
+            0.303523,
+            0.209531,
+            0.275569,
+            0.341447,
+            0.274816
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29542509714762366,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29542509714762366,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_5": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94567200,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4117,
+          "format_g2_r0": 18,
+          "format_g2_r16": 1225,
+          "format_g2_r32": 27408
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 70924832,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L05_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 5,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            5
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.063952,
+            0.139361,
+            0.174566,
+            0.029997,
+            0.135689,
+            0.019581,
+            0.125821,
+            0.111031
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1462564468383789,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1462564468383789,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_5": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114587648,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18434,
+          "format_g2_r16": 19,
+          "format_g2_r32": 14315
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85940640,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L05_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 5,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            5
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.224265,
+            0.298183,
+            0.312427,
+            0.194047,
+            0.280939,
+            0.138977,
+            0.286314,
+            0.264849
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2928832372029623,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2928832372029623,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_5": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94896192,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4168,
+          "format_g2_r0": 32,
+          "format_g2_r16": 179,
+          "format_g2_r32": 28389
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71180704,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L06_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 6,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            6
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.121655,
+            0.039788,
+            0.049579,
+            0.212349,
+            0.092074,
+            0.093741,
+            0.171233,
+            0.019581
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1566575368245443,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1566575368245443,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_6": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 113193984,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 17426,
+          "format_g2_r16": 45,
+          "format_g2_r32": 15297
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 84893632,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L06_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 6,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            6
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.28211,
+            0.196705,
+            0.198981,
+            0.323861,
+            0.284734,
+            0.253014,
+            0.306423,
+            0.154173
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29235776265462243,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29235776265462243,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_6": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94981792,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4289,
+          "format_g2_r0": 8,
+          "format_g2_r16": 555,
+          "format_g2_r32": 27916
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71233600,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L06_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 6,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            6
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.086412,
+            0.092528,
+            0.078292,
+            0.128057,
+            0.083289,
+            0.15714,
+            0.07496,
+            0.099322
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14612229665120446,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14612229665120446,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_6": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114613600,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18459,
+          "format_g2_r16": 42,
+          "format_g2_r32": 14263,
+          "format_g2_r0": 4
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85954144,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L06_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 6,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            6
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.229011,
+            0.222243,
+            0.24636,
+            0.282867,
+            0.255677,
+            0.285573,
+            0.23795,
+            0.240318
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.28299967447916663,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.28299967447916663,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_6": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96237664,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5155,
+          "format_g2_r0": 42,
+          "format_g2_r16": 219,
+          "format_g2_r32": 27352
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72175616,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L07_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 7,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            7
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.040619,
+            0.196677,
+            0.039578,
+            0.106651,
+            0.1154,
+            0.157308,
+            0.033537,
+            0.110231
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14634641011555993,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14634641011555993,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_7": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114573888,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18432,
+          "format_g2_r16": 62,
+          "format_g2_r32": 14274
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85931584,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L07_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 7,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            7
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.226346,
+            0.307405,
+            0.181133,
+            0.265717,
+            0.274786,
+            0.30173,
+            0.176762,
+            0.26612
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.3006995519002279,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.3006995519002279,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_7": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 93876928,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 3540,
+          "format_g2_r16": 855,
+          "format_g2_r32": 28369,
+          "format_g2_r0": 4
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 70393888,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L07_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 7,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            7
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.089774,
+            0.073319,
+            0.132838,
+            0.110812,
+            0.065821,
+            0.098523,
+            0.13664,
+            0.092274
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14623737335205078,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14623737335205078,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_7": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114593056,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18441,
+          "format_g2_r16": 28,
+          "format_g2_r32": 14296,
+          "format_g2_r0": 3
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85942560,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L07_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 7,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            7
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.266553,
+            0.248352,
+            0.262547,
+            0.252126,
+            0.201278,
+            0.253376,
+            0.29002,
+            0.225747
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.301664670308431,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.301664670308431,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_7": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 93738688,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 3356,
+          "format_g2_r0": 20,
+          "format_g2_r16": 366,
+          "format_g2_r32": 29026
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 70296736,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L08_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 8,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            8
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.044993,
+            0.108734,
+            0.110609,
+            0.035203,
+            0.113811,
+            0.209383,
+            0.102693,
+            0.074572
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14634386698404944,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14634386698404944,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_8": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114575424,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18432,
+          "format_g2_r16": 56,
+          "format_g2_r32": 14280
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85931840,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L08_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 8,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            8
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.19604,
+            0.286578,
+            0.276132,
+            0.168399,
+            0.272238,
+            0.307711,
+            0.252127,
+            0.240775
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.3029228846232096,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.3029228846232096,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_8": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 93569952,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 3285,
+          "format_g2_r0": 13,
+          "format_g2_r16": 661,
+          "format_g2_r32": 28809
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 70170080,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L08_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 8,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            8
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.127065,
+            0.02583,
+            0.196677,
+            0.083113,
+            0.039786,
+            0.120191,
+            0.054992,
+            0.152347
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13578478495279944,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13578478495279944,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_8": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115993152,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19456,
+          "format_g2_r16": 22,
+          "format_g2_r32": 13290
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86994752,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L08_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 8,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            8
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.291356,
+            0.16358,
+            0.321749,
+            0.267997,
+            0.178732,
+            0.280604,
+            0.199728,
+            0.296254
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2936283747355143,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2936283747355143,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_8": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94803840,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4126,
+          "format_g2_r0": 28,
+          "format_g2_r16": 324,
+          "format_g2_r32": 28290
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71105696,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L09_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 9,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            9
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.062908,
+            0.228208,
+            0.086029,
+            0.114358,
+            0.1179,
+            0.124149,
+            0.032912,
+            0.033537
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14629968007405603,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14629968007405603,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_9": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114579104,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18433,
+          "format_g2_r16": 47,
+          "format_g2_r32": 14288
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85936288,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L09_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 9,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            9
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.221156,
+            0.322875,
+            0.278357,
+            0.260258,
+            0.276647,
+            0.28062,
+            0.184111,
+            0.175974
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.30331293741861975,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.30331293741861975,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_9": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 93529696,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 3275,
+          "format_g2_r16": 787,
+          "format_g2_r32": 28702,
+          "format_g2_r0": 4
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 70130816,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L09_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 9,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            9
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.131276,
+            0.023956,
+            0.05562,
+            0.132695,
+            0.160232,
+            0.074784,
+            0.092699,
+            0.128738
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13574790954589844,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13574790954589844,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_9": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115997376,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19460,
+          "format_g2_r0": 2,
+          "format_g2_r16": 22,
+          "format_g2_r32": 13284
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86998464,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L09_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 9,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            9
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.275953,
+            0.146951,
+            0.260059,
+            0.272758,
+            0.297586,
+            0.225985,
+            0.246413,
+            0.274295
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2934236526489258,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2934236526489258,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_9": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94827168,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4169,
+          "format_g2_r0": 58,
+          "format_g2_r16": 389,
+          "format_g2_r32": 28152
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71126304,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L10_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 10,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            10
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.04625,
+            0.249375,
+            0.201042,
+            0.091875,
+            0.022708,
+            0.07,
+            0.089583,
+            0.029167
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14626312255859375,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14626312255859375,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_10": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114586624,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18434,
+          "format_g2_r16": 23,
+          "format_g2_r32": 14311
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85939968,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L10_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 10,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            10
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.222354,
+            0.331921,
+            0.308862,
+            0.283782,
+            0.182987,
+            0.242303,
+            0.259295,
+            0.168496
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29258696238199866,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29258696238199866,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_10": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94951008,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4255,
+          "format_g2_r0": 9,
+          "format_g2_r16": 490,
+          "format_g2_r32": 28014
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71210528,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L10_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 10,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            10
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.198552,
+            0.04791,
+            0.062283,
+            0.017081,
+            0.140435,
+            0.078114,
+            0.116064,
+            0.139563
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13580258687337243,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13580258687337243,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_10": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115991360,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19456,
+          "format_g2_r16": 29,
+          "format_g2_r32": 13283
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86992960,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L10_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 10,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            10
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.320044,
+            0.210202,
+            0.213275,
+            0.172246,
+            0.279251,
+            0.233531,
+            0.274873,
+            0.296579
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2936067581176758,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2936067581176758,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_10": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94808928,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4151,
+          "format_g2_r0": 51,
+          "format_g2_r16": 381,
+          "format_g2_r32": 28185
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71107872,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L11_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 11,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            11
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.13774,
+            0.039165,
+            0.098745,
+            0.072288,
+            0.092287,
+            0.156034,
+            0.13916,
+            0.06458
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13575236002604163,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13575236002604163,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_11": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115999424,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19460,
+          "format_g2_r16": 19,
+          "format_g2_r32": 13289
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86998016,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L11_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 11,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            11
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.278931,
+            0.192271,
+            0.235729,
+            0.23336,
+            0.258722,
+            0.291882,
+            0.270543,
+            0.238562
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29301865895589196,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29301865895589196,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_11": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94901024,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4233,
+          "format_g2_r0": 9,
+          "format_g2_r16": 567,
+          "format_g2_r32": 27959
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71167072,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L11_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 11,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            11
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.108333,
+            0.105,
+            0.10125,
+            0.095833,
+            0.082708,
+            0.155625,
+            0.1125,
+            0.03875
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1462240219116211,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1462240219116211,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_11": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114591072,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18435,
+          "format_g2_r16": 11,
+          "format_g2_r32": 14322
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85943904,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L11_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 11,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            11
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.260127,
+            0.246151,
+            0.262851,
+            0.250922,
+            0.257959,
+            0.299803,
+            0.261908,
+            0.160279
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29198360443115234,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29198360443115234,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_11": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 95068480,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4304,
+          "format_g2_r0": 8,
+          "format_g2_r16": 297,
+          "format_g2_r32": 28159
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71271264,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L12_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 12,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            12
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.118152,
+            0.09253,
+            0.133945,
+            0.081034,
+            0.107281,
+            0.127279,
+            0.060202,
+            0.079576
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13572820027669275,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13572820027669275,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_12": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 116003840,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19466,
+          "format_g2_r16": 34,
+          "format_g2_r32": 13268
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 87000448,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L12_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 12,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            12
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.266323,
+            0.228508,
+            0.271724,
+            0.24144,
+            0.269588,
+            0.274556,
+            0.217983,
+            0.229878
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29201316833496094,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29201316833496094,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_12": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 95020480,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4380,
+          "format_g2_r0": 28,
+          "format_g2_r16": 843,
+          "format_g2_r32": 27517
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71268288,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L12_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 12,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            12
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.269258,
+            0.195577,
+            0.233075,
+            0.317997,
+            0.278472,
+            0.226804,
+            0.227696,
+            0.251121
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.283166249593099,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.283166249593099,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_12": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96212416,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5144,
+          "format_g2_r0": 35,
+          "format_g2_r16": 276,
+          "format_g2_r32": 27313
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72158848,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L13_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 13,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            13
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.109792,
+            0.100625,
+            0.106875,
+            0.103542,
+            0.16375,
+            0.033542,
+            0.101667,
+            0.080208
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14625231424967444,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14625231424967444,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_13": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114588480,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18432,
+          "format_g2_r16": 5,
+          "format_g2_r32": 14331
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85941056,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L13_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 13,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            13
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.266126,
+            0.245385,
+            0.267034,
+            0.257964,
+            0.305625,
+            0.154941,
+            0.251957,
+            0.250968
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2914660771687826,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2914660771687826,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_13": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 95109664,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4341,
+          "format_g2_r16": 355,
+          "format_g2_r32": 28072
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71323360,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L13_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 13,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            13
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.171697,
+            0.07708,
+            0.118328,
+            0.062497,
+            0.168325,
+            0.053331,
+            0.09687,
+            0.051872
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1458937327067057,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1458937327067057,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_13": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114629408,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18469,
+          "format_g2_r16": 44,
+          "format_g2_r32": 14255
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85977152,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L13_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 13,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            13
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.310254,
+            0.226515,
+            0.275108,
+            0.207018,
+            0.307121,
+            0.192583,
+            0.242622,
+            0.238778
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2833153406778971,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2833153406778971,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_13": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96187040,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5145,
+          "format_g2_r0": 52,
+          "format_g2_r16": 338,
+          "format_g2_r32": 27233
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72143840,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L14_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 14,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            14
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.119583,
+            0.116875,
+            0.156042,
+            0.049792,
+            0.020833,
+            0.119792,
+            0.076458,
+            0.140625
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1357593536376953,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1357593536376953,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_14": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115996736,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19456,
+          "format_g2_r16": 8,
+          "format_g2_r32": 13304
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86997312,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L14_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 14,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            14
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.270793,
+            0.276142,
+            0.29156,
+            0.204769,
+            0.141779,
+            0.276349,
+            0.246906,
+            0.291701
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2938620249430338,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2938620249430338,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_14": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94778464,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4135,
+          "format_g2_r0": 5,
+          "format_g2_r16": 529,
+          "format_g2_r32": 28099
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71082176,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L14_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 14,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            14
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.102907,
+            0.06916,
+            0.089366,
+            0.130443,
+            0.071451,
+            0.115405,
+            0.038538,
+            0.182729
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.146081288655599,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.146081288655599,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_14": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114613024,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18457,
+          "format_g2_r0": 1,
+          "format_g2_r16": 41,
+          "format_g2_r32": 14269
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85958272,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L14_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 14,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            14
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.238353,
+            0.198025,
+            0.268976,
+            0.261155,
+            0.248807,
+            0.26823,
+            0.21481,
+            0.301643
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2924537658691406,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2924537658691406,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_14": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94971168,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4265,
+          "format_g2_r0": 47,
+          "format_g2_r16": 370,
+          "format_g2_r32": 28086
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71223936,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L15_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 15,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            15
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.047292,
+            0.088125,
+            0.10375,
+            0.060208,
+            0.271458,
+            0.093542,
+            0.08875,
+            0.046875
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1566944122314453,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1566944122314453,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_15": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 113189760,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 17422,
+          "format_g2_r16": 40,
+          "format_g2_r32": 15306
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 84889920,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L15_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 15,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            15
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.044771,
+            0.212482,
+            0.119323,
+            0.048727,
+            0.063095,
+            0.14268,
+            0.155179,
+            0.013744
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13583437601725257,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13583437601725257,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_15": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115986112,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19456,
+          "format_g2_r16": 37,
+          "format_g2_r32": 13270,
+          "format_g2_r0": 5
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86989760,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L15_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 15,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            15
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.212959,
+            0.321712,
+            0.277146,
+            0.191293,
+            0.259945,
+            0.279346,
+            0.299344,
+            0.158255
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2938213348388672,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2938213348388672,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_15": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94784864,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4211,
+          "format_g2_r0": 130,
+          "format_g2_r16": 600,
+          "format_g2_r32": 27827
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71086272,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L16_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 16,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            16
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.02728,
+            0.187286,
+            0.091573,
+            0.097287,
+            0.081631,
+            0.014993,
+            0.124456,
+            0.175494
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.15651988983154297,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.15651988983154297,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_16": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 113205440,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 17440,
+          "format_g2_r0": 7,
+          "format_g2_r16": 58,
+          "format_g2_r32": 15263
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 84907488,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L16_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 16,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            16
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.148574,
+            0.30734,
+            0.260639,
+            0.287374,
+            0.269976,
+            0.134048,
+            0.277478,
+            0.31457
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29327424367268884,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29327424367268884,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_16": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94851776,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4240,
+          "format_g2_r0": 107,
+          "format_g2_r16": 552,
+          "format_g2_r32": 27869
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71141344,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L17_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 17,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            17
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.208776,
+            0.216673,
+            0.296809,
+            0.244927,
+            0.305215,
+            0.216391,
+            0.318208,
+            0.193
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2833019892374674,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2833019892374674,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_17": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96191744,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5122,
+          "format_g2_r16": 321,
+          "format_g2_r32": 27323,
+          "format_g2_r0": 2
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72145184,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L17_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 17,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            17
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.220981,
+            0.140807,
+            0.011207,
+            0.130492,
+            0.016396,
+            0.115264,
+            0.100891,
+            0.063962
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1465660730997721,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1465660730997721,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_17": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114546336,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18445,
+          "format_g2_r0": 47,
+          "format_g2_r16": 122,
+          "format_g2_r32": 14154
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85909472,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L17_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 17,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            17
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.325058,
+            0.295153,
+            0.15843,
+            0.308817,
+            0.150702,
+            0.27082,
+            0.254644,
+            0.236377
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2824494043986002,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2824494043986002,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_17": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96284288,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5398,
+          "format_g2_r0": 256,
+          "format_g2_r16": 808,
+          "format_g2_r32": 26306
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72231008,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L18_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 18,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            18
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.124594,
+            0.040616,
+            0.11651,
+            0.080801,
+            0.107476,
+            0.179543,
+            0.075855,
+            0.074605
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1357377370198568,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1357377370198568,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_18": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115998848,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19462,
+          "format_g2_r16": 32,
+          "format_g2_r32": 13274
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86999488,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L18_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 18,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            18
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.273889,
+            0.186433,
+            0.27257,
+            0.223732,
+            0.260809,
+            0.319309,
+            0.233706,
+            0.229552
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2930415471394857,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2930415471394857,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_18": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94881600,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4236,
+          "format_g2_r0": 5,
+          "format_g2_r16": 669,
+          "format_g2_r32": 27858
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71164768,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L18_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 18,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            18
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.188862,
+            0.04237,
+            0.083872,
+            0.256857,
+            0.03158,
+            0.082043,
+            0.079346,
+            0.035069
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14368947347005212,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14368947347005212,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_18": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114946816,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18778,
+          "format_g2_r0": 48,
+          "format_g2_r16": 345,
+          "format_g2_r32": 13597
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86199040,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L18_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 18,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            18
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.316719,
+            0.210677,
+            0.284113,
+            0.341003,
+            0.145938,
+            0.278005,
+            0.265947,
+            0.157597
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2853231430053711,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2853231430053711,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_18": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 95923520,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5276,
+          "format_g2_r0": 291,
+          "format_g2_r16": 1474,
+          "format_g2_r32": 25727
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71941728,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L19_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 19,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            19
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.078314,
+            0.132923,
+            0.034614,
+            0.126636,
+            0.197907,
+            0.064984,
+            0.058111,
+            0.10651
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13576698303222656,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13576698303222656,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_19": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115994432,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19456,
+          "format_g2_r16": 17,
+          "format_g2_r32": 13295
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86996544,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L19_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 19,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            19
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.267213,
+            0.286759,
+            0.15352,
+            0.298647,
+            0.323214,
+            0.226071,
+            0.178746,
+            0.265828
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29118665059407556,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29118665059407556,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_19": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 95142624,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4399,
+          "format_g2_r0": 4,
+          "format_g2_r16": 528,
+          "format_g2_r32": 27837
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71351488,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L19_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 19,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            19
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.061505,
+            0.089387,
+            0.206525,
+            0.045713,
+            0.059258,
+            0.077089,
+            0.064312,
+            0.196213
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1358696619669596,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1358696619669596,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_19": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115981632,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19468,
+          "format_g2_r0": 25,
+          "format_g2_r16": 69,
+          "format_g2_r32": 13206
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86986208,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L19_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 19,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            19
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.23406,
+            0.257797,
+            0.314941,
+            0.183077,
+            0.24132,
+            0.230858,
+            0.220312,
+            0.317635
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2834752400716146,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2834752400716146,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_19": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96159136,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5161,
+          "format_g2_r0": 122,
+          "format_g2_r16": 358,
+          "format_g2_r32": 27127
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72127744,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L20_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 20,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            20
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.029155,
+            0.138318,
+            0.081049,
+            0.165977,
+            0.196368,
+            0.034362,
+            0.103293,
+            0.051477
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13580544789632165,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13580544789632165,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_20": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115988768,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19457,
+          "format_g2_r16": 42,
+          "format_g2_r32": 13268,
+          "format_g2_r0": 1
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86992672,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L20_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 20,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            20
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.139302,
+            0.299478,
+            0.241944,
+            0.312448,
+            0.307679,
+            0.205243,
+            0.273524,
+            0.220381
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.28361829121907556,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.28361829121907556,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_20": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96148224,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5130,
+          "format_g2_r0": 24,
+          "format_g2_r16": 479,
+          "format_g2_r32": 27135
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72113344,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L20_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 20,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            20
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.036058,
+            0.062809,
+            0.186634,
+            0.066345,
+            0.205361,
+            0.029117,
+            0.080942,
+            0.132734
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13576221466064453,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13576221466064453,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_20": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115994784,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19489,
+          "format_g2_r0": 34,
+          "format_g2_r16": 108,
+          "format_g2_r32": 13137
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86997024,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L20_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 20,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            20
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.150035,
+            0.246816,
+            0.313195,
+            0.257251,
+            0.307212,
+            0.169475,
+            0.267676,
+            0.28834
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2938728332519531,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2938728332519531,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_20": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94776128,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4180,
+          "format_g2_r0": 149,
+          "format_g2_r16": 420,
+          "format_g2_r32": 28019
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71081088,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L21_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 21,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            21
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.017282,
+            0.10398,
+            0.019573,
+            0.070742,
+            0.145664,
+            0.190732,
+            0.062922,
+            0.189105
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1462879180908203,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1462879180908203,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_21": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114583360,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18432,
+          "format_g2_r16": 25,
+          "format_g2_r32": 14311
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85937472,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L21_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 21,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            21
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.174615,
+            0.297657,
+            0.155801,
+            0.222693,
+            0.30646,
+            0.313052,
+            0.209338,
+            0.320384
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.28351847330729163,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.28351847330729163,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_21": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96151872,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5132,
+          "format_g2_r0": 13,
+          "format_g2_r16": 503,
+          "format_g2_r32": 27120
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72123392,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L21_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 21,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            21
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.019113,
+            0.096588,
+            0.178025,
+            0.202022,
+            0.207365,
+            0.007479,
+            0.073997,
+            0.015412
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1563199361165365,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1563199361165365,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_21": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 113241856,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 17526,
+          "format_g2_r0": 75,
+          "format_g2_r16": 208,
+          "format_g2_r32": 14959
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 84927616,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L21_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 21,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            21
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.201647,
+            0.316381,
+            0.324782,
+            0.321478,
+            0.328326,
+            0.1114,
+            0.259738,
+            0.136248
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2839543024698893,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2839543024698893,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_21": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96081792,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5282,
+          "format_g2_r0": 361,
+          "format_g2_r16": 713,
+          "format_g2_r32": 26412
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72079520,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L22_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 22,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            22
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.131577,
+            0.206512,
+            0.04601,
+            0.113257,
+            0.052673,
+            0.119396,
+            0.040012,
+            0.090564
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14629745483398438,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14629745483398438,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_22": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114579424,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18439,
+          "format_g2_r16": 78,
+          "format_g2_r32": 14251
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85936512,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L22_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 22,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            22
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.302346,
+            0.309178,
+            0.185947,
+            0.26991,
+            0.221184,
+            0.270246,
+            0.16989,
+            0.271297
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.3041111628214518,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.3041111628214518,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_22": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 93405472,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 3197,
+          "format_g2_r0": 32,
+          "format_g2_r16": 783,
+          "format_g2_r32": 28756
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 70050464,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L22_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 22,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            22
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.034365,
+            0.109968,
+            0.163853,
+            0.052295,
+            0.111862,
+            0.119184,
+            0.172426,
+            0.036047
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1456693013509115,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1456693013509115,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_22": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114660960,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18543,
+          "format_g2_r0": 59,
+          "format_g2_r16": 171,
+          "format_g2_r32": 13995
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85999744,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L22_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 22,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            22
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.169238,
+            0.299733,
+            0.299492,
+            0.192512,
+            0.28969,
+            0.289088,
+            0.309846,
+            0.1504
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.293397585550944,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.293397585550944,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_22": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94836896,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4361,
+          "format_g2_r0": 366,
+          "format_g2_r16": 613,
+          "format_g2_r32": 27428
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71128928,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L23_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 23,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            23
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.095672,
+            0.158152,
+            0.159348,
+            0.103717,
+            0.058731,
+            0.071682,
+            0.088722,
+            0.063977
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13552029927571618,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13552029927571618,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_23": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 116032448,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19492,
+          "format_g2_r16": 62,
+          "format_g2_r32": 13214
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 87021376,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L23_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 23,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            23
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.25352,
+            0.300365,
+            0.292199,
+            0.274925,
+            0.215476,
+            0.223577,
+            0.210676,
+            0.229263
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29287751515706384,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29287751515706384,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_23": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94906528,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4281,
+          "format_g2_r0": 22,
+          "format_g2_r16": 771,
+          "format_g2_r32": 27694
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71181280,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L23_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 23,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            23
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.142206,
+            0.052953,
+            0.239976,
+            0.037346,
+            0.050649,
+            0.037008,
+            0.08947,
+            0.150391
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13572088877360022,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13572088877360022,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_23": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 116002688,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19510,
+          "format_g2_r0": 50,
+          "format_g2_r16": 150,
+          "format_g2_r32": 13058
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 87001184,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L23_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 23,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            23
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.304069,
+            0.197251,
+            0.331465,
+            0.182278,
+            0.222922,
+            0.184379,
+            0.262945,
+            0.314691
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29308605194091797,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29308605194091797,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_23": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94888256,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4320,
+          "format_g2_r0": 246,
+          "format_g2_r16": 492,
+          "format_g2_r32": 27710
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71160288,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L24_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 24,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            24
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.111132,
+            0.092654,
+            0.080811,
+            0.084118,
+            0.126007,
+            0.096819,
+            0.122012,
+            0.086447
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.15661970774332679,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.15661970774332679,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_24": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 113196000,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 17431,
+          "format_g2_r16": 64,
+          "format_g2_r32": 15273
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 84897440,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L24_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 24,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            24
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.234704,
+            0.24368,
+            0.230329,
+            0.23267,
+            0.278709,
+            0.255591,
+            0.270111,
+            0.254207
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.292565663655599,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.292565663655599,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_24": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94959072,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4267,
+          "format_g2_r16": 528,
+          "format_g2_r32": 27966,
+          "format_g2_r0": 7
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71212672,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L24_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 24,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            24
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.183021,
+            0.099323,
+            0.108175,
+            0.131189,
+            0.04273,
+            0.037337,
+            0.056212,
+            0.142014
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14600435892740882,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14600435892740882,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_24": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114617568,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18511,
+          "format_g2_r0": 84,
+          "format_g2_r16": 106,
+          "format_g2_r32": 14067
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85966016,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L24_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 24,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            24
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.315284,
+            0.275468,
+            0.279086,
+            0.299362,
+            0.175239,
+            0.160096,
+            0.184135,
+            0.31133
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29384263356526696,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29384263356526696,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_24": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94775648,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4203,
+          "format_g2_r0": 198,
+          "format_g2_r16": 423,
+          "format_g2_r32": 27944
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71084128,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L25_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 25,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            25
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.146013,
+            0.182673,
+            0.049574,
+            0.196004,
+            0.012575,
+            0.118766,
+            0.05374,
+            0.040656
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14621194203694665,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14621194203694665,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_25": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114594016,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18439,
+          "format_g2_r16": 21,
+          "format_g2_r32": 14308
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85945120,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L25_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 25,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            25
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.288501,
+            0.314285,
+            0.248903,
+            0.312754,
+            0.102613,
+            0.313273,
+            0.205684,
+            0.213988
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2834294637044271,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2834294637044271,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_25": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96165888,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5122,
+          "format_g2_r16": 412,
+          "format_g2_r32": 27228,
+          "format_g2_r0": 6
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72132352,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L25_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 25,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            25
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.071379,
+            0.034831,
+            0.139167,
+            0.036989,
+            0.150516,
+            0.173093,
+            0.104758,
+            0.089266
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14600086212158203,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14600086212158203,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_25": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114633696,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18491,
+          "format_g2_r0": 25,
+          "format_g2_r16": 83,
+          "format_g2_r32": 14169
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85966368,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L25_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 25,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            25
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.25277,
+            0.141922,
+            0.291479,
+            0.14082,
+            0.291861,
+            0.325144,
+            0.280051,
+            0.275952
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29362169901529944,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29362169901529944,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_25": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94813600,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4209,
+          "format_g2_r0": 170,
+          "format_g2_r16": 377,
+          "format_g2_r32": 28012
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71106368,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L26_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 26,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            26
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.015615,
+            0.178584,
+            0.145441,
+            0.173263,
+            0.028107,
+            0.079156,
+            0.112168,
+            0.067666
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14586098988850915,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14586098988850915,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_26": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114639264,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18481,
+          "format_g2_r16": 70,
+          "format_g2_r32": 14217
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85980448,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L26_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 26,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            26
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.149786,
+            0.299894,
+            0.291797,
+            0.304361,
+            0.160124,
+            0.265314,
+            0.280487,
+            0.248238
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2826016743977865,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2826016743977865,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_26": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96299904,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5278,
+          "format_g2_r0": 20,
+          "format_g2_r16": 692,
+          "format_g2_r32": 26778
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72215680,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L26_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 26,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            26
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.102087,
+            0.069184,
+            0.162052,
+            0.052406,
+            0.099058,
+            0.072993,
+            0.178782,
+            0.06344
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13515949249267578,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13515949249267578,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_26": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 116084640,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19549,
+          "format_g2_r0": 27,
+          "format_g2_r16": 97,
+          "format_g2_r32": 13095
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 87057696,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L26_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 26,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            26
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.275418,
+            0.241801,
+            0.30076,
+            0.164819,
+            0.266152,
+            0.242289,
+            0.302912,
+            0.20585
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2828753789265951,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2828753789265951,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_26": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96248192,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5258,
+          "format_g2_r0": 195,
+          "format_g2_r16": 349,
+          "format_g2_r32": 26966
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72188128,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L27_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 27,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            27
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.057288,
+            0.190741,
+            0.033942,
+            0.164334,
+            0.076044,
+            0.174499,
+            0.069627,
+            0.033525
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13569672902425134,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13569672902425134,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_27": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 116006144,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19466,
+          "format_g2_r16": 25,
+          "format_g2_r32": 13277
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 87003616,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L27_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 27,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            27
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.209638,
+            0.317682,
+            0.207243,
+            0.305209,
+            0.235662,
+            0.315594,
+            0.234681,
+            0.174291
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2836987177530924,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2836987177530924,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_27": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96138080,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5155,
+          "format_g2_r0": 44,
+          "format_g2_r16": 603,
+          "format_g2_r32": 26966
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72105248,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L27_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 27,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            27
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.079503,
+            0.020835,
+            0.07502,
+            0.164573,
+            0.128688,
+            0.030024,
+            0.184029,
+            0.117328
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13573964436848962,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13573964436848962,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_27": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 115996800,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19502,
+          "format_g2_r0": 56,
+          "format_g2_r16": 115,
+          "format_g2_r32": 13095
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 86999296,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L27_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 27,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            27
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.252918,
+            0.128646,
+            0.269919,
+            0.314268,
+            0.290547,
+            0.136587,
+            0.296323,
+            0.310792
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2938369115193685,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2938369115193685,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_27": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94768832,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4236,
+          "format_g2_r0": 230,
+          "format_g2_r16": 547,
+          "format_g2_r32": 27755
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71084704,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L28_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 28,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            28
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.111906,
+            0.103159,
+            0.088752,
+            0.210522,
+            0.064426,
+            0.047897,
+            0.097915,
+            0.075424
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14630444844563806,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14630444844563806,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_28": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114579488,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18437,
+          "format_g2_r16": 67,
+          "format_g2_r32": 14264
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85935808,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L28_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 28,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            28
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.270366,
+            0.259585,
+            0.271654,
+            0.322324,
+            0.21656,
+            0.175222,
+            0.267829,
+            0.21646
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.30310376485188806,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.30310376485188806,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_28": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 93554368,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 3256,
+          "format_g2_r16": 576,
+          "format_g2_r32": 28927,
+          "format_g2_r0": 9
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 70151872,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L28_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 28,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            28
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.142175,
+            0.100574,
+            0.0875,
+            0.059782,
+            0.099296,
+            0.127764,
+            0.07168,
+            0.111228
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.1462545394897461,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.1462545394897461,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_28": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114583680,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18458,
+          "format_g2_r0": 29,
+          "format_g2_r16": 91,
+          "format_g2_r32": 14190
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85940832,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L28_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 28,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            28
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.284847,
+            0.261712,
+            0.240896,
+            0.17299,
+            0.24989,
+            0.27067,
+            0.246734,
+            0.27226
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.29241720835367835,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.29241720835367835,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_28": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94981696,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4316,
+          "format_g2_r0": 147,
+          "format_g2_r16": 353,
+          "format_g2_r32": 27952
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71227616,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L29_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 29,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            29
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.061912,
+            0.087273,
+            0.020195,
+            0.156951,
+            0.10618,
+            0.158229,
+            0.153218,
+            0.056043
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.13560517628987634,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.13560517628987634,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_29": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 116014272,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 19480,
+          "format_g2_r16": 66,
+          "format_g2_r32": 13221,
+          "format_g2_r0": 1
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 87012832,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L29_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 29,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            29
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.22137,
+            0.26379,
+            0.138907,
+            0.30687,
+            0.251869,
+            0.308639,
+            0.298825,
+            0.20973
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2920452753702799,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2920452753702799,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_29": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 95036320,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4413,
+          "format_g2_r0": 49,
+          "format_g2_r16": 906,
+          "format_g2_r32": 27400
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71265056,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L29_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 29,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            29
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.214838,
+            0.244477,
+            0.197617,
+            0.257741,
+            0.286518,
+            0.12732,
+            0.337685,
+            0.333803
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.28525002797444665,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.28525002797444665,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_29": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 95920416,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5245,
+          "format_g2_r0": 244,
+          "format_g2_r16": 1437,
+          "format_g2_r32": 25842
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71949088,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L30_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 30,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            30
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.039576,
+            0.106386,
+            0.041659,
+            0.189419,
+            0.148516,
+            0.083527,
+            0.038574,
+            0.152342
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14629522959391272,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14629522959391272,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_30": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114582144,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18438,
+          "format_g2_r16": 57,
+          "format_g2_r32": 14271,
+          "format_g2_r0": 2
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85936736,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L30_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 30,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            30
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.183098,
+            0.250977,
+            0.22104,
+            0.318981,
+            0.292045,
+            0.256475,
+            0.173814,
+            0.30357
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2930288314819336,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2930288314819336,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_30": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 94895136,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 4193,
+          "format_g2_r0": 7,
+          "format_g2_r16": 380,
+          "format_g2_r32": 28188
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 71166048,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L30_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 30,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            30
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.078528,
+            0.207805,
+            0.099807,
+            0.049291,
+            0.14764,
+            0.08714,
+            0.085595,
+            0.044195
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14608383178710938,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14608383178710938,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_30": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114612096,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18470,
+          "format_g2_r0": 14,
+          "format_g2_r16": 82,
+          "format_g2_r32": 14202
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85958016,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L30_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 30,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            30
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.253219,
+            0.322354,
+            0.271524,
+            0.175347,
+            0.288071,
+            0.261488,
+            0.254992,
+            0.173006
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.31292597452799475,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.31292597452799475,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_30": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 92232672,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 2291,
+          "format_g2_r0": 89,
+          "format_g2_r16": 352,
+          "format_g2_r32": 30036
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 69163136,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L31_k_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 31,
+    "target": "k",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [
+            31
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.093394,
+            0.127177,
+            0.077772,
+            0.033119,
+            0.161013,
+            0.091234,
+            0.111933,
+            0.104357
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14614931742350257,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14614931742350257,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_31": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114602752,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18450,
+          "format_g2_r16": 46,
+          "format_g2_r32": 14272
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85951424,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L31_k_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 31,
+    "target": "k",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [
+            31
+          ],
+          "v_layers": [],
+          "max_group": 2,
+          "query_aware": true,
+          "query_weights": "/data/users/aroni/projects/LLM_ISA_speedup/compression_topics/spatial/figures/simplify_heads/query_weights.pt",
+          "query_weights_sha256": "b5030a7700aa814abf07de94c66b160fa2d139e9bdda7415fa045bf7bd52b3a3",
+          "head_savings": [
+            0.237431,
+            0.266538,
+            0.243804,
+            0.143012,
+            0.306416,
+            0.248725,
+            0.273964,
+            0.28011
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.28180249532063806,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.28180249532063806,
+      "shortfall_updates": 0,
+      "stats": {
+        "k_layer_31": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96416768,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 5310,
+          "format_g2_r0": 15,
+          "format_g2_r16": 420,
+          "format_g2_r32": 27023
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72296128,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L31_v_b10",
+    "arm": "query_pairs_head_split",
+    "layer": 31,
+    "target": "v",
+    "budget": 0.1,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.1,
+          "k_layers": [],
+          "v_layers": [
+            31
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.128531,
+            0.190519,
+            0.043003,
+            0.307404,
+            0.022202,
+            0.021585,
+            0.073562,
+            0.013195
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.1,
+    "measured_saving": 0.14767106374104821,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.14767106374104821,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_31": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 114385664,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 18522,
+          "format_g2_r0": 306,
+          "format_g2_r16": 516,
+          "format_g2_r32": 13424
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 85798240,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  },
+  {
+    "name": "query_pairs_head_split_L31_v_b25",
+    "arm": "query_pairs_head_split",
+    "layer": 31,
+    "target": "v",
+    "budget": 0.25,
+    "maximum_feasible": false,
+    "kv": {
+      "pipeline": [
+        {
+          "method": "spatial",
+          "saving": 0.25,
+          "k_layers": [],
+          "v_layers": [
+            31
+          ],
+          "max_group": 2,
+          "query_aware": false,
+          "query_weights": null,
+          "query_weights_sha256": null,
+          "head_savings": [
+            0.282849,
+            0.324809,
+            0.248385,
+            0.386089,
+            0.168542,
+            0.136574,
+            0.287437,
+            0.165315
+          ]
+        }
+      ]
+    },
+    "target_saving": 0.25,
+    "measured_saving": 0.2800213495890299,
+    "reason": "local measured byte target missed",
+    "tolerance": 0.03,
+    "stats": {
+      "compression": 0.2800213495890299,
+      "shortfall_updates": 0,
+      "stats": {
+        "v_layer_31": {
+          "accounting": "spatial_v3_per_head_bf16_norms_bitmap_tag3",
+          "dense_bits": 134217728,
+          "stored_bits": 96634592,
+          "metadata_bits": 98368,
+          "updates": 8,
+          "format_dense_pair": 6239,
+          "format_g2_r0": 1200,
+          "format_g2_r16": 1600,
+          "format_g2_r32": 23729
+        }
+      },
+      "measured_dense_bits": 100663296,
+      "measured_stored_bits": 72475424,
+      "measurement_scope": "prefill",
+      "measurement_source": "explicit_storage_slots"
+    }
+  }
+]
