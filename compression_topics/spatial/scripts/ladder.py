@@ -25,7 +25,7 @@ The official method (locked in 2026-10-18) is query_pairs_per_head_padded_w16:
 pairs with query-aware keys, the same budget for every KV head reserved in full
 (fixed-size blocks), and 16-token windows. ``--official`` runs it at
 OFFICIAL_BUDGETS: Llama 3.1 8B-Instruct on C-Eval, GSM8K and HumanEval-instruct,
-and ``--model codellama`` CodeLlama 7B on plain HumanEval. Each model gets its own
+and ``--model codellama`` CodeLlama 7B on HumanEval with its body-indent prompt. Each model gets its own
 query and layer calibration.
 
 Every window of a layer slot is compressed to that slot's saving.
@@ -74,7 +74,7 @@ OFFICIAL_BUDGETS = (0.1, 0.2, 0.3, 0.35, 0.4)
 # fourth layer is full attention with a KV cache, and its heads hold 256 values.
 MODELS = {
     "llama": (LLAMA31_8B, ("ceval", "gsm8k", "humaneval"), {}),
-    "codellama": (CODELLAMA_7B, ("humaneval_base",), {}),
+    "codellama": (CODELLAMA_7B, ("humaneval_codellama",), {}),
     "qwen": (QWEN35_9B, ("ceval", "gsm8k", "humaneval"),
              dict(head_dim=256, kv_layers=tuple(range(3, 32, 4)))),
 }

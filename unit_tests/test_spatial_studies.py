@@ -219,7 +219,7 @@ class OfficialSweepTests(unittest.TestCase):
             torch.save({"weights": torch.ones(32, 4, 256)}, qwen["query_weights"])
             self.assertEqual({r["layer"] for r in ladder.candidates(qwen)}, set(range(3, 32, 4)))
             code_run = ladder.tasks(code, selections)
-            self.assertEqual({c["tasks"][0] for c in code_run["configurations"]}, {"humaneval"})
+            self.assertEqual({c["tasks"][0] for c in code_run["configurations"]}, {"humaneval_codellama"})
             self.assertIn("CodeLlama", code_run["model_args"])
             step = SpatialConfig(max_group=2, **ladder.SIMPLIFICATIONS[ladder.OFFICIAL_ARM])
             self.assertEqual((step.window, step.per_head_budget, step.pad_heads), (16, True, True))

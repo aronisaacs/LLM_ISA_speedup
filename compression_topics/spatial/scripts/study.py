@@ -23,6 +23,7 @@ from catalog.tasks import (
     CEVAL_VALID_5SHOT,
     GSM8K_20PCT,
     HUMANEVAL_BASE,
+    HUMANEVAL_CODELLAMA,
     HUMANEVAL_INSTRUCT,
     WIKITEXT_FULL,
 )
@@ -46,6 +47,7 @@ TASKS = {
     "gsm8k": (GSM8K_20PCT, "gsm8k", "exact_match,flexible-extract", 1319),
     "humaneval": (HUMANEVAL_INSTRUCT, "humaneval_instruct", "pass@1,create_test", 164),
     "humaneval_base": (HUMANEVAL_BASE, "humaneval", "pass@1,create_test", 164),
+    "humaneval_codellama": (HUMANEVAL_CODELLAMA, "humaneval_codellama", "pass@1,create_test", 164),
 }
 DENSE_CEVAL = (
     ROOT
@@ -204,7 +206,7 @@ def task_run(study, selections):
     """
     out = Path(study["out"])
     names = study.get("tasks", ["ceval"])
-    order = [n for n in ("gsm8k", "humaneval", "humaneval_base", "ceval") if n in names]
+    order = [n for n in ("gsm8k", "humaneval", "humaneval_base", "humaneval_codellama", "ceval") if n in names]
     configs = []
     for name in order:
         task = TASKS[name][0]

@@ -11,6 +11,9 @@ from pathlib import Path
 from engine.eval_runner.device import apply_device, available_device
 from engine.eval_runner.load_run import merge
 
+# Our own lm-eval task definitions (e.g. humaneval_codellama), next to the built-in ones.
+LOCAL_TASKS = Path(__file__).resolve().parents[2] / "catalog" / "lm_eval_tasks"
+
 _EVAL_DEFAULTS = {
     "num_fewshot": None,
     "max_batch_size": None,
@@ -56,6 +59,7 @@ def load_model_if_needed(lm, loaded_model_key, base, configuration):
 def evaluate(lm, base, configuration, kv_spec, device, model_args):
     """One lm-eval simple_evaluate call with KV metadata attached."""
     from lm_eval.evaluator import simple_evaluate
+    from lm_eval.tasks import TaskManager
     from lm_eval.utils import simple_parse_args_string
 
     tasks = normalize_tasks(merge(base, configuration, "tasks", None))
@@ -83,6 +87,7 @@ def evaluate(lm, base, configuration, kv_spec, device, model_args):
             batch_size=batch_size,
             device=device,
             metadata=metadata,
+            task_manager=TaskManager(include_path=str(LOCAL_TASKS)),
             verbosity="INFO",
             **eval_kwargs,
         )
