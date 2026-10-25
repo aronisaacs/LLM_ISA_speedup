@@ -16,6 +16,8 @@ Simplifications of query_pairs (each calibrated on its own):
 * query_pairs_per_head_padded: the same budget for every head, reserved in full every window;
 * query_pairs_w16 and query_pairs_per_head_padded_w16: query_pairs and the padded
   per-head arm over 16-token windows;
+* query_pairs_per_head_padded_w16_no_rope: the official method with keys merged
+  without undoing RoPE (both keys of a pair then share one dot product per query);
 * query_pairs_head_split: a fixed budget per head that differs by head, set once from
   each head's share under the shared window budget;
 * query_pairs_head_levels: that split rounded to 0/12.5/25/37.5/49% per head, with
@@ -61,6 +63,9 @@ SIMPLIFICATIONS = {
     # 16-token windows: the shared budget, and the same budget per head reserved in full.
     "query_pairs_w16": dict(window=16),
     "query_pairs_per_head_padded_w16": dict(per_head_budget=True, pad_heads=True, window=16),
+    # The official method without the RoPE undo on keys.
+    "query_pairs_per_head_padded_w16_no_rope": dict(
+        per_head_budget=True, pad_heads=True, window=16, align_rope=False),
 }
 # Per-head budgets that differ by head: each head's fixed share is measured once
 # (study.calibrate_head_savings) and stays the same for every window.
