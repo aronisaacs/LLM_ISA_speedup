@@ -1,15 +1,14 @@
-"""Preprocessing, merged-group reconstruction and loss.
+"""Preprocessing, pair reconstruction and reconstruction error.
 
-Keys are rotated back by their offset inside the group, so every member shares
-the frame of the group's first token; values have no RoPE. Each token is split
-into a unit direction and a norm. A group stores the mean direction plus, for a
-residual format, the largest entries of each deviation from the mean. The
-rebuilt direction is rescaled to the token's stored norm.
+Each token is split into a unit direction and a norm. A pair stores the mean
+direction m = (a + b) / 2 plus, for a residual format, the largest entries of
+the half-difference d = (a - b) / 2. The rebuilt directions m + d and m - d are
+rescaled to each token's stored norm.
 
-Loss is relative squared error ||k - k_hat||^2 / ||k||^2. Query-aware loss (keys
-only) weights each dimension by the calibrated query energy E[q_d^2] and is
-absolute: sum_d E[q_d^2] (k_hat_d - k_d)^2, an estimate of E[(q . (k_hat - k))^2].
-The same weights then rank which residual entries are kept.
+Reconstruction error is relative squared error ||k - k_hat||^2 / ||k||^2.
+Query-aware error (keys only) weights each dimension by the calibrated query
+energy E[q_d^2] and is absolute: sum_d E[q_d^2] (k_hat_d - k_d)^2, an estimate of
+E[(q . (k_hat - k))^2]. The same weights then rank which residual entries are kept.
 """
 
 from dataclasses import dataclass
@@ -20,106 +19,60 @@ from pathlib import Path
 import torch
 
 from compression_topics.spatial.algorithms.formats import kept_entries
-from engine.kv_compress.rope import apply_rope
 
 ROOT = Path(__file__).resolve().parents[3]
 
 
 @dataclass
-class Groups:
-    source: torch.Tensor  # [1, heads, groups, size, dim], RoPE-aligned keys or values
-    norms: torch.Tensor  # [1, heads, groups, size, 1]
-    mean: torch.Tensor  # [1, heads, groups, 1, dim], mean unit direction
-    deviation: (
-        torch.Tensor
-    )  # pairs: [.., 1, dim] half-difference; larger groups: [.., size, dim]
-    size: int
-    cos: object
-    sin: object
-    normalized: bool = True
+class Pairs:
+    source: torch.Tensor  # [1, heads, pairs, 2, dim], keys or values as stored
+    norms: torch.Tensor  # [1, heads, pairs, 2, 1]
+    mean: torch.Tensor  # [1, heads, pairs, 1, dim], mean unit direction
+    deviation: torch.Tensor  # [1, heads, pairs, 1, dim], half-difference of the unit directions
 
 
-def prepare(tensor, *, target, size, rope_tables, align_rope=True, keep_norms=True):
-    """Group a [1, heads, tokens, dim] slice whose length is a multiple of ``size``."""
+def prepare(tensor):
+    """Pair up a [1, heads, tokens, dim] slice with an even number of tokens."""
     if tensor.ndim != 4 or tensor.shape[0] != 1:
-        raise ValueError(
-            "spatial compression requires batch-one [1, heads, tokens, dim] tensors"
-        )
+        raise ValueError("spatial compression requires batch-one [1, heads, tokens, dim] tensors")
     length = tensor.shape[-2]
-    if length % size or not length:
-        raise ValueError("slice must hold whole groups")
+    if length % 2 or not length:
+        raise ValueError("slice must hold whole pairs")
     source = tensor.float()
-    cos = sin = None
-    if target == "k" and align_rope:
-        if rope_tables is None or rope_tables.attention_scaling != 1.0:
-            raise ValueError("keys require pure-rotation RoPE tables")
-        offsets = torch.arange(length, device=tensor.device) % size
-        cos, sin = rope_tables.cos_sin(offsets, torch.float32)
-        source = apply_rope(source, cos, sin, inverse=True)
-    elif target not in ("k", "v"):
-        raise ValueError("target must be 'k' or 'v'")
     norms = source.norm(dim=-1, keepdim=True)
-    shape = (1, tensor.shape[1], length // size, size, tensor.shape[-1])
-    unit = (torch.nn.functional.normalize(source, dim=-1) if keep_norms else source).reshape(shape)
+    shape = (1, tensor.shape[1], length // 2, 2, tensor.shape[-1])
+    unit = torch.nn.functional.normalize(source, dim=-1).reshape(shape)
     mean = unit.mean(-2, keepdim=True)
-    deviation = (
-        (unit[..., 0, :] - unit[..., 1, :]).unsqueeze(-2) / 2
-        if size == 2
-        else unit - mean
-    )
-    return Groups(
-        source.reshape(shape),
-        norms.reshape(*shape[:-1], 1),
-        mean,
-        deviation,
-        size,
-        cos,
-        sin,
-        keep_norms,
-    )
+    deviation = (unit[..., 0, :] - unit[..., 1, :]).unsqueeze(-2) / 2
+    return Pairs(source.reshape(shape), norms.reshape(*shape[:-1], 1), mean, deviation)
 
 
-def reconstruct(groups, residual, *, dtype, query_energy=None):
-    """Rebuild every group in one format; returns (tokens, valid[1, heads, groups])."""
-    mean = groups.mean.to(dtype).float()
-    kept = torch.zeros_like(groups.deviation)
+def reconstruct(pairs, residual, *, dtype, query_energy=None):
+    """Rebuild every pair in one format; returns (tokens, valid[1, heads, pairs])."""
+    mean = pairs.mean.to(dtype).float()
+    kept = torch.zeros_like(pairs.deviation)
     if residual:
-        score = groups.deviation.square()
+        score = pairs.deviation.square()
         if query_energy is not None:
             score = score * query_energy
         index = score.topk(kept_entries(residual, score.shape[-1]), dim=-1).indices
-        kept.scatter_(-1, index, groups.deviation.gather(-1, index))
+        kept.scatter_(-1, index, pairs.deviation.gather(-1, index))
     kept = kept.to(dtype).float()
-    unit = (
-        torch.cat((mean + kept, mean - kept), -2) if groups.size == 2 else mean + kept
-    )
+    unit = torch.cat((mean + kept, mean - kept), -2)
     size = unit.norm(dim=-1, keepdim=True)
-    if groups.normalized:
-        scale = (groups.norms / size.clamp_min(1e-12)).to(dtype).float()
-        restored = unit * scale
-        valid = (groups.norms.squeeze(-1) > 1e-12).all(-1) & (
-            size.squeeze(-1) > 1e-6
-        ).all(-1)
-    else:  # no stored norms: the merged vectors are used as rebuilt
-        restored = unit
-        valid = torch.ones(unit.shape[:3], dtype=torch.bool, device=unit.device)
+    scale = (pairs.norms / size.clamp_min(1e-12)).to(dtype).float()
+    restored = unit * scale
+    valid = (pairs.norms.squeeze(-1) > 1e-12).all(-1) & (size.squeeze(-1) > 1e-6).all(-1)
     valid &= torch.isfinite(restored).all(-1).all(-1)
     return restored, valid
 
 
-def loss(source, restored, *, query_energy=None):
-    """Per-token loss [1, heads, groups, size]."""
+def error(source, restored, *, query_energy=None):
+    """Per-token reconstruction error [1, heads, pairs, 2]."""
     squared = (restored - source).square()
     if query_energy is None:
         return squared.sum(-1) / source.square().sum(-1).clamp_min(1e-12)
     return (squared * query_energy).sum(-1)
-
-
-def unalign(tokens, groups):
-    """Undo the key alignment of a [1, heads, tokens, dim] reconstruction."""
-    if groups.cos is None:
-        return tokens
-    return apply_rope(tokens, groups.cos, groups.sin, inverse=False)
 
 
 @lru_cache(maxsize=8)
@@ -128,13 +81,11 @@ def _weights(path, digest):
     file = file if file.is_absolute() else ROOT / file
     data = file.read_bytes()
     if hashlib.sha256(data).hexdigest() != digest:
-        raise ValueError(
-            "query weight file changed; recalibration requires a new output directory"
-        )
+        raise ValueError("query weight file changed; recalibration requires a new output directory")
     saved = torch.load(file, map_location="cpu", weights_only=True)
     weights = saved["weights"].float()
-    # Average each RoPE plane (j, j + R/2) so the weights do not depend on rotation;
-    # with partial RoPE only the first R dimensions rotate.
+    # Average dimensions j and j + R/2, which rotate together, so the weights do not
+    # depend on position; with partial rotation only the first R dimensions rotate.
     rotary = saved.get("rotary_dim") or weights.shape[-1]
     half = rotary // 2
     tied = (weights[..., :half] + weights[..., half:rotary]) / 2
@@ -142,7 +93,7 @@ def _weights(path, digest):
 
 
 def query_energy(path, digest, layer_idx, tensor):
-    """Calibrated E[q^2] per KV head, shaped to broadcast over grouped tokens."""
+    """Calibrated E[q^2] per KV head, shaped to broadcast over paired tokens."""
     weights = _weights(str(path), digest)[layer_idx].to(tensor.device)
     if (
         weights.shape != (tensor.shape[1], tensor.shape[-1])

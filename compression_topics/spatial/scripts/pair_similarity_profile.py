@@ -20,7 +20,7 @@ and the same two numbers again after the largest-|d| share of the features is se
 Residuals are given as a share of the head dimension: "1/8" keeps the top 1/8 of the
 features, 16 of 128 on the 8B. "0" is the plain pair.
 
-Keys are measured twice: as stored (RoPE applied) and with RoPE undone.
+Keys and values are measured as stored in the cache.
 
 The full-curve dump (profile_kneeded.json) keeps, for every threshold on a fine grid, how many
 pairs need each residual size k = 0..head_dim features (a share k / head_dim) to get within it. Any threshold and any set of
@@ -77,7 +77,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from engine.eval_runner.text_chunks import wikitext_chunks
-from engine.kv_compress.rope import RopeTables, apply_rope  # noqa: E402
+from engine.kv_compress.rope import RopeTables  # noqa: E402
 
 FIGURES = Path(__file__).resolve().parents[1] / "figures" / "pair_similarity"
 PRETRAINED = "meta-llama/Llama-3.1-8B-Instruct"
@@ -98,7 +98,7 @@ TAU_GRID = tuple(
 BUCKET_EDGES = tuple(
     round(0.05 * i, 2) for i in range(1, 21)
 )  # buckets of rel before residuals; the last is >= 1.0
-KINDS = ("k_rope", "k_plain", "v")
+KINDS = ("k", "v")
 
 
 def ks_for(fractions: tuple[str, ...], head_dim: int) -> tuple[int, ...]:
@@ -425,11 +425,9 @@ class Profiler:
 
     def __init__(
         self,
-        rope: RopeTables | None,
         fractions: tuple[str, ...] = FRACTIONS,
         sample_pairs: int = 2000,
     ) -> None:
-        self.rope = rope
         self.fractions = fractions
         self.ks: tuple[
             int, ...
@@ -512,11 +510,7 @@ class Profiler:
         start: int,
         phase: str,
     ) -> None:
-        views = {"k_rope": keys, "v": values}
-        if self.rope is not None:
-            positions = torch.arange(start, start + keys.shape[-2], device=keys.device)
-            cos, sin = self.rope.cos_sin(positions, keys.dtype)
-            views["k_plain"] = apply_rope(keys, cos, sin, inverse=True)
+        views = {"k": keys, "v": values}
         for kind, states in views.items():
             pairs = aligned_pairs(states, start)
             if pairs is None:
@@ -780,7 +774,6 @@ def run_profile(
     prompts: list[torch.Tensor],
     *,
     max_new_tokens: int,
-    rope: RopeTables | None,
     fractions=FRACTIONS,
     generate_kwargs=None,
     sample_pairs: int = 2000,
@@ -799,7 +792,7 @@ def run_profile(
             'fractions must start with "0": the movement dump buckets pairs by their rel before any residual'
         )
     profiler = (
-        profiler if profiler is not None else Profiler(rope, fractions, sample_pairs)
+        profiler if profiler is not None else Profiler(fractions, sample_pairs)
     )
     original = Cache.update
     dumper = (
@@ -1075,7 +1068,6 @@ def main() -> None:
         model,
         prompts,
         max_new_tokens=max_new_tokens,
-        rope=rope,
         dump_dir=args.dump_kv,
         dump_windows=args.dump_windows,
         dump_window=args.dump_window,

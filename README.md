@@ -4,9 +4,8 @@ KV-cache compression studies for Llama 3.1 8B. Each experiment is its own script
 
 ## Spatial research
 
-The clean spatial studies and current method terminology are documented in
+The official spatial pair compression method and its sweep are documented in
 [compression_topics/spatial/README.md](compression_topics/spatial/README.md).
-Use its study-specific Slurm launcher for the current comparison.
 
 ## DGX
 
@@ -53,7 +52,7 @@ cd /data/users/aroni/projects/LLM_ISA_speedup
 export HF_HUB_CACHE=$HOME/models/huggingface
 export HF_DATASETS_CACHE=$HOME/datasets/huggingface
 echo "GPUs: $CUDA_VISIBLE_DEVICES"
-python -u compression_topics/spatial/scripts/pair_quant_study.py
+python -u compression_topics/spatial/scripts/ladder.py --model llama --execute
 EOF
 
 sbatch logs/study.sbatch
@@ -100,16 +99,13 @@ bytes for all layers and both targets. Storage measurements describe the
 simulated representation at 16 bits per dense value, not allocated tensor
 memory. Unsupported methods or overlapping representations leave measured
 storage unavailable rather than claiming zero overhead. Spatial storage formulas
-are defined in `compression_topics/spatial/algorithms/storage.py`.
+are defined in `compression_topics/spatial/algorithms/formats.py`.
 
 `engine/layer_select/calibration.py` owns screening, matched-chunk comparisons,
 refinement, and selection. Studies define candidates and their grouping, final
 tasks, and summaries. Fixed-rung and calibrated studies use the same greedy
 allocator. `engine/eval_runner/chunks.py` runs chunk-loss evaluations using the
-shared model loader and worker lifecycle; the old spatial runner path remains a
-small compatibility entry point. Spatial planners accept `--model-args`,
-`--layers`, and `--head-dim` for offline planning and validate the planned shape
-against the loaded model before evaluation. Model defaults remain in the study.
+shared model loader and worker lifecycle.
 
 ## Results and resuming
 

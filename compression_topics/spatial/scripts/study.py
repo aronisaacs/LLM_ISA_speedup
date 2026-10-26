@@ -1,9 +1,9 @@
 """Shared staged protocol for spatial accuracy studies.
 
 Stages: screen -> refine -> allocate -> validate -> tasks -> summary.
-Each arm calibrates single layer slots (one K or V slot compressed at a time) on
+The method calibrates single layer slots (one K or V slot compressed at a time) on
 WikiText train chunks: 4 screening chunks, then the screen winners on 12 disjoint
-refinement chunks. A common greedy allocator turns each arm's measured
+refinement chunks. A greedy allocator turns the measured
 perplexity/byte curves into whole-model policies. A holdout of validation chunks
 must reproduce every global saving within one point before full five-shot C-Eval
 runs. Dense C-Eval is reused only after an exact identity and question-count check.
@@ -27,7 +27,7 @@ from catalog.tasks import (
     HUMANEVAL_INSTRUCT,
     WIKITEXT_FULL,
 )
-from compression_topics.spatial.algorithms.formats import ACCOUNTING, MENUS
+from compression_topics.spatial.algorithms.formats import ACCOUNTING, RESIDUALS, WINDOW
 from engine.eval_runner.cache import identities_match, simulation_identity
 from engine.eval_runner.files import write_json
 from engine.eval_runner.index import record_simulation
@@ -49,14 +49,11 @@ TASKS = {
     "humaneval_base": (HUMANEVAL_BASE, "humaneval", "pass@1,create_test", 164),
     "humaneval_codellama": (HUMANEVAL_CODELLAMA, "humaneval_codellama", "pass@1,create_test", 164),
 }
-DENSE_CEVAL = (
-    ROOT
-    / "compression_topics/spatial/figures/online_pairs_accuracy_offline/tasks/dense_ceval.json"
-)
+DENSE_CEVAL = ROOT / "compression_topics/spatial/figures/official_llama/tasks/dense_ceval.json"
 
 
 def base_plan(
-    out, *, layers=32, budgets=(0.3, 0.4, 0.5), screen=4, refine=12, validation=16,
+    out, *, layers=32, budgets=(0.1, 0.2, 0.3, 0.35, 0.4), screen=4, refine=12, validation=16,
     model_args=LLAMA31_8B, head_dim=128, kv_layers=None,
 ):
     """``kv_layers`` lists the layers that hold a KV cache when not all do (Qwen3.5)."""
@@ -74,7 +71,8 @@ def base_plan(
         seed=83,
         seq_len=2048,
         scoring_prefix=1536,
-        menus={str(g): list(m) for g, m in MENUS.items()},
+        residuals=list(RESIDUALS),
+        window=WINDOW,
         accounting=ACCOUNTING,
         allocation_basis="measured_calibration_bytes",
         matching_tolerance=0.01,
@@ -243,9 +241,7 @@ def task_run(study, selections):
     return run
 
 
-def summarize(
-    out, run, *, require_complete=False, arm_pairs=(), scope="", comparison=""
-):
+def summarize(out, run, *, require_complete=False, scope=""):
     out = Path(out)
     rows = []
     for config in run["configurations"]:
@@ -287,26 +283,6 @@ def summarize(
     complete = len(rows) == len(run["configurations"])
     if require_complete and not complete:
         raise ValueError("accuracy run incomplete")
-    comparisons = []
-    for budget in sorted({r["global_budget"] for r in rows if "global_budget" in r}):
-        by_arm = {r["arm"]: r for r in rows
-                  if r.get("global_budget") == budget and r["task"] == "ceval"}
-        for left, right in arm_pairs:
-            if left in by_arm and right in by_arm:
-                gap = (
-                    by_arm[right]["actual_kv_saving"] - by_arm[left]["actual_kv_saving"]
-                )
-                comparisons.append(
-                    {
-                        "budget": budget,
-                        "reference_arm": left,
-                        "comparison_arm": right,
-                        "saving_gap_points": 100 * gap,
-                        "matched_within_one_point": abs(gap) <= 0.01,
-                        "accuracy_gain_points": 100
-                        * (by_arm[right]["accuracy"] - by_arm[left]["accuracy"]),
-                    }
-                )
     report = {
         "status": "complete" if complete else "preliminary",
         "completed": len(rows),
@@ -314,9 +290,7 @@ def summarize(
         "dense_accuracy": dense,
         "dense_accuracy_by_task": dense_by_task,
         "rows": rows,
-        "comparisons": comparisons,
         "scope": scope,
-        "comparison": comparison,
     }
     write_json(out / ("summary.json" if complete else "preliminary.json"), report)
     return report
@@ -561,86 +535,6 @@ def calibrate_queries(study):
     rope = rope_from_config(config)
     torch.save(dict(weights=weights, chunks=chosen, protocol=study,
                     rotary_dim=None if rope is None else rope.rotary_dim), path)
-
-
-def calibrate_head_savings(study, budgets):
-    """Each KV head's share of its slot's saving, measured with the shared window budget.
-
-    On the query-calibration train prefixes, every layer's keys and values are
-    compressed as query-aware pairs with the heads sharing each window's budget.
-    The saving each head ends up with, averaged over windows and rescaled so the
-    heads average exactly to the slot's saving, becomes that head's fixed budget.
-    Writes {layer: {"k"|"v": {str(budget): [saving per head]}}} to
-    ``study["head_savings"]``.
-    """
-    import hashlib
-    from types import SimpleNamespace
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    from transformers.cache_utils import Cache
-    from compression_topics.spatial.algorithms import windows
-    from compression_topics.spatial.algorithms.formats import WINDOW, head_levels, max_saving
-    from compression_topics.spatial.algorithms.representation import query_energy
-    from engine.eval_runner.text_chunks import wikitext_chunks
-    from engine.kv_compress.install import _rope_tables
-
-    path = Path(study["head_savings"])
-    if path.exists():
-        if load(path).get("protocol") != {"study": study, "budgets": list(budgets)}:
-            raise ValueError("head saving provenance mismatch")
-        return
-    weights = Path(study["query_weights"])
-    digest = hashlib.sha256(weights.read_bytes()).hexdigest()
-    name, dtype = _model_name_dtype(study["model_args"])
-    tokenizer = AutoTokenizer.from_pretrained(name)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = AutoModelForCausalLM.from_pretrained(name, dtype=dtype).to(device).eval()
-    rope = _rope_tables(SimpleNamespace(model=model))
-    prompts, _ = wikitext_chunks(
-        tokenizer, study["query_chunks"], study["seq_len"], study["seed"], split="train"
-    )
-    ceiling = max_saving(study["head_dim"])
-    totals = {}  # (layer, target, budget) -> per-head saving sums, window count
-
-    def measure(layer, target, tensor):
-        energy = query_energy(weights, digest, layer, tensor) if target == "k" else None
-        losses, _ = windows.candidates(
-            tensor, target=target, max_group=2, rope_tables=rope, query_energy=energy)
-        for budget in budgets:
-            total, count = windows.head_shares(losses, tensor.shape[-1], budget)
-            key = (layer, target, budget)
-            s, n = totals.get(key, (0, 0))
-            totals[key] = (s + total, n + count)
-
-    original = Cache.update
-
-    def update(cache, keys, values, layer, *args, **kwargs):
-        prefix = study["query_prefix"] // WINDOW * WINDOW
-        for target, tensor in (("k", keys), ("v", values)):
-            measure(layer, target, tensor[..., :prefix, :].detach())
-        return original(cache, keys, values, layer, *args, **kwargs)
-
-    Cache.update = update
-    try:
-        with torch.no_grad():
-            for n, prompt in enumerate(prompts):
-                model(input_ids=prompt[: study["query_prefix"]].unsqueeze(0).to(device),
-                      use_cache=True)
-                print(f"Head budget calibration {n + 1}/{len(prompts)}", flush=True)
-    finally:
-        Cache.update = original
-    table, rounded = {}, {}
-    levels = head_levels(study["head_dim"])
-    for (layer, target, budget), (s, n) in sorted(totals.items()):
-        share = s / n
-        share = share * budget / share.mean().clamp_min(1e-9)  # heads average to the budget
-        share = [round(float(v), 6) for v in share.clamp(0.0, ceiling)]
-        table.setdefault(str(layer), {}).setdefault(target, {})[str(budget)] = share
-        rounded.setdefault(str(layer), {}).setdefault(target, {})[str(budget)] = (
-            windows.round_to_levels(share, budget, levels))
-    write_json(path, {"protocol": {"study": study, "budgets": list(budgets)},
-                      "savings": table, "levels": rounded, "level_values": list(levels)})
-    print(f"Saved per-head budgets for {len(table)} layers to {path}", flush=True)
 
 
 def _model_name_dtype(model_args):

@@ -60,11 +60,11 @@ def test_profile_runs_on_a_tiny_llama_with_prefill_and_decode():
     model = LlamaForCausalLM(config).eval()
     prompts = [torch.randint(0, 64, (9,)), torch.randint(0, 64, (12,))]
     profiler = psp.run_profile(
-        model, prompts, max_new_tokens=10, rope=psp.rope_tables(model), fractions=("0", "1/4"),
+        model, prompts, max_new_tokens=10, fractions=("0", "1/4"),
         generate_kwargs={"min_new_tokens": 10},
     )
     summary = profiler.summary()
-    assert set(summary) == {"k_rope", "k_plain", "v"}
+    assert set(summary) == {"k", "v"}
     for kind in summary.values():
         assert set(kind) == {"prefill", "decode"}
     # Prompt of 9 gives 4 pairs and of 12 gives 6; 2 KV heads each, per layer.
@@ -203,7 +203,7 @@ def test_dump_kv_writes_the_exact_stored_states(tmp_path):
     model = LlamaForCausalLM(config).eval()
     ids = torch.randint(0, 64, (9,))
     psp.run_profile(
-        model, [ids], max_new_tokens=6, rope=psp.rope_tables(model), fractions=("0", "1/4"),
+        model, [ids], max_new_tokens=6, fractions=("0", "1/4"),
         generate_kwargs={"min_new_tokens": 6}, sample_pairs=0, dump_dir=tmp_path, dump_windows=0,
     )
     with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:
@@ -251,7 +251,7 @@ def test_token_norms_match_the_dumped_states(tmp_path):
     model = LlamaForCausalLM(config).eval()
     ids = torch.randint(0, 64, (9,))
     profiler = psp.run_profile(
-        model, [ids], max_new_tokens=6, rope=psp.rope_tables(model), fractions=("0", "1/4"),
+        model, [ids], max_new_tokens=6, fractions=("0", "1/4"),
         generate_kwargs={"min_new_tokens": 6}, sample_pairs=0, dump_dir=tmp_path, dump_windows=0,
     )
     with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:
@@ -276,7 +276,7 @@ def test_prefill_only_run_scores_the_whole_chunk_and_no_decode():
     )
     model = LlamaForCausalLM(config).eval()
     chunks = [torch.randint(0, 64, (16,)), torch.randint(0, 64, (16,))]
-    profiler = psp.run_profile(model, chunks, max_new_tokens=0, rope=psp.rope_tables(model), fractions=("0", "1/4"), sample_pairs=0)
+    profiler = psp.run_profile(model, chunks, max_new_tokens=0, fractions=("0", "1/4"), sample_pairs=0)
     summary = profiler.summary()
     assert set(summary["v"]) == {"prefill"}
     assert summary["v"]["prefill"]["0"]["0"]["n"] == 2 * 8 * 2  # 2 chunks, 8 pairs, 2 KV heads
@@ -297,7 +297,7 @@ def test_dump_keeps_random_whole_windows_at_the_same_positions_everywhere(tmp_pa
     chunk = torch.randint(0, 64, (40,))
     for name, windows in (("full", 0), ("sampled", 3)):
         psp.run_profile(
-            model, [chunk], max_new_tokens=0, rope=psp.rope_tables(model), fractions=("0", "1/4"),
+            model, [chunk], max_new_tokens=0, fractions=("0", "1/4"),
             sample_pairs=0, dump_dir=tmp_path / name, dump_windows=windows, dump_window=4,
         )
     with safe_open(str(tmp_path / "full" / "question_0000.safetensors"), framework="pt") as f:
@@ -326,7 +326,7 @@ def test_dump_can_skip_queries(tmp_path):
     )
     model = LlamaForCausalLM(config).eval()
     psp.run_profile(
-        model, [torch.randint(0, 64, (16,))], max_new_tokens=0, rope=psp.rope_tables(model), fractions=("0", "1/4"),
+        model, [torch.randint(0, 64, (16,))], max_new_tokens=0, fractions=("0", "1/4"),
         sample_pairs=0, dump_dir=tmp_path, dump_queries=False,
     )
     with safe_open(str(tmp_path / "question_0000.safetensors"), framework="pt") as f:

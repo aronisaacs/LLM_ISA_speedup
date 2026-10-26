@@ -1,4 +1,4 @@
-"""Spatial formats, per-window budgets, query-aware keys, and compression across decode."""
+"""Spatial pair formats, per-head padded window budgets, query-aware keys, and decode."""
 import hashlib
 import itertools
 import tempfile
@@ -9,11 +9,9 @@ import torch
 
 from compression_topics.spatial.algorithms import methods, windows
 from compression_topics.spatial.algorithms.formats import (
-    head_levels,
-    HEADER_BITS, TAG_BITS, WINDOW, dense_bits, group_bits, max_saving)
+    HEADER_BITS, RESIDUALS, TAG_BITS, WINDOW, dense_bits, kept_entries, max_saving, pair_bits)
 from compression_topics.spatial.algorithms.methods import SpatialConfig
 from engine.kv_compress import metrics, parse_kv_spec
-from engine.kv_compress.rope import RopeTables
 
 
 def correlated(length=256, heads=2, dim=128, noise=.3, seed=0):
@@ -22,11 +20,6 @@ def correlated(length=256, heads=2, dim=128, noise=.3, seed=0):
     base = torch.randn(1, heads, blocks, 1, dim, generator=g).expand(1, heads, blocks, 8, dim)
     x = (base + noise * torch.randn(1, heads, blocks, 8, dim, generator=g)).reshape(1, heads, 8 * blocks, dim)
     return x[..., :length, :].contiguous()
-
-
-def per_window(x, saving, **options):
-    losses, _ = windows.candidates(x, target='v', **options)
-    return windows.solve(losses, x.shape[-1], saving)
 
 
 def cache_run(x, sizes, **step):
@@ -41,96 +34,91 @@ def cache_run(x, sizes, **step):
     return cache, dict(metrics.STATS['v_layer_0'])
 
 
+BITS_OF = torch.tensor([dense_bits(2, 128)] + [pair_bits(r, 128) for r in RESIDUALS]) + TAG_BITS
+
+
+def head_bits(code):
+    """Bits each head uses per window [heads, windows], tags included."""
+    return BITS_OF[code[..., ::2]].sum(-1)
+
+
 class FormatTests(unittest.TestCase):
     def test_bits(self):
-        self.assertEqual(group_bits(0, 128, 2), 2080)
-        self.assertEqual(group_bits(32, 128, 2), 2720)
-        self.assertEqual(group_bits(16, 128, 4), 3648)
-        self.assertEqual(group_bits(16, 128, 8), 5248)
+        self.assertEqual(pair_bits(0, 128), 2080)
+        self.assertEqual(pair_bits(16, 128), 2464)
+        self.assertEqual(pair_bits(32, 128), 2720)
         self.assertAlmostEqual(max_saving(128), 1 - 2083 / 4096)
         with self.assertRaises(ValueError):
-            group_bits(32, 128, 4)
+            pair_bits(8, 128)
 
-
-class QwenShapeTests(unittest.TestCase):
-    def test_partial_rope_and_wide_heads(self):
-        from compression_topics.spatial.algorithms.formats import group_bits, kept_entries
-        from engine.kv_compress.rope import apply_rope
-
-        rope = RopeTables(rope_theta=1e7, head_dim=256, rotary_dim=64)
-        cos, sin = rope.cos_sin(torch.arange(16), torch.float32)
-        self.assertEqual(cos.shape, (16, 64))
-        x = torch.randn(1, 4, 16, 256)
-        y = apply_rope(x, cos, sin, inverse=False)
-        self.assertTrue(torch.equal(y[..., 64:], x[..., 64:]))  # only the first 64 rotate
-        self.assertTrue(torch.allclose(apply_rope(y, cos, sin, inverse=True), x, atol=1e-5))
+    def test_wide_heads_keep_a_quarter(self):
         self.assertEqual((kept_entries(32, 128), kept_entries(32, 256)), (32, 64))
-        self.assertEqual(group_bits(32, 256, 2), 16 * (256 + 64 + 2) + 256)
-        # A wide head still merges pairs and meets a per-head padded budget.
-        out, bits, counts = windows.compress(x.to(torch.bfloat16), target="k", saving=.3, max_group=2,
-                                             rope_tables=rope, per_head_budget=True, pad_heads=True, window=16)
+        self.assertEqual(pair_bits(32, 256), 16 * (256 + 64 + 2) + 256)
+        x = correlated(64, heads=4, dim=256).to(torch.bfloat16)
+        out, bits, _ = windows.compress(x, target='k', saving=.3)
         self.assertEqual(out.shape, x.shape)
-        self.assertLessEqual(bits, 4 * ((1 - .3) * dense_bits(16, 256) + 8 * TAG_BITS) + 1)
+        self.assertEqual(bits, int(4 * 4 * windows.block_bits(256, .3)))
 
 
 class WindowTests(unittest.TestCase):
-    def test_every_window_meets_the_saving(self):
+    def test_every_head_meets_the_saving_in_every_window(self):
         x = correlated(512, heads=4, noise=.5)
-        for saving, options in ((.3, {}), (.4, {}), (.6, {}), (.3, dict(max_group=2))):
-            bits, _ = per_window(x, saving, **options)
-            limit = (1 - saving) * 4 * dense_bits(WINDOW, 128)
-            self.assertTrue(bool((bits <= limit).all()))
-            self.assertGreater(1 - bits.sum() / (len(bits) * 4 * dense_bits(WINDOW, 128)), saving)
+        for saving in (.1, .3, .4):
+            errors, _ = windows.candidates(x, target='v')
+            code = windows.solve(errors, 128, saving)
+            self.assertEqual(code.shape, (4, 512 // WINDOW, WINDOW))
+            self.assertTrue(bool((head_bits(code) <= windows.block_bits(128, saving)).all()))
 
-    def test_heads_share_the_window_budget(self):
-        x = correlated(64, noise=.6)
-        x[:, 0, 1::2] = x[:, 0, ::2]  # head 0: identical neighbours, merging costs nothing
-        _, code = per_window(x, .3, max_group=2)
-        self.assertTrue(bool((code[0] == 1).all()))  # head 0 merges every pair, no residual
-        self.assertGreater(int((code[1] != 1).sum()), 0)  # head 1 keeps residuals or dense pairs
+    def test_heads_do_not_share_budgets(self):
+        x = correlated(256, heads=4, noise=.6)
+        x[:, 0, 1::2] = x[:, 0, ::2]  # head 0 merges for free but cannot give bits away
+        errors, _ = windows.candidates(x, target='v')
+        code = windows.solve(errors, 128, .3)
+        self.assertTrue(bool((head_bits(code) <= windows.block_bits(128, .3)).all()))
+        self.assertTrue(bool((code[0] != 0).any()))
 
     def test_close_to_exhaustive_search(self):
-        x = correlated(8, heads=2, noise=.6)
-        losses, _ = windows.candidates(x, target='v', max_group=2)
-        bits = [dense_bits(2, 128)] + [group_bits(r, 128, 2) for r in (0, 16, 32)]
-        loss = lambda i, c: 0. if c == 0 else float(losses[2][i // 4, i % 4, c - 1])
+        x = correlated(16, heads=1, noise=.6)
+        errors, _ = windows.candidates(x, target='v')
+        cost = lambda i, c: 0. if c == 0 else float(errors[0, i, c - 1])
         for saving in (.1, .25, .4):
-            limit = (1 - saving) * 2 * dense_bits(WINDOW, 128)
-            best = min(sum(loss(i, c) for i, c in enumerate(combo))
+            limit = (1 - saving) * dense_bits(WINDOW, 128) + 8 * TAG_BITS
+            best = min(sum(cost(i, c) for i, c in enumerate(combo))
                        for combo in itertools.product(range(4), repeat=8)
-                       if sum(bits[c] + TAG_BITS for c in combo) <= limit)
-            used, code = windows.solve(losses, 128, saving)
-            self.assertLessEqual(float(used[0]), limit)
-            chosen = sum(loss(i, int(code[i // 4, 0, 2 * (i % 4)])) for i in range(8))
+                       if sum(BITS_OF[c] for c in combo) <= limit)
+            code = windows.solve(errors, 128, saving)
+            chosen = sum(cost(i, int(code[0, 0, 2 * i])) for i in range(8))
             self.assertLessEqual(chosen, best * 1.5 + 1e-6)
-
-    def test_pair_sort_matches_price_search(self):
-        for seed, noise in ((0, .4), (1, .8), (2, 1.5)):
-            x = correlated(256, heads=8, noise=noise, seed=seed) * torch.rand(1, 8, 1, 1, generator=torch.Generator().manual_seed(seed)) * 2
-            losses, _ = windows.candidates(x, target='v', max_group=2)
-            for saving in (.1, .3, .4, .5):
-                bits, code = windows.solve_pairs(losses, 128, saving)
-                old_bits, old_code = windows.solve(losses, 128, saving)
-                self.assertTrue(torch.equal(code, old_code))
-                self.assertTrue(torch.equal(bits, old_bits))
-
-    def test_tree_merges_eights_when_tokens_agree(self):
-        x = correlated(64, noise=0.)
-        _, code = per_window(x, .5)
-        eight_r0 = windows.options(8).index((8, 0)) + 1
-        self.assertTrue(bool((code == eight_r0).any()))
 
     def test_windows_are_independent(self):
         x = correlated(256, noise=.5)
         changed = x.clone()
         changed[..., 128:, :] *= -3
-        self.assertTrue(torch.equal(per_window(x, .4)[1][:, :16], per_window(changed, .4)[1][:, :16]))
+        code = lambda t: windows.solve(windows.candidates(t, target='v')[0], 128, .4)
+        self.assertTrue(torch.equal(code(x)[:, :8], code(changed)[:, :8]))
 
-    def test_unreachable_pair_target_merges_every_pair(self):
-        bits, code = per_window(correlated(64), .5, max_group=2)
-        self.assertTrue(bool((code == 1).all()))
-        self.assertAlmostEqual(float(1 - bits.sum() / (len(bits) * 2 * dense_bits(WINDOW, 128))),
-                               max_saving(128), places=6)
+    def test_unreachable_target_merges_every_pair(self):
+        errors, _ = windows.candidates(correlated(64), target='v')
+        code = windows.solve(errors, 128, .5)
+        self.assertTrue(bool((code == 1).all()))  # PR0 everywhere
+
+    def test_padded_blocks(self):
+        x = correlated(128, heads=4, noise=.6)
+        _, bits, _ = windows.compress(x, target='v', saving=.25)
+        self.assertEqual(bits, int(4 * 8 * windows.block_bits(128, .25)))  # every block in full
+        identical = x.clone()
+        identical[:, :, 1::2] = identical[:, :, ::2]
+        out, bits, counts = windows.compress(identical, target='v', saving=.5)
+        self.assertEqual(counts, {"format_dense_pair": 0, "format_g2_r0": 4 * 64})
+        self.assertEqual(bits, 4 * 8 * int(head_bits(torch.ones(1, 1, WINDOW, dtype=torch.long))))
+        torch.testing.assert_close(out, identical, atol=3e-2, rtol=3e-2)  # identical pairs rebuild
+
+    @unittest.skipUnless(torch.cuda.is_available() or torch.backends.mps.is_available(), "needs a GPU")
+    def test_on_gpu(self):
+        device = "cuda" if torch.cuda.is_available() else "mps"
+        out, bits, _ = windows.compress(correlated(64).to(device), target='v', saving=.3)
+        self.assertEqual(out.device.type, device)
+        self.assertEqual(bits, int(2 * 4 * windows.block_bits(128, .3)))
 
 
 class StreamingTests(unittest.TestCase):
@@ -143,17 +131,18 @@ class StreamingTests(unittest.TestCase):
         whole, whole_stats = cache_run(x, [203], saving=.35)
         streamed, stream_stats = cache_run(x, [21] + [1] * 182, saving=.35)
         torch.testing.assert_close(streamed, whole)
-        for key in ('dense_bits', 'stored_bits', 'metadata_bits'):
+        for key in ('dense_bits', 'metadata_bits'):
             self.assertEqual(stream_stats[key], whole_stats[key])
-        self.assertTrue(torch.equal(streamed[..., 200:, :], x[..., 200:, :]))  # open window
-        tail = 2 * dense_bits(3, 128)
-        saving = 1 - (whole_stats['stored_bits'] - HEADER_BITS - tail) / (whole_stats['dense_bits'] - tail)
-        self.assertGreaterEqual(saving, .35)
+        # Stored bits round down per update, so they may differ by under one bit per update.
+        self.assertLessEqual(abs(stream_stats['stored_bits'] - whole_stats['stored_bits']), 12)
+        self.assertTrue(torch.equal(streamed[..., 192:, :], x[..., 192:, :]))  # open window
 
-    def test_first_window_is_compressed_immediately(self):
-        x = correlated(16)
-        cache, stats = cache_run(x, [8], saving=.3)
-        self.assertFalse(torch.equal(cache, x[..., :8, :]))
+    def test_first_window_is_compressed_when_complete(self):
+        x = correlated(32)
+        cache, stats = cache_run(x, [15], saving=.3)
+        self.assertTrue(torch.equal(cache, x[..., :15, :]))  # not yet a whole window
+        cache, stats = cache_run(x, [16], saving=.3)
+        self.assertFalse(torch.equal(cache, x[..., :16, :]))
         self.assertEqual(stats['metadata_bits'], HEADER_BITS + TAG_BITS * sum(
             v for k, v in stats.items() if k.startswith('format_')))
 
@@ -167,18 +156,17 @@ class StreamingTests(unittest.TestCase):
 
 class ConfigTests(unittest.TestCase):
     def test_pipeline_and_validation(self):
-        step = SpatialConfig(max_group=4).pipeline(.3, k_layers=[1], v_layers=[])
+        step = SpatialConfig().pipeline(.3, k_layers=[1], v_layers=[])
+        self.assertEqual(step['pipeline'][0], dict(method='spatial', saving=.3, k_layers=[1], v_layers=[]))
         self.assertEqual(parse_kv_spec(step).pipeline[0].method, 'spatial')
-        for options in (dict(max_group=3), dict(query_aware=True)):
-            with self.assertRaises(ValueError):
-                SpatialConfig(**options)
+        with self.assertRaises(ValueError):
+            SpatialConfig(query_weights='q.pt')  # no checksum
         with self.assertRaises(ValueError):
             parse_kv_spec({'pipeline': [dict(SpatialConfig().pipeline(.3)['pipeline'][0], typo=1)]})
 
 
 class QueryAwareTests(unittest.TestCase):
     def test_query_weights_change_keys_only(self):
-        rope = RopeTables(rope_theta=10000., head_dim=128)
         x = correlated(256, noise=.6)
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'q.pt'
@@ -187,13 +175,13 @@ class QueryAwareTests(unittest.TestCase):
             weights[..., 64:72] = 50.
             torch.save({'weights': weights}, path)
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            aware = dict(query_aware=True, query_weights=str(path), query_weights_sha256=digest)
+            aware = dict(query_weights=str(path), query_weights_sha256=digest)
 
             def run(target, **options):
                 methods.reset()
                 cache = x.clone()
                 methods.after_append(cache, target=target, layer_idx=0, start=0, end=256,
-                                     saving=.4, rope_tables=rope, **options)
+                                     saving=.4, **options)
                 return cache
 
             self.assertFalse(torch.equal(run('k'), run('k', **aware)))
@@ -239,117 +227,8 @@ class LiveModelTests(unittest.TestCase):
         torch.testing.assert_close(keys[..., 64:, :], dense_keys[..., 64:, :])  # open window
         row = stats['k_layer_0']
         self.assertEqual(row['dense_bits'], 70 * 64 * 16)
-        compressed = row['dense_bits'] - dense_bits(6, 64)
-        self.assertGreaterEqual(1 - (row['stored_bits'] - HEADER_BITS - dense_bits(6, 64)) / compressed, .4)
-
-
-class SimplificationTests(unittest.TestCase):
-    def test_default_pipeline_has_no_study_flags(self):
-        step = SpatialConfig(max_group=2).pipeline(.3)['pipeline'][0]
-        self.assertEqual(set(step) - {'method', 'saving', 'k_layers', 'v_layers'},
-                         {'max_group', 'query_aware', 'query_weights', 'query_weights_sha256'})
-        step = SpatialConfig(max_group=2, keep_norms=False).pipeline(.3)['pipeline'][0]
-        self.assertIs(step['keep_norms'], False)
-        with self.assertRaises(ValueError):
-            SpatialConfig(per_head_budget=True)  # pairs only
-
-    def test_per_head_budget_holds_for_every_head(self):
-        x = correlated(256, heads=4, noise=.6)
-        x[:, 0, 1::2] = x[:, 0, ::2]  # head 0 could give bits away if budgets were shared
-        losses, _ = windows.candidates(x, target='v', max_group=2)
-        _, code = windows.solve_pairs(losses, 128, .3, per_head=True)
-        bits_of = torch.tensor([dense_bits(2, 128)] + [group_bits(r, 128, 2) for r in (0, 16, 32)]) + TAG_BITS
-        per_head = bits_of[code[..., ::2]].sum(-1)  # [heads, windows]
-        self.assertTrue(bool((per_head <= .7 * dense_bits(WINDOW, 128)).all()))
-        _, shared = windows.solve_pairs(losses, 128, .3)
-        self.assertFalse(torch.equal(code, shared))
-
-    def test_sixteen_token_windows(self):
-        x = correlated(256, heads=4, noise=.6)
-        losses, _ = windows.candidates(x, target='v', max_group=2)
-        bits, code = windows.solve_pairs(losses, 128, .3, per_head=True, window=16)
-        self.assertEqual(len(bits), 16)  # 256 tokens / 16
-        bits_of = torch.tensor([dense_bits(2, 128)] + [group_bits(r, 128, 2) for r in (0, 16, 32)]) + TAG_BITS
-        per_head = bits_of[code[..., ::2]].sum(-1)  # [heads, 16-token windows]
-        self.assertTrue(bool((per_head <= .7 * dense_bits(16, 128)).all()))
-        whole, whole_stats = cache_run(x[:, :2], [203 - 3], saving=.3, max_group=2, window=16)
-        streamed, stream_stats = cache_run(x[:, :2], [21] + [1] * 179, saving=.3, max_group=2, window=16)
-        torch.testing.assert_close(streamed, whole)
-        self.assertTrue(torch.equal(streamed[..., 192:, :], x[:, :2, 192:200]))  # open 16-token window
-        with self.assertRaises(ValueError):
-            SpatialConfig(window=16)  # pairs only
-
-    def test_fixed_budget_per_head(self):
-        x = correlated(256, heads=4, noise=.6)
-        x[:, 0, 1::2] = x[:, 0, ::2]  # head 0 merges for free
-        losses, _ = windows.candidates(x, target='v', max_group=2)
-        total, count = windows.head_shares(losses, 128, .3)
-        shares = total / count
-        self.assertGreaterEqual(float(shares.mean()), .3)
-        self.assertEqual(int(shares.argmax()), 0)  # the easy head takes the largest share
-        shares = (shares * .3 / shares.mean()).tolist()
-        _, code = windows.solve_pairs(losses, 128, shares, per_head=True)
-        bits_of = torch.tensor([dense_bits(2, 128)] + [group_bits(r, 128, 2) for r in (0, 16, 32)]) + TAG_BITS
-        per_head = bits_of[code[..., ::2]].sum(-1) - 4 * TAG_BITS  # [heads, windows], tags excluded
-        for h, s in enumerate(shares):
-            self.assertTrue(bool((per_head[h] <= (1 - s) * dense_bits(WINDOW, 128) + 1e-6).all()))
-        step = SpatialConfig(max_group=2, head_savings=tuple(shares)).pipeline(.3)['pipeline'][0]
-        self.assertEqual(len(step['head_savings']), 4)
-        cache, _ = cache_run(x[:, :2], [64], saving=.3, max_group=2, head_savings=shares[:2])
-        with self.assertRaises(ValueError):
-            SpatialConfig(head_savings=(.3, .3))  # pairs only
-
-    def test_head_levels_and_padding(self):
-        levels = head_levels(128)
-        self.assertEqual(levels[:4], (0.0, .125, .25, .375))
-        self.assertAlmostEqual(levels[4], 1 - 2080 / 4096)
-        rounded = windows.round_to_levels([.45, .30, .20, .05], .25, levels)
-        self.assertTrue(all(r in levels for r in rounded))
-        self.assertGreaterEqual(sum(rounded) / 4, .25)
-        self.assertLessEqual(rounded[3], .125)  # the hardest head stays low
-        x = correlated(128, heads=4, noise=.6)
-        shares = [.375, .25, .125, 0.0]
-        _, used, _ = windows.compress(x, target='v', saving=shares, max_group=2, per_head_budget=True)
-        _, padded, _ = windows.compress(x, target='v', saving=shares, max_group=2, per_head_budget=True,
-                                        pad_heads=True)
-        reserved = sum((1 - s) * dense_bits(WINDOW, 128) + 4 * TAG_BITS for s in shares) * 16
-        self.assertEqual(padded, reserved)  # exactly the reserved size, every window
-        _, padded16, _ = windows.compress(x, target='v', saving=.3, max_group=2, per_head_budget=True,
-                                          pad_heads=True, window=16)
-        self.assertAlmostEqual(padded16, 4 * 8 * ((1 - .3) * dense_bits(16, 128) + 8 * TAG_BITS), delta=1)
-        out, _, counts = windows.compress(x, target='v', saving=[0.0] * 4, max_group=2,
-                                          per_head_budget=True, pad_heads=True)
-        self.assertTrue(torch.equal(out, x))  # a 0% head stays dense
-        step = SpatialConfig(max_group=2, head_savings=tuple(shares), pad_heads=True).pipeline(.2)
-        self.assertTrue(step['pipeline'][0]['pad_heads'])
-        with self.assertRaises(ValueError):
-            SpatialConfig(max_group=2, pad_heads=True)
-        _, uniform, _ = windows.compress(x, target='v', saving=.25, max_group=2, per_head_budget=True,
-                                         pad_heads=True)
-        self.assertEqual(uniform, 4 * 16 * (.75 * dense_bits(WINDOW, 128) + 4 * TAG_BITS))
-        SpatialConfig(max_group=2, per_head_budget=True, pad_heads=True)  # same budget for every head
-
-    def test_without_norms_bits_and_reconstruction(self):
-        self.assertEqual(group_bits(0, 128, 2, norms=False), group_bits(0, 128, 2) - 32)
-        x = correlated(64, noise=0.) * 3
-        out, bits, _ = windows.compress(x, target='v', saving=.45, max_group=2, keep_norms=False)
-        torch.testing.assert_close(out, x, atol=3e-2, rtol=3e-2)  # identical pairs rebuild exactly
-
-    @unittest.skipUnless(torch.cuda.is_available() or torch.backends.mps.is_available(), "needs a GPU")
-    def test_pairs_on_gpu(self):
-        device = "cuda" if torch.cuda.is_available() else "mps"
-        x = correlated(64).to(device)
-        for options in ({}, dict(per_head_budget=True), dict(keep_norms=False)):
-            out, bits, _ = windows.compress(x, target='v', saving=.3, max_group=2, **options)
-            self.assertEqual(out.device.type, device)
-            self.assertLessEqual(bits, .7 * 2 * 8 * dense_bits(WINDOW, 128))  # 8 windows, 2 heads; ties may differ from CPU
-
-    def test_without_rope_alignment_keys_change(self):
-        rope = RopeTables(rope_theta=10000., head_dim=128)
-        x = correlated(128, noise=.3)
-        aligned = windows.compress(x, target='k', saving=.3, max_group=2, rope_tables=rope)[0]
-        plain = windows.compress(x, target='k', saving=.3, max_group=2, align_rope=False)[0]
-        self.assertFalse(torch.equal(aligned, plain))
+        self.assertEqual(row['stored_bits'], HEADER_BITS + 4 * int(windows.block_bits(64, .4))
+                         + dense_bits(6, 64))
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-"""The staged ladder study: candidates, calibration, allocation, gates and tasks."""
+"""The official sweep: candidates, calibration, allocation, gates and tasks."""
 
 from copy import deepcopy
 import json
@@ -11,7 +11,6 @@ from unittest.mock import patch
 import torch
 
 from compression_topics.spatial.algorithms.formats import ACCOUNTING
-from compression_topics.spatial.algorithms.methods import SpatialConfig
 from compression_topics.spatial.scripts import ladder, study
 from engine.eval_runner.cache import simulation_identity
 from engine.eval_runner.chunks import identity
@@ -19,16 +18,15 @@ from engine.eval_runner.files import write_json
 from engine.kv_compress import parse_kv_spec
 
 
-def fake_chunks(path, *, endpoint_saving=None):
-    """Pretend each slot met its target; pair slots at 50% reach ``endpoint_saving``."""
+def fake_chunks(path):
+    """Pretend each slot met its target."""
     run = json.loads(Path(path).read_text())
     sampling = run["sampling"]
     for config in run["configurations"]:
         steps = config["kv"]["pipeline"]
         stats, slots, saving = {}, {}, 0.0
         for step in steps:
-            endpoint = step["max_group"] == 2 and step["saving"] == 0.5
-            achieved = endpoint_saving if endpoint and endpoint_saving else step["saving"]
+            achieved = step["saving"]
             for target in ("k", "v"):
                 for layer in step[target + "_layers"]:
                     key = f"{target}_layer_{layer}"
@@ -74,158 +72,68 @@ def fake_tasks(destination, run, *, summarizer):
 
 
 class LadderTests(unittest.TestCase):
-    def test_candidates_per_arm(self):
+    def test_candidates(self):
         with tempfile.TemporaryDirectory() as folder:
             p = ladder.plan(Path(folder))
+            with self.assertRaises(ValueError):
+                ladder.candidates(p)  # needs the query calibration first
             torch.save({"weights": torch.ones(32, 8, 128)}, p["query_weights"])
             rows = ladder.candidates(p)
-            self.assertEqual(len(rows), 64 * (6 + 9 + 6 + 9))
+            self.assertEqual(len(rows), 64 * len(ladder.LOCAL_BUDGETS))
             for row in rows:
                 step = row["kv"]["pipeline"][0]
                 self.assertEqual(step["method"], "spatial")
-                self.assertEqual(step["max_group"], 2 if row["arm"] in ladder.PAIR_ARMS else 8)
-                self.assertEqual(
-                    step["query_aware"],
-                    row["arm"] in ladder.QUERY_ARMS and row["target"] == "k",
-                )
-                self.assertEqual(
-                    row["maximum_feasible"], row["arm"] in ladder.PAIR_ARMS and row["budget"] == 0.5
-                )
-
-    def test_simplification_arms_at_30_and_40(self):
-        with tempfile.TemporaryDirectory() as folder:
-            p = ladder.plan(Path(folder), arms=tuple(ladder.SIMPLIFICATIONS), budgets=(0.3, 0.4))
-            torch.save({"weights": torch.ones(32, 8, 128)}, p["query_weights"])
-            rows = ladder.candidates(p)
-            self.assertEqual(len(rows), len(ladder.SIMPLIFICATIONS) * 64 * 5)  # no 50% endpoint
-            self.assertFalse(any(r["maximum_feasible"] for r in rows))
-            flags = {r["arm"]: r["kv"]["pipeline"][0] for r in rows if r["target"] == "k"}
-            self.assertTrue(flags["query_pairs_per_head"]["per_head_budget"])
-            self.assertFalse(flags["query_pairs_no_rope"]["align_rope"])
-            self.assertFalse(flags["query_pairs_no_norms"]["keep_norms"])
-            both = flags["query_pairs_no_rope_no_norms"]
-            self.assertFalse(both["align_rope"] or both["keep_norms"])
-            w16 = flags["query_pairs_per_head_w16"]
-            self.assertEqual((w16["window"], w16["per_head_budget"]), (16, True))
-            self.assertEqual(flags["query_pairs_w16"]["window"], 16)
-            self.assertNotIn("per_head_budget", flags["query_pairs_w16"])
-            padded = flags["query_pairs_per_head_padded_w16"]
-            self.assertEqual((padded["window"], padded["per_head_budget"], padded["pad_heads"]),
-                             (16, True, True))
-            no_rope = flags["query_pairs_per_head_padded_w16_no_rope"]
-            self.assertEqual((no_rope["window"], no_rope["per_head_budget"], no_rope["pad_heads"],
-                              no_rope["align_rope"]), (16, True, True, False))
-
-    def test_head_split_arm_reads_per_head_budgets(self):
-        with tempfile.TemporaryDirectory() as folder:
-            p = ladder.plan(Path(folder), arms=(ladder.HEAD_SPLIT,), budgets=(0.3, 0.4), layers=2)
-            torch.save({"weights": torch.ones(2, 8, 128)}, p["query_weights"])
-            with self.assertRaises(ValueError):
-                ladder.candidates(p)  # needs the head calibration first
-            budgets = ladder.head_split_budgets(p)
-            self.assertNotIn(0.5, budgets)
-            shares = {str(l): {t: {str(b): [b] * 8 for b in budgets} for t in "kv"} for l in range(2)}
-            levels = {str(l): {t: {str(b): [.25] * 8 for b in budgets} for t in "kv"} for l in range(2)}
-            write_json(p["head_savings"], {"savings": shares, "levels": levels})
-            rows = ladder.candidates(p)
-            self.assertEqual(len(rows), 2 * 2 * len(budgets))
-            for row in rows:
-                self.assertEqual(row["kv"]["pipeline"][0]["head_savings"], [row["budget"]] * 8)
-                self.assertNotIn("pad_heads", row["kv"]["pipeline"][0])
-            p["arms"] = [ladder.HEAD_LEVELS]
-            for row in ladder.candidates(p):
-                step = row["kv"]["pipeline"][0]
-                self.assertEqual((step["head_savings"], step["pad_heads"]), ([.25] * 8, True))
-
-    def test_validation_gate_and_endpoint(self):
-        rows = [
-            dict(
-                arm=a, budget=b, actual_saving=0.491 if a in ladder.PAIR_ARMS and b == 0.5 else b
-            )
-            for a in ladder.ARMS
-            for b in ladder.BUDGETS
-        ]
-        ladder.check_validation(rows, ladder.BUDGETS, ladder.ARMS, tolerance=0.01)
-        rows[0]["actual_saving"] = 0.25
-        with self.assertRaises(ValueError):
-            ladder.check_validation(rows, ladder.BUDGETS, ladder.ARMS, tolerance=0.01)
+                self.assertEqual("query_weights" in step, row["target"] == "k")
 
     def test_staged_protocol(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
-            p = ladder.plan(out, layers=1, screen=2, refine=2, validation=2)
-            p["pair_local_budgets"] = [0.3, 0.4, 0.49]
-            p["local_budgets"] = [0.3, 0.4, 0.5, 0.85]
+            p = ladder.plan(out, budgets=(0.3, 0.4), layers=1, screen=2, refine=2, validation=2)
+            p["local_budgets"] = [0.3, 0.4, 0.49]
             p["dense_ceval_source"] = str(out / "missing.json")
             torch.save({"weights": torch.ones(1, 2, 128)}, p["query_weights"])
-            with patch.object(
-                study,
-                "execute_chunks",
-                side_effect=lambda path: fake_chunks(path, endpoint_saving=0.491),
-            ):
+            with patch.object(study, "execute_chunks", side_effect=fake_chunks):
                 for stage in ("screen", "refine", "allocate", "validate"):
                     ladder.run_stage(p, stage)
             selections = json.loads((out / "selections.json").read_text())
-            self.assertEqual(len(selections), 12)
-            endpoint = next(s for s in selections if s["maximum_feasible"])
-            self.assertAlmostEqual(endpoint["compression"], 0.491)
-            for selection in selections:
-                self.assertTrue(
-                    all(
-                        row["arm"] == selection["arm"]
-                        for row in selection["assignment"]
-                    )
-                )
+            self.assertEqual([s["budget"] for s in selections], [0.3, 0.4])
             with patch.object(study, "execute_tasks", side_effect=fake_tasks):
                 ladder.run_stage(p, "tasks")
             report = json.loads((out / "summary.json").read_text())
-            self.assertEqual(report["completed"], 13)
-            self.assertEqual(
-                sum(r.get("maximum_feasible", False) for r in report["rows"]), 2
-            )
+            self.assertEqual(report["completed"], 3 * 3)  # dense and two budgets, three tasks
             validation = json.loads((out / "validation.json").read_text())
             validation[1]["actual_saving"] = 0.2
             write_json(out / "validation.json", validation)
             with patch.object(study, "execute_tasks") as execute:
-                with self.assertRaisesRegex(
-                    RuntimeError, "(byte gate|provenance check) failed"
-                ):
+                with self.assertRaisesRegex(RuntimeError, "(byte gate|provenance check) failed"):
                     ladder.run_stage(p, "tasks")
                 execute.assert_not_called()
 
-
-class OfficialSweepTests(unittest.TestCase):
-    def test_three_tasks_per_selection(self):
+    def test_models(self):
         with tempfile.TemporaryDirectory() as folder:
             out = Path(folder)
-            p = ladder.plan(out, arms=(ladder.OFFICIAL_ARM,), budgets=ladder.OFFICIAL_BUDGETS,
-                            layers=1, tasks=ladder.OFFICIAL_TASKS)
+            selections = [dict(arm=ladder.ARM, budget=b, tag=f"{ladder.ARM}_b{round(100 * b):02d}",
+                               kv={"pipeline": []}) for b in ladder.BUDGETS]
+            p = ladder.plan(out, layers=1)
             p["dense_ceval_source"] = str(out / "missing.json")
-            selections = [dict(arm=ladder.OFFICIAL_ARM, budget=b, tag=f"{ladder.OFFICIAL_ARM}_b{round(100 * b):02d}",
-                               kv={"pipeline": []}, maximum_feasible=False) for b in ladder.OFFICIAL_BUDGETS]
-            run = ladder.tasks(p, selections)
+            run = study.task_run(p, selections)
             names = [c["name"] for c in run["configurations"]]
-            self.assertEqual(len(names), 3 * (1 + len(ladder.OFFICIAL_BUDGETS)))
+            self.assertEqual(len(names), 3 * (1 + len(ladder.BUDGETS)))
             self.assertTrue(names[0].startswith("dense_gsm8k"))  # slow generation runs dealt first
-            self.assertEqual({c["metadata"].get("operating_point") for c in run["configurations"]
-                              if c["name"].startswith(ladder.OFFICIAL_ARM)}, {"calibrated_budget"})
             fake_tasks(out, run, summarizer=lambda *a, **k: None)
             report = ladder.summarize(out, run, require_complete=True)
             self.assertEqual(report["status"], "complete")
             self.assertEqual(set(report["dense_accuracy_by_task"]), {"ceval", "gsm8k", "humaneval"})
-            code = ladder.plan(out / "code", arms=(ladder.OFFICIAL_ARM,), budgets=ladder.OFFICIAL_BUDGETS,
-                               layers=1, tasks=ladder.MODELS["codellama"][1],
-                               model_args=ladder.MODELS["codellama"][0])
-            qwen = ladder.plan(out / "qwen", arms=(ladder.OFFICIAL_ARM,), budgets=(0.3,),
-                               model_args=ladder.MODELS["qwen"][0], **ladder.MODELS["qwen"][2])
+            model_args, tasks, _ = ladder.MODELS["codellama"]
+            code = ladder.plan(out / "code", layers=1, tasks=tasks, model_args=model_args)
+            code_run = study.task_run(code, selections)
+            self.assertEqual({c["tasks"][0] for c in code_run["configurations"]}, {"humaneval_codellama"})
+            self.assertIn("CodeLlama", code_run["model_args"])
+            model_args, tasks, shape = ladder.MODELS["qwen"]
+            qwen = ladder.plan(out / "qwen", model_args=model_args, tasks=tasks, **shape)
             Path(qwen["out"]).mkdir()
             torch.save({"weights": torch.ones(32, 4, 256)}, qwen["query_weights"])
             self.assertEqual({r["layer"] for r in ladder.candidates(qwen)}, set(range(3, 32, 4)))
-            code_run = ladder.tasks(code, selections)
-            self.assertEqual({c["tasks"][0] for c in code_run["configurations"]}, {"humaneval_codellama"})
-            self.assertIn("CodeLlama", code_run["model_args"])
-            step = SpatialConfig(max_group=2, **ladder.SIMPLIFICATIONS[ladder.OFFICIAL_ARM])
-            self.assertEqual((step.window, step.per_head_budget, step.pad_heads), (16, True, True))
 
 
 class StudyTests(unittest.TestCase):
@@ -290,7 +198,8 @@ class StudyTests(unittest.TestCase):
             model, [torch.randint(0, 32, (72,))], policy, [1], scoring_prefix=64
         )
         measured = study.slot_measurement(payload)
-        self.assertGreaterEqual(measured["compression"], 0.4)
+        # Fixed blocks hold (1 - 0.4) x dense bits plus the pair tags, and the slot has a header.
+        self.assertAlmostEqual(measured["compression"], 0.4, delta=0.002)
 
 
 if __name__ == "__main__":
