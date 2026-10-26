@@ -7,18 +7,19 @@ block. Calibration allocates different savings across the layer/K-V slots.
 ## Algorithm
 
 1. **Normalize.** Each key and value vector, as stored in the cache, is divided
-   by its length; the length is stored as one bf16 norm.
+   by its length.
 2. **Formats.** A pair is dense, or merged: the mean direction
    m = (a + b) / 2 plus 0, 16 or 32 entries of the half-difference
-   d = (a - b) / 2 (PR0, PR16, PR32), with a position mask. Counts are per 128
-   values, so a 256-value head keeps twice as many.
+   d = (a - b) / 2 (PR0, PR16, PR32), with a position mask, and one bf16 scale
+   per token: its length divided by the length of its rebuilt direction m ± d.
+   Counts are per 128 values, so a 256-value head keeps twice as many.
 3. **Reconstruction error.** Values use relative squared error. Keys use the
    query-aware error: squared error weighted by the calibrated query energy
    E[q_d^2], which also ranks the residual entries to keep.
 4. **Budget per head and window.** When a window's 16th token is written, in the
    prompt or during decode, each head sorts its pairs' merge steps by error added
    per bit saved and takes them until it saves the slot's share of its dense
-   bits. Each head's block is (1 - saving) x its dense window bits plus a 3-bit
+   bits. Each head's block is (1 - saving) x its dense window bits plus a 2-bit
    tag per pair; unused bits are padding and still count. Nothing carries over
    between windows; the newest, unfinished window stays dense.
 
@@ -58,11 +59,9 @@ sbatch --gres=gpu:4 compression_topics/spatial/scripts/ladder_dgx.sh --model lla
 
 - `figures/official_llama`: Llama 3.1 8B-Instruct, the official method. Its
   records were written while the arm was still called
-  `query_pairs_per_head_padded_w16_no_rope`.
+  `query_pairs_per_head_padded_w16_no_rope`, and with 3-bit format tags (now 2).
 - `figures/pair_similarity`: adjacent-pair similarity profile (Llama 3.1 8B,
   WikiText-2).
-- `figures/clean_online_ladder_query_hierarchy`: an earlier study, kept for now
-  because the vector compression code reads its `query_weights.pt`.
 
 Earlier variants (quads and eights, shared window budgets, per-head splits,
 8-token windows, keys rotated before merging) and their results were removed on

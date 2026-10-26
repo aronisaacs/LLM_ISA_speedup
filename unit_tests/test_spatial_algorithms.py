@@ -47,7 +47,7 @@ class FormatTests(unittest.TestCase):
         self.assertEqual(pair_bits(0, 128), 2080)
         self.assertEqual(pair_bits(16, 128), 2464)
         self.assertEqual(pair_bits(32, 128), 2720)
-        self.assertAlmostEqual(max_saving(128), 1 - 2083 / 4096)
+        self.assertAlmostEqual(max_saving(128), 1 - 2082 / 4096)
         with self.assertRaises(ValueError):
             pair_bits(8, 128)
 

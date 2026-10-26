@@ -2,8 +2,9 @@
 
 Each token is split into a unit direction and a norm. A pair stores the mean
 direction m = (a + b) / 2 plus, for a residual format, the largest entries of
-the half-difference d = (a - b) / 2. The rebuilt directions m + d and m - d are
-rescaled to each token's stored norm.
+the half-difference d = (a - b) / 2. Each token stores one bf16 scale, its norm
+divided by the norm of its rebuilt direction (m + d or m - d), so a rebuilt
+token is scale x (m +- d) and keeps its original length.
 
 Reconstruction error is relative squared error ||k - k_hat||^2 / ||k||^2.
 Query-aware error (keys only) weights each dimension by the calibrated query

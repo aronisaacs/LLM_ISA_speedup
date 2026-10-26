@@ -99,11 +99,11 @@ class StorageContractTests(unittest.TestCase):
 
     def test_saturation_stream_header_is_counted(self):
         from unit_tests.test_spatial_algorithms import cache_run, correlated
-        from compression_topics.spatial.algorithms.formats import HEADER_BITS
+        from compression_topics.spatial.algorithms.formats import HEADER_BITS, TAG_BITS
 
         _, r = cache_run(correlated(64), [32, 32], saving=0.5)
         count = r["format_g2_r0"]
-        self.assertEqual(r["metadata_bits"], HEADER_BITS + count * 3)
+        self.assertEqual(r["metadata_bits"], HEADER_BITS + count * TAG_BITS)
 
 
 if __name__ == "__main__":

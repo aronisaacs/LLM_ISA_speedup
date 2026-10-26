@@ -50,20 +50,6 @@ def vector_compress_pair(k_layers="all", v_layers="all", prune_pct=50):
     return _step("vector_compress_pair", k_layers, v_layers, prune_pct=int(prune_pct))
 
 
-def vector_compress_query(k_layers="all", v_layers="all", prune_pct=50, pairs=False):
-    """Keys ranked by query energy times magnitude (per value, or per RoPE pair with ``pairs``).
-
-    Values use the plain per-scalar prune. The weights are the spatial study's
-    calibrated E[q^2] file, pinned by checksum.
-    """
-    from compression_topics.vector.algorithms.vector_compress_query import QUERY_WEIGHTS, QUERY_WEIGHTS_SHA256
-
-    method = "vector_compress_pair_query" if pairs else "vector_compress_query"
-    return _step(method, k_layers, v_layers, prune_pct=int(prune_pct),
-                 query_weights=QUERY_WEIGHTS, query_weights_sha256=QUERY_WEIGHTS_SHA256)
-
-
-
 def quantize(k_layers="all", v_layers="all", bits=8, group=32):
     """Symmetric int8 or int4, one absmax scale per group of 32. Post-RoPE.
 

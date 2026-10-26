@@ -10,7 +10,7 @@ from __future__ import annotations
 
 HEAD_DIM = 128
 VALUE_BITS = 16
-PAIR_METHODS = ("vector_compress_pair", "vector_compress_pair_query")
+PAIR_METHODS = ("vector_compress_pair",)
 
 
 def bitmask_bits(method: str, target: str, head_dim: int = HEAD_DIM) -> int:

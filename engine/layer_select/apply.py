@@ -104,7 +104,7 @@ def _set_level(step: dict, pct: int) -> None:
     if method in {"qjl", "quantize"}:
         step["bits"] = int(pct)
         return
-    if method in {"vector_compress", "vector_compress_pair", "vector_compress_query", "vector_compress_pair_query",
+    if method in {"vector_compress", "vector_compress_pair",
                   "checksparse_l1", "checksparse_row"}:
         step["prune_pct"] = int(pct)
         if method == "vector_compress":

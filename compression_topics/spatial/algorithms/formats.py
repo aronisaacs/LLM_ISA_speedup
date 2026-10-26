@@ -1,19 +1,19 @@
 """Storage formats and bit costs of spatial pair compression, per KV head.
 
 Adjacent tokens (2i, 2i+1) of one KV head form a pair. A pair is stored dense,
-or merged: one bf16 mean direction, one bf16 norm per token and a sparse
+or merged: one bf16 mean direction, one bf16 scale per token and a sparse
 residual of 0, 16 or 32 kept bf16 values plus a ``head_dim``-bit position mask
-(PR0, PR16, PR32). Every pair carries a 3-bit format tag, and each compressed
+(PR0, PR16, PR32). Every pair carries a 2-bit format tag, and each compressed
 layer slot one 16-bit header. Dense tokens cost 16 bits per value.
 """
 
 WINDOW = 16  # tokens compressed together, per KV head
 RESIDUALS = (0, 16, 32)  # kept residual entries per 128 values: PR0, PR16, PR32
 VALUE_BITS = 16
-TAG_BITS = 3
+TAG_BITS = 2  # dense, PR0, PR16 or PR32
 HEADER_BITS = 16
 REFERENCE_DIM = 128  # residual counts are per this many values
-ACCOUNTING = "spatial_v3_per_head_bf16_norms_bitmap_tag3"
+ACCOUNTING = "spatial_v4_per_head_bf16_scales_bitmap_tag2"
 
 
 def kept_entries(residual, dim):
