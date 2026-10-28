@@ -16,6 +16,11 @@ or above each threshold), plus the cosine between the two tokens of each pair as
 check against slide 2's numbers.
 
   python compression_topics/spatial/scripts/reconstruction_cosine.py --samples 50
+
+On a Mac whose memory cannot hold the model, --offload puts as many layers as fit
+on the GPU (MPS), the next ones in CPU memory and the rest on disk:
+
+  python compression_topics/spatial/scripts/reconstruction_cosine.py --samples 10 --offload
 """
 
 from __future__ import annotations
@@ -122,6 +127,10 @@ def main():
     parser.add_argument("--query-weights", type=Path, default=WEIGHTS,
                         help="calibrated E[q^2] for keys; 'none' ranks keys by |d|")
     parser.add_argument("--out", type=Path, default=OUT)
+    parser.add_argument("--offload", action="store_true",
+                        help="split the model over the Mac GPU, CPU memory and disk")
+    parser.add_argument("--gpu-memory", default="8GiB", help="with --offload: weights on the GPU")
+    parser.add_argument("--cpu-memory", default="3GiB", help="with --offload: weights in CPU memory")
     args = parser.parse_args()
 
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -129,9 +138,18 @@ def main():
 
     weights = None if str(args.query_weights) == "none" else str(args.query_weights)
     digest = hashlib.sha256(Path(weights).read_bytes()).hexdigest() if weights else None
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    model = AutoModelForCausalLM.from_pretrained(args.model, dtype=torch.bfloat16).to(device).eval()
+    if args.offload:
+        import tempfile
+        device = "mps" if torch.backends.mps.is_available() else "cpu"
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model, dtype=torch.bfloat16, device_map="auto",
+            max_memory={device: args.gpu_memory, "cpu": args.cpu_memory} if device == "mps"
+            else {"cpu": args.cpu_memory},
+            offload_folder=tempfile.mkdtemp(prefix="offload_")).eval()
+    else:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model = AutoModelForCausalLM.from_pretrained(args.model, dtype=torch.bfloat16).to(device).eval()
     prompts, chosen = wikitext_chunks(tokenizer, args.samples, args.seq_len, args.seed)
     counts = Counts()
     original = Cache.update
@@ -146,7 +164,7 @@ def main():
         with torch.no_grad():
             for n, prompt in enumerate(prompts, 1):
                 model(input_ids=prompt.unsqueeze(0).to(device), use_cache=True)
-                if n % 10 == 0 or n == len(prompts):
+                if n % 10 == 0 or n == len(prompts) or args.offload:
                     print_table(counts.summary(), n, len(prompts))
     finally:
         Cache.update = original
