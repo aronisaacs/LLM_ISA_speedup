@@ -60,12 +60,20 @@ def quantize(k_layers="all", v_layers="all", bits=8, group=32):
     return _step("quantize", k_layers, v_layers, bits=int(bits), group=int(group))
 
 
-def turboquant_mse(k_layers="all", v_layers="all", bits=4):
+def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_bits=None, outlier_table=None):
     """Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE.
 
     The sweep climber overwrites ``bits`` per slot, walking 4, then 3, then 2, then 1.
+    ``outliers`` > 0 quantizes that many calibrated channels per head separately at
+    ``outlier_bits`` (default ``bits`` + 1). The split options are only written when used,
+    so plain runs keep their identities.
     """
-    return _step("turboquant_mse", k_layers, v_layers, bits=int(bits))
+    if not outliers:
+        return _step("turboquant_mse", k_layers, v_layers, bits=int(bits))
+    split = {"outliers": int(outliers), "outlier_table": str(outlier_table)}
+    if outlier_bits is not None:
+        split["outlier_bits"] = int(outlier_bits)
+    return _step("turboquant_mse", k_layers, v_layers, bits=int(bits), **split)
 
 
 SPARSIFY_48 = sparsify_nm("all", "all")
