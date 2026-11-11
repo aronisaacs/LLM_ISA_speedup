@@ -60,10 +60,17 @@ def write_quantize_study(figures_dir=FIGURES, pretrained=_PRETRAINED) -> list[Pa
 
 
 def _task_rows(task: str, pretrained: str) -> list[tuple[str, str, str, str]]:
+    """Baseline row, then one row per budget.
+
+    The baseline is the dense run with the same settings as the compressed runs
+    (chat template, few-shot, generation options, dtype), so both sides match.
+    """
+    from engine.eval_runner.cache import identities_match
     from engine.eval_runner.index import simulations
 
-    baseline = None
+    dense = []
     points = []
+    settings = []
     for record in simulations():
         identity = record.get("identity") or {}
         if identity.get("pretrained") != pretrained or task not in (identity.get("tasks") or []):
@@ -73,20 +80,30 @@ def _task_rows(task: str, pretrained: str) -> list[tuple[str, str, str, str]]:
             continue
         pipeline = (identity.get("kv") or {}).get("pipeline") or []
         if not pipeline:
-            if baseline is None or record.get("budget") in (0, 0.0):
-                baseline = float(accuracy)
+            dense.append((_without_kv(identity), float(accuracy)))
             continue
         if pipeline[0].get("method") != "quantize" or "budget" not in record:
             continue
+        if not any(identities_match(seen, _without_kv(identity)) for seen in settings):
+            settings.append(_without_kv(identity))
         points.append((float(record["budget"]), float(record.get("measured_compression", record.get("planned_compression", record.get("compression"))) or 0.0), float(accuracy)))
-    if baseline is None:
-        raise ValueError(f"no dense Llama 3.1 {task} baseline in the index")
+    if len(settings) != 1:
+        raise ValueError(f"expected quantize {task} runs with one set of settings, found {len(settings)}")
+    matches = [accuracy for identity, accuracy in dense if identities_match(identity, settings[0])]
+    if not matches:
+        raise ValueError(f"no dense Llama 3.1 {task} baseline with settings {settings[0]}")
+    baseline = matches[0]
     points.sort()
     rows = [("Baseline", _show_accuracy(baseline), "0%", "0%")]
     for budget, compression, accuracy in points:
         drop = 0.0 if baseline == 0 else (baseline - accuracy) / baseline * 100.0
         rows.append((_format_percent(budget), _show_accuracy(accuracy), f"{drop:.2f}%", _format_percent(compression)))
     return rows
+
+
+def _without_kv(identity: dict) -> dict:
+    """A run's identity without its KV compression: the settings both sides must share."""
+    return {key: value for key, value in identity.items() if key != "kv"}
 
 
 def _show_accuracy(accuracy: float) -> str:
