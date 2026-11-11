@@ -20,15 +20,15 @@ def next_level(current: int, levels: tuple[int, ...] = LEVELS) -> int | None:
     if all(levels[index] < levels[index + 1] for index in range(len(levels) - 1)):
         for pct in levels:
             if pct > current:
-                return int(pct)
+                return pct
         return None
     if current == 0:
-        return int(levels[0])
+        return levels[0]
     for index, pct in enumerate(levels):
         if pct == current:
             if index + 1 == len(levels):
                 return None
-            return int(levels[index + 1])
+            return levels[index + 1]
     raise ValueError(f"level {current} is not one of {list(levels)}")
 
 
@@ -42,14 +42,14 @@ def mean_compression(assignment: dict[Slot, int], n_slots: int, rungs=None) -> f
         raise ValueError("n_slots must be positive")
     total = 0.0
     for pct in assignment.values():
-        if int(pct) <= 0:
+        if pct <= 0:
             continue
         if rungs is None:
-            total += int(pct) / 100.0
+            total += pct / 100.0
         else:
             from engine.layer_select.rungs import fraction_of
 
-            total += fraction_of(tuple(rungs), int(pct))
+            total += fraction_of(tuple(rungs), pct)
     return total / n_slots
 
 
@@ -58,6 +58,6 @@ def _check_levels(levels: tuple[int, ...]) -> None:
         raise ValueError("levels must be non-empty")
     seen: set[int] = set()
     for pct in levels:
-        if not isinstance(pct, int) or isinstance(pct, bool) or pct < 1 or pct > 100 or pct in seen:
-            raise ValueError("levels must be distinct integers in 1..100")
+        if not isinstance(pct, (int, float)) or isinstance(pct, bool) or pct < 1 or pct > 100 or pct in seen:
+            raise ValueError("levels must be distinct numbers in 1..100")
         seen.add(pct)

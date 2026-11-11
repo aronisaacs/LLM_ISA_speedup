@@ -1,7 +1,8 @@
 """Rungs a compression method can climb, and the byte fraction each rung removes.
 
-Prune-style methods use 25/50/75 percent. TurboQuant-MSE walks 4, 3, 2, then 1 bits, and
-uniform quant walks 8 then 4. The level number is that bit width. A method
+Prune-style methods use 25/50/75 percent. TurboQuant-MSE walks 4, 3, 2.5, then 2 bits
+(2.5 = 2 bits with 64 of 128 channels at 3, see apply._set_level), and uniform quant
+walks 8 then 4. The level number is that (average) bit width. A method
 that is only on or off for a layer has one rung, and the fraction is how much
 of that slot the method drops.
 """
@@ -13,15 +14,15 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Rung:
-    level: int
+    level: int | float
     fraction: float
 
 
 PRUNE = (Rung(25, 0.25), Rung(50, 0.50), Rung(75, 0.75))
 # 4:8 sparsify is on or off for a slot. It drops half the slot.
 _ON_SPARSIFY = (Rung(50, 0.5),)
-# Mildest code first. 4 bits removes 12/16 of a slot; 1 bit removes 15/16.
-TURBOQUANT_MSE = (Rung(4, 12 / 16), Rung(3, 13 / 16), Rung(2, 14 / 16), Rung(1, 15 / 16))
+# Mildest code first (a slot can also stay dense). 4 bits removes 12/16 of a slot; 2 bits removes 14/16.
+TURBOQUANT_MSE = (Rung(4, 12 / 16), Rung(3, 13 / 16), Rung(2.5, 13.5 / 16), Rung(2, 14 / 16))
 # int8 removes half a slot. int4 removes three quarters. Milder code first.
 QUANT = (Rung(8, 0.5), Rung(4, 0.75))
 

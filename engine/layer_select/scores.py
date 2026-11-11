@@ -55,14 +55,19 @@ def load_sweep_scores(
     method: str | None = None,
     task: str = "wikitext",
     pretrained: str | None = None,
+    step_filter=None,
 ) -> tuple[float, list[ScoreRow]]:
     """Return (dense score, singleton rows). ``delta`` is quality lost versus dense.
+
+    ``step_filter(step)``, if given, keeps only singletons whose pipeline step passes it
+    (e.g. one TurboQuant sign scheme), so two variants with the same levels do not mix.
 
     With no directory, rows come from ``results.json``. ``method`` keeps
     only that pipeline (plus the dense baseline).
     """
     if results_dir is None:
-        return _from_index(metric, higher_is_better, method=method, task=task, pretrained=pretrained)
+        return _from_index(metric, higher_is_better, method=method, task=task, pretrained=pretrained,
+                           step_filter=step_filter)
     paths = sorted(Path(results_dir).glob("*.json"))
     dense_ppl = None
     rows: list[tuple[Slot, int, float, str]] = []
@@ -71,9 +76,12 @@ def load_sweep_scores(
             continue
         payload = json.loads(path.read_text())
         ppl = task_score(payload, metric)
-        slot, level = parse_singleton(kv_from_payload(payload))
+        kv = kv_from_payload(payload)
+        slot, level = parse_singleton(kv)
         if slot is None:
             dense_ppl = ppl
+            continue
+        if step_filter is not None and not step_filter(kv["pipeline"][0]):
             continue
         if level is None:
             raise ValueError(f"{path} singleton has no compression level")
@@ -83,7 +91,7 @@ def load_sweep_scores(
     return dense_ppl, _scored(dense_ppl, rows, higher_is_better)
 
 
-def _from_index(metric, higher_is_better, method, task, pretrained) -> tuple[float, list[ScoreRow]]:
+def _from_index(metric, higher_is_better, method, task, pretrained, step_filter=None) -> tuple[float, list[ScoreRow]]:
     from engine.eval_runner.index import simulations
 
     dense_ppl = None
@@ -110,6 +118,8 @@ def _from_index(metric, higher_is_better, method, task, pretrained) -> tuple[flo
             if pipeline:
                 continue
             dense_ppl = ppl
+            continue
+        if step_filter is not None and not step_filter(pipeline[0]):
             continue
         if level is None:
             raise ValueError("singleton has no compression level")

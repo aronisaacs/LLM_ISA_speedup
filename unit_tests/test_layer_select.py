@@ -159,9 +159,10 @@ class RungTests(unittest.TestCase):
         self.assertEqual(pool[0].level, 50)
         self.assertAlmostEqual(pool[0].fraction, 0.5)
         turboquant_mse_rungs = rungs_for("turboquant_mse")
-        self.assertEqual([rung.level for rung in turboquant_mse_rungs], [4, 3, 2, 1])
+        self.assertEqual([rung.level for rung in turboquant_mse_rungs], [4, 3, 2.5, 2])
         self.assertAlmostEqual(turboquant_mse_rungs[0].fraction, 0.75)
-        self.assertAlmostEqual(turboquant_mse_rungs[-1].fraction, 15 / 16)
+        self.assertAlmostEqual(turboquant_mse_rungs[2].fraction, 1 - 2.5 / 16)
+        self.assertAlmostEqual(turboquant_mse_rungs[-1].fraction, 14 / 16)
         with self.assertRaises(ValueError):
             rungs_for("not_a_method")
 

@@ -41,7 +41,7 @@ def expand_singleton_configs(
             pct = rung.level
             configurations.append(
                 _make_configuration(
-                    name=f"{name_prefix}_{method_tag}_{slot.tag()}_p{pct}",
+                    name=f"{name_prefix}_{method_tag}_{slot.tag()}_p{str(pct).replace('.', '_')}",
                     kv=kv_for_slot(method_kv, slot, level=pct),
                     results_dir=results_dir,
                     extra=extra,

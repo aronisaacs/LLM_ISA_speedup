@@ -10,18 +10,19 @@ from pathlib import Path
 
 import torch
 
-from catalog.compressions import turboquant_mse
+from catalog.compressions import TURBOQUANT_OUTLIER_TABLE, turboquant_mse
 from compression_topics.turboquant_mse.algorithms.turboquant_mse import (
     apply,
     centroids,
     hadamard,
     orthogonal,
+    rope_pair_signs,
     sign_diagonal,
 )
 from compression_topics.turboquant_mse.scripts.calibrate_outliers import ChannelStats
 from compression_topics.turboquant_mse.scripts.turboquant_mse_levels import levels_run
 from engine.kv_compress import parse_kv_spec
-from engine.layer_select.apply import kv_for_assignment
+from engine.layer_select.apply import kv_for_assignment, kv_for_slot, parse_singleton
 from engine.layer_select.greedy.rank_fill import rank_fill
 from engine.layer_select.levels import next_level
 from engine.layer_select.rungs import rungs_for
@@ -71,27 +72,41 @@ class TurboquantMseRunTests(unittest.TestCase):
         names = [item["name"] for item in configurations]
         self.assertEqual(names[0], "llama31_dense")
         self.assertEqual(len(names), 1 + 32 * 2 * 4)
-        four = next(item for item in configurations if item["name"] == "llama31_turboquant_mse_k00_p4")
-        one = next(item for item in configurations if item["name"] == "llama31_turboquant_mse_k00_p1")
-        self.assertEqual(four["kv"]["pipeline"][0]["method"], "turboquant_mse")
-        self.assertEqual(four["kv"]["pipeline"][0]["bits"], 4)
-        self.assertEqual(one["kv"]["pipeline"][0]["bits"], 1)
-        self.assertEqual(four["tasks"], ["wikitext"])
+        by_name = {item["name"]: item["kv"]["pipeline"][0] for item in configurations[1:]}
+        four = by_name["llama31_turboquant_mse_rp_k00_p4"]
+        half = by_name["llama31_turboquant_mse_rp_k00_p2_5"]
+        two = by_name["llama31_turboquant_mse_rp_v31_p2"]
+        self.assertEqual((four["method"], four["bits"], four["signs"]), ("turboquant_mse", 4, "rope_pairs"))
+        self.assertNotIn("outliers", four)
+        self.assertEqual((half["bits"], half["outliers"], half["outlier_table"]), (2, 64, TURBOQUANT_OUTLIER_TABLE))
+        self.assertEqual(two["bits"], 2)
+        self.assertEqual(configurations[1]["tasks"], ["wikitext"])
 
-    def test_climber_walks_four_bits_down_to_one(self):
+    def test_climber_walks_four_bits_down_to_two(self):
         widths = tuple(rung.level for rung in rungs_for("turboquant_mse"))
-        self.assertEqual(widths, (4, 3, 2, 1))
-        self.assertEqual([next_level(0, widths), next_level(4, widths), next_level(1, widths)], [4, 3, None])
+        self.assertEqual(widths, (4, 3, 2.5, 2))
+        self.assertEqual([next_level(0, widths), next_level(3, widths), next_level(2.5, widths), next_level(2, widths)],
+                         [4, 2.5, 2, None])
 
-    def test_assignment_can_mix_four_bits_and_one_bit(self):
-        kv = kv_for_assignment(turboquant_mse(), {Slot(3, "k"): 4, Slot(7, "v"): 1})
-        by_bits = {step["bits"]: step for step in kv["pipeline"]}
-        self.assertEqual(by_bits[4]["k_layers"], [3])
-        self.assertEqual(by_bits[4]["v_layers"], [])
-        self.assertEqual(by_bits[1]["k_layers"], [])
-        self.assertEqual(by_bits[1]["v_layers"], [7])
+    def test_half_bit_level_is_the_64_outlier_split_and_parses_back(self):
+        kv = kv_for_slot(turboquant_mse(), Slot(5, "v"), level=2.5)
+        step = kv["pipeline"][0]
+        self.assertEqual((step["bits"], step["outliers"], step["outlier_table"]), (2, 64, TURBOQUANT_OUTLIER_TABLE))
+        self.assertEqual(parse_singleton(kv), (Slot(5, "v"), 2.5))
+        whole = kv_for_slot(kv, Slot(5, "v"), level=3)["pipeline"][0]
+        self.assertEqual(whole["bits"], 3)
+        self.assertNotIn("outliers", whole)
+        self.assertNotIn("outlier_table", whole)
+        self.assertEqual(parse_singleton(kv_for_slot(turboquant_mse(), Slot(0, "k"), level=4)), (Slot(0, "k"), 4))
 
-    def test_greedy_leaves_one_slot_at_four_bits_and_climbs_another_to_one(self):
+    def test_assignment_can_mix_four_bits_and_the_half_bit_split(self):
+        kv = kv_for_assignment(turboquant_mse(), {Slot(3, "k"): 4, Slot(7, "v"): 2.5, Slot(8, "k"): 2})
+        by_level = {(step["bits"], step.get("outliers", 0)): step for step in kv["pipeline"]}
+        self.assertEqual((by_level[(4, 0)]["k_layers"], by_level[(4, 0)]["v_layers"]), ([3], []))
+        self.assertEqual((by_level[(2, 64)]["k_layers"], by_level[(2, 64)]["v_layers"]), ([], [7]))
+        self.assertEqual((by_level[(2, 0)]["k_layers"], by_level[(2, 0)]["v_layers"]), ([8], []))
+
+    def test_greedy_leaves_one_slot_at_four_bits_and_climbs_another_to_two(self):
         levels = tuple(rung.level for rung in rungs_for("turboquant_mse"))
         rows = []
         for slot in all_slots(1):
@@ -101,14 +116,14 @@ class TurboquantMseRunTests(unittest.TestCase):
             (Slot(0, "v"), 4): 0.01,
             (Slot(0, "k"), 4): 0.05,
             (Slot(0, "k"), 3): 0.06,
+            (Slot(0, "k"), 2.5): 0.065,
             (Slot(0, "k"), 2): 0.07,
-            (Slot(0, "k"), 1): 0.08,
         }
         for (slot, level), delta in cheap.items():
             rows = [row for row in rows if not (row.slot == slot and row.level == level)]
             rows.append(ScoreRow(slot=slot, level=level, ppl=10.0 + delta, delta=delta, path=f"{slot.tag()}p{level}.json"))
-        chosen = rank_fill(rows, n_layers=1, budget=0.84, dense_ppl=10.0, rungs=rungs_for("turboquant_mse"))
-        self.assertEqual(chosen, {Slot(0, "v"): 4, Slot(0, "k"): 1})
+        chosen = rank_fill(rows, n_layers=1, budget=0.81, dense_ppl=10.0, rungs=rungs_for("turboquant_mse"))
+        self.assertEqual(chosen, {Slot(0, "v"): 4, Slot(0, "k"): 2})
 
     def test_figures_cover_each_bit_width_and_each_task(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -140,7 +155,7 @@ def _write_table(directory, heads, features, ranking):
     return str(path)
 
 
-def _reference(part, layer_idx, bits):
+def _reference(part, layer_idx, bits, signs=None):
     """TurboQuant of one part by hand: Hadamard path for powers of two, random orthogonal otherwise."""
     features = part.shape[-1]
     norm = part.norm(dim=-1, keepdim=True)
@@ -152,16 +167,17 @@ def _reference(part, layer_idx, bits):
         rotated = unit @ rotation.T
         snapped = levels[(rotated.unsqueeze(-1) - levels).abs().argmin(dim=-1)]
         return snapped @ rotation * stored
-    signs = sign_diagonal(layer_idx, features)
+    signs = sign_diagonal(layer_idx, features) if signs is None else signs
     rotated = hadamard(unit * signs)
     snapped = levels[(rotated.unsqueeze(-1) - levels).abs().argmin(dim=-1)]
     return hadamard(snapped) * signs * stored
 
 
 class TurboquantMseOutlierSplitTests(unittest.TestCase):
-    def test_plain_runs_keep_their_kv_options(self):
-        self.assertEqual(turboquant_mse(bits=3)["pipeline"][0],
+    def test_independent_signs_keep_the_earlier_kv_options(self):
+        self.assertEqual(turboquant_mse(bits=3, signs="independent")["pipeline"][0],
                          {"method": "turboquant_mse", "k_layers": "all", "v_layers": "all", "bits": 3})
+        self.assertEqual(turboquant_mse(bits=3)["pipeline"][0]["signs"], "rope_pairs")
 
     def test_orthogonal_is_orthogonal_and_seeded(self):
         rotation = orthogonal(5, 96)
@@ -197,6 +213,40 @@ class TurboquantMseOutlierSplitTests(unittest.TestCase):
             parse_kv_spec({"pipeline": [{"method": "turboquant_mse", "k_layers": "all", "v_layers": "all",
                                          "bits": 2, "outliers": 4}]})
 
+    def test_rope_pair_signs_commute_with_rope(self):
+        signs = rope_pair_signs(3, 128)
+        self.assertTrue(torch.equal(signs[:64], signs[64:]))
+        self.assertTrue(torch.equal(signs[:64], sign_diagonal(3, 64)))
+        x = torch.randn(5, 128)
+        angle = torch.rand(5, 64) * 6.0
+        cos, sin = torch.cat((angle.cos(), angle.cos()), -1), torch.cat((angle.sin(), angle.sin()), -1)
+        rope = lambda t: t * cos + torch.cat((-t[..., 64:], t[..., :64]), -1) * sin   # HF rotate_half
+        self.assertTrue(torch.allclose(rope(x * signs), rope(x) * signs, atol=1e-6))
+
+    def test_rope_pair_signs_without_split(self):
+        token = torch.randn(1, 1, 3, 16)
+        rebuilt = apply(token, layer_idx=2, target="k", bits=3, signs="rope_pairs")
+        self.assertTrue(torch.allclose(rebuilt, _reference(token, 2, 3, signs=rope_pair_signs(2, 16)), atol=1e-5))
+
+    def test_rope_pair_signs_flip_original_channels_before_the_split(self):
+        heads, features, layer = 1, 8, 2
+        ranking = [6, 1, 0, 5, 2, 3, 4, 7]   # outliers: channels 6, 1, 0, 5
+        tensor = torch.randn(1, heads, 3, features)
+        with tempfile.TemporaryDirectory() as tmp:
+            table = _write_table(tmp, heads, features, ranking)
+            rebuilt = apply(tensor, layer_idx=layer, target="k", bits=2, outliers=4, outlier_table=table,
+                            signs="rope_pairs")
+        d = rope_pair_signs(layer, features)
+        flipped = tensor * d
+        for part, bits in (([0, 1, 5, 6], 3), ([2, 3, 4, 7], 2)):
+            expected = _reference(flipped[..., part], layer, bits, signs=torch.ones(4)) * d[part]
+            self.assertTrue(torch.allclose(rebuilt[..., part], expected, atol=1e-5))
+
+    def test_unknown_sign_scheme_is_rejected_before_model_load(self):
+        with self.assertRaises(ValueError):
+            parse_kv_spec({"pipeline": [{"method": "turboquant_mse", "k_layers": "all", "v_layers": "all",
+                                         "bits": 2, "signs": "pairs"}]})
+
     def test_calibration_ranks_channels_by_mean_magnitude(self):
         stats = ChannelStats()
         for layer in range(2):
@@ -212,20 +262,20 @@ class TurboquantMseOutlierSplitTests(unittest.TestCase):
         self.assertEqual(table["channels"]["v"][0][1][0], 3)
         self.assertAlmostEqual(table["mean_abs"]["k"][0][0][2], 3.0)
 
-    def test_levels_run_has_three_levels_on_three_tasks_plus_dense(self):
+    def test_levels_run_has_four_levels_on_three_tasks_plus_dense(self):
         configurations = levels_run()["configurations"]
-        self.assertEqual(len(configurations), 3 * 4)
-        # Longest first: each of 3 GPUs (every 3rd configuration) gets one GSM8K, HumanEval and CEval run.
-        self.assertEqual([c["tasks"][0] for c in configurations[:9:3]], ["gsm8k", "humaneval_instruct", "ceval-valid"])
-        self.assertTrue(all(c["name"].endswith("_dense") for c in configurations[9:]))
-        split = [c for c in configurations if "out32_3b_2b" in c["name"]]
+        self.assertEqual(len(configurations), 4 * 3 + 3)
+        # Longest task first, dense (already recorded) last.
+        self.assertEqual([c["tasks"][0] for c in configurations[:12:4]], ["gsm8k", "humaneval_instruct", "ceval-valid"])
+        self.assertTrue(all(c["name"].endswith("_dense") for c in configurations[12:]))
+        split = [c for c in configurations if "out64_3b_2b" in c["name"]]
         self.assertEqual(len(split), 3)
         step = split[0]["kv"]["pipeline"][0]
-        self.assertEqual((step["bits"], step["outliers"]), (2, 32))
-        self.assertEqual(split[0]["metadata"]["kv_compression"], 1 - (32 * 3 + 96 * 2) / 128 / 16)  # 2.25 bits
-        plain = {c["metadata"]["kv_compression"] for c in configurations if "all3" in c["name"] or "all2_" in c["name"]
-                 or c["name"].endswith("all2")}
-        self.assertEqual(plain, {1 - 3 / 16, 1 - 2 / 16})
+        self.assertEqual((step["bits"], step["outliers"], step["signs"]), (2, 64, "rope_pairs"))
+        self.assertEqual(split[0]["metadata"]["kv_compression"], 1 - 2.5 / 16)
+        by_tag = {c["name"].rsplit("_turboquant_mse_", 1)[-1]: c["metadata"]["kv_compression"]
+                  for c in configurations if "_turboquant_mse_all" in c["name"]}
+        self.assertEqual(by_tag, {"all4": 1 - 4 / 16, "all3": 1 - 3 / 16, "all2": 1 - 2 / 16})
 
 
 if __name__ == "__main__":

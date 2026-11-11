@@ -60,20 +60,26 @@ def quantize(k_layers="all", v_layers="all", bits=8, group=32):
     return _step("quantize", k_layers, v_layers, bits=int(bits), group=int(group))
 
 
-def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_bits=None, outlier_table=None):
-    """Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE.
+# Calibrated outlier channels for Llama 3.1 8B (compression_topics/turboquant_mse/scripts/calibrate_outliers.py).
+TURBOQUANT_OUTLIER_TABLE = "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
 
-    The sweep climber overwrites ``bits`` per slot, walking 4, then 3, then 2, then 1.
-    ``outliers`` > 0 quantizes that many calibrated channels per head separately at
-    ``outlier_bits`` (default ``bits`` + 1). The split options are only written when used,
-    so plain runs keep their identities.
+
+def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_bits=None, outlier_table=None,
+                   signs="rope_pairs"):
+    """Randomized Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE.
+
+    The sweep climber sets the level per slot: dense, then 4, 3, 2.5 (2 bits + 64 outlier
+    channels at 3) and 2 bits. ``outliers`` > 0 quantizes that many calibrated channels per
+    head separately at ``outlier_bits`` (default ``bits`` + 1). ``signs="rope_pairs"`` shares
+    one random sign per RoPE pair; ``signs="independent"`` writes no ``signs`` key, the
+    identity of runs made before that option existed. The split options are only written when used.
     """
-    if not outliers:
-        return _step("turboquant_mse", k_layers, v_layers, bits=int(bits))
-    split = {"outliers": int(outliers), "outlier_table": str(outlier_table)}
-    if outlier_bits is not None:
-        split["outlier_bits"] = int(outlier_bits)
-    return _step("turboquant_mse", k_layers, v_layers, bits=int(bits), **split)
+    options = {} if signs == "independent" else {"signs": str(signs)}
+    if outliers:
+        options.update(outliers=int(outliers), outlier_table=str(outlier_table))
+        if outlier_bits is not None:
+            options["outlier_bits"] = int(outlier_bits)
+    return _step("turboquant_mse", k_layers, v_layers, bits=int(bits), **options)
 
 
 SPARSIFY_48 = sparsify_nm("all", "all")

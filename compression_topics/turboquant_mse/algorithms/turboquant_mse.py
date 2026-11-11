@@ -1,16 +1,29 @@
 """TurboQuant-MSE (no QJL residual). Stock attention still runs on full-width tensors.
 
-Each token is rotated by a fixed diagonal of ±1 and a Walsh–Hadamard transform,
-snapped onto a Lloyd–Max grid for a unit-vector coordinate, then rotated back
-and rescaled by an fp16 norm. Keys and values share this path. Post-RoPE.
+Each token is rotated by a fixed diagonal of ±1 signs (D) and a Walsh–Hadamard
+transform (H), snapped onto a Lloyd–Max grid for a unit-vector coordinate (Gaussian
+approximation scaled by 1/sqrt(d)), then rotated back and rescaled by an fp16 norm.
+Keys and values share this path. Post-RoPE, in ``Cache.update``, so prefill attention
+also sees the compressed keys.
+
+Signs (``signs``):
+  "rope_pairs"   each RoPE pair (i, i + d/2, the HF rotate_half pairing) shares one sign,
+                 so D commutes with RoPE and can be folded into W_q and W_k offline.
+                 Applied to the original channels, before any outlier split.
+  "independent"  one sign per channel (runs whose kv has no ``signs`` key; earlier results).
 
 Outlier split (``outliers`` > 0), as in the paper's 2.5- and 3.5-bit KV runs: per
 layer, KV head and target, a fixed set of ``outliers`` channels (from a calibration
 table, see scripts/calibrate_outliers.py) and the remaining channels are quantized
 as two independent TurboQuant vectors, each with its own fp16 norm, rotation and
-codebook. Outlier channels get ``outlier_bits`` (default ``bits`` + 1). A part whose
-length is not a power of two (96 = 128 − 32) uses a seeded random orthogonal
-rotation (QR of a Gaussian matrix) instead of the Hadamard transform.
+codebook. Outlier channels get ``outlier_bits`` (default ``bits`` + 1). With 64 of 128
+channels (2 bits + 64 outliers at 3 = 2.5 bits), both parts use a 64-point Hadamard.
+A part whose length is not a power of two uses a seeded random orthogonal rotation
+(QR of a Gaussian matrix) instead.
+
+The hardware order of operations (rotate the query once, sign/size sums, values'
+rotations folded into W_v and W_o) gives the same scores and outputs up to rounding,
+so it is not simulated separately.
 """
 
 from __future__ import annotations
@@ -40,22 +53,32 @@ def apply(
     outliers: int = 0,
     outlier_bits: int | None = None,
     outlier_table: str | None = None,
+    signs: str = "independent",
     **_unused,
 ) -> torch.Tensor:
     del _unused
     _check_bits(bits)
+    _check_signs(signs)
     if target not in {"k", "v"}:
         raise ValueError(f"turboquant_mse target must be 'k' or 'v', got {target!r}")
+    features = tensor.shape[-1]
     if not outliers:
-        return _quantize(tensor, layer_idx, bits)
+        return _quantize(tensor, layer_idx, bits, signs=_sign_vector(signs, layer_idx, features))
     high = bits + 1 if outlier_bits is None else outlier_bits
     _check_bits(high)
     channels = outlier_channels(outlier_table, layer_idx, target, outliers)
-    return _quantize_split(tensor, layer_idx, bits, high, channels)
+    if signs == "independent":
+        return _quantize_split(tensor, layer_idx, bits, high, channels, part_signs=True)
+    # D on the original channels (so it can be folded into W_q / W_k), then each part is rotated by H alone.
+    diagonal = rope_pair_signs(layer_idx, features).to(device=tensor.device)
+    flipped = (tensor.float() * diagonal).to(dtype=tensor.dtype)
+    rebuilt = _quantize_split(flipped, layer_idx, bits, high, channels, part_signs=False)
+    return (rebuilt.float() * diagonal).to(dtype=tensor.dtype)
 
 
 def validate(options: dict) -> None:
-    """Before model load: an outlier split needs a readable table with that many channels."""
+    """Before model load: a known sign scheme, and an outlier split needs a readable table with that many channels."""
+    _check_signs(options.get("signs", "independent"))
     outliers = options.get("outliers", 0)
     if not outliers:
         return
@@ -102,6 +125,18 @@ def sign_diagonal(layer_idx: int, features: int) -> torch.Tensor:
     return cached
 
 
+def rope_pair_signs(layer_idx: int, features: int) -> torch.Tensor:
+    """±1 diagonal with sign[i] == sign[i + features/2] (HF RoPE pairs), shape ``[features]``."""
+    if features % 2:
+        raise ValueError(f"rope_pairs signs need an even length, got {features}")
+    half = sign_diagonal(layer_idx, features // 2)
+    return torch.cat((half, half))
+
+
+def _sign_vector(signs: str, layer_idx: int, features: int) -> torch.Tensor:
+    return rope_pair_signs(layer_idx, features) if signs == "rope_pairs" else sign_diagonal(layer_idx, features)
+
+
 def hadamard(tensor: torch.Tensor) -> torch.Tensor:
     """Orthonormal Walsh–Hadamard along the last dimension."""
     features = tensor.shape[-1]
@@ -142,11 +177,16 @@ def orthogonal(layer_idx: int, features: int) -> torch.Tensor:
     return cached
 
 
-def _quantize_part(tensor: torch.Tensor, layer_idx: int, bits: int) -> torch.Tensor:
-    """TurboQuant on vectors of any length: Hadamard path for powers of two, random orthogonal otherwise."""
+def _quantize_part(tensor: torch.Tensor, layer_idx: int, bits: int, part_signs: bool) -> torch.Tensor:
+    """TurboQuant on vectors of any length: Hadamard path for powers of two, random orthogonal otherwise.
+
+    ``part_signs``: the Hadamard path draws its own ±1 diagonal for this part ("independent" signs);
+    otherwise the caller has already applied D to the whole vector and the part is rotated by H alone.
+    """
     features = tensor.shape[-1]
     if not features & (features - 1):
-        return _quantize(tensor, layer_idx, bits)
+        ones = torch.ones(features)
+        return _quantize(tensor, layer_idx, bits, signs=sign_diagonal(layer_idx, features) if part_signs else ones)
     flat = tensor.reshape(-1, features).float()
     norm = flat.norm(dim=-1, keepdim=True)
     stored = norm.to(dtype=torch.float16).float()
@@ -160,7 +200,8 @@ def _quantize_part(tensor: torch.Tensor, layer_idx: int, bits: int) -> torch.Ten
     return rebuilt.reshape_as(tensor)
 
 
-def _quantize_split(tensor: torch.Tensor, layer_idx: int, bits: int, high: int, channels: torch.Tensor) -> torch.Tensor:
+def _quantize_split(tensor: torch.Tensor, layer_idx: int, bits: int, high: int, channels: torch.Tensor,
+                    part_signs: bool) -> torch.Tensor:
     """Outlier channels at ``high`` bits and the rest at ``bits``, two independent TurboQuant vectors per head.
 
     ``tensor`` is ``[batch, kv_heads, seq, head_dim]``; ``channels`` is ``[kv_heads, outliers]``.
@@ -179,17 +220,17 @@ def _quantize_split(tensor: torch.Tensor, layer_idx: int, bits: int, high: int, 
     for index, part_bits in ((high_idx, high), (low_idx, bits)):
         expanded = index.to(device=values.device).view(1, heads, 1, -1).expand(batch, heads, seq, -1)
         part = torch.gather(values, -1, expanded)
-        rebuilt.scatter_(-1, expanded, _quantize_part(part, layer_idx, part_bits))
+        rebuilt.scatter_(-1, expanded, _quantize_part(part, layer_idx, part_bits, part_signs))
     return rebuilt.to(dtype=tensor.dtype)
 
 
-def _quantize(tensor: torch.Tensor, layer_idx: int, bits: int) -> torch.Tensor:
+def _quantize(tensor: torch.Tensor, layer_idx: int, bits: int, signs: torch.Tensor) -> torch.Tensor:
     features = tensor.shape[-1]
     flat = tensor.reshape(-1, features).float()
     norm = flat.norm(dim=-1, keepdim=True)
     stored = norm.to(dtype=torch.float16).float()
     unit = torch.where(norm == 0, torch.zeros_like(flat), flat / norm.clamp_min(torch.finfo(torch.float32).tiny))
-    signs = sign_diagonal(layer_idx, features).to(device=flat.device)
+    signs = signs.to(device=flat.device)
     rotated = hadamard(unit * signs)
     levels = centroids(bits, features).to(device=flat.device)
     index = (rotated.unsqueeze(-1) - levels).abs().argmin(dim=-1)
@@ -239,6 +280,11 @@ def _inverse_erf(value: float) -> float:
     log_term = math.log(max(1.0 - value * value, 1e-300))
     first = 2.0 / (math.pi * 0.147) + 0.5 * log_term
     return sign * math.sqrt(math.sqrt(first * first - log_term / 0.147) - first)
+
+
+def _check_signs(signs) -> None:
+    if signs not in {"independent", "rope_pairs"}:
+        raise ValueError(f"turboquant_mse signs must be 'independent' or 'rope_pairs', got {signs!r}")
 
 
 def _check_bits(bits: int) -> None:

@@ -40,11 +40,11 @@ def kv_for_slot(method_kv: dict, slot: Slot, level: int | None = None) -> dict:
 
 def kv_for_assignment(method_kv: dict, assignment: dict[Slot, int]) -> dict:
     """One pipeline step per compression level (a slot cannot appear twice)."""
-    by_level: dict[int, dict[str, list[int]]] = defaultdict(lambda: {"k": [], "v": []})
+    by_level: dict[int | float, dict[str, list[int]]] = defaultdict(lambda: {"k": [], "v": []})
     for slot, pct in assignment.items():
         if pct <= 0:
             continue
-        by_level[int(pct)][slot.target].append(slot.layer)
+        by_level[_level(pct)][slot.target].append(slot.layer)
     if not by_level:
         return deepcopy(DENSE)
     template = method_template(method_kv)
@@ -64,7 +64,7 @@ def kv_for_slots(method_kv: dict, slots, level: int | None = None) -> dict:
     """Uniform level on every chosen slot (legacy on/off apply)."""
     if level is None:
         level = _level_from_step((method_kv.get("pipeline") or [{}])[0]) or 50
-    assignment = {slot: int(level) for slot in slots}
+    assignment = {slot: _level(level) for slot in slots}
     return kv_for_assignment(method_kv, assignment)
 
 
@@ -99,9 +99,22 @@ def slot_from_kv(kv: dict | None) -> Slot | None:
     return slot
 
 
-def _set_level(step: dict, pct: int) -> None:
+# TurboQuant's half-bit rung: bits + 0.5 = half of a 128-channel head at bits + 1.
+TURBOQUANT_HALF_OUTLIERS = 64
+TURBOQUANT_HEAD_DIM = 128
+
+
+def _level(pct):
+    """Whole levels stay ints (keys and names as before); TurboQuant's 2.5 stays 2.5."""
+    return int(pct) if float(pct).is_integer() else float(pct)
+
+
+def _set_level(step: dict, pct) -> None:
     method = step.get("method")
-    if method in {"turboquant_mse", "quantize"}:
+    if method == "turboquant_mse":
+        _set_turboquant_level(step, pct)
+        return
+    if method == "quantize":
         step["bits"] = int(pct)
         return
     if method in {"vector_compress", "vector_compress_pair",
@@ -114,11 +127,32 @@ def _set_level(step: dict, pct: int) -> None:
 def _level_from_step(step: dict) -> int | None:
     if not step:
         return None
-    if step.get("method") in {"turboquant_mse", "quantize"} and step.get("bits") is not None:
+    if step.get("method") == "turboquant_mse" and step.get("bits") is not None:
+        bits, outliers = int(step["bits"]), int(step.get("outliers") or 0)
+        high = int(step.get("outlier_bits") or bits + 1)
+        return _level(bits + outliers * (high - bits) / TURBOQUANT_HEAD_DIM)
+    if step.get("method") == "quantize" and step.get("bits") is not None:
         return int(step["bits"])
     if step.get("prune_pct") is not None:
         return int(step["prune_pct"])
     return None
+
+
+def _set_turboquant_level(step: dict, level) -> None:
+    """Whole bits: plain TurboQuant. bits + 0.5: 64 calibrated outlier channels at bits + 1."""
+    from catalog.compressions import TURBOQUANT_OUTLIER_TABLE
+
+    bits, half = divmod(float(level), 1)
+    if half not in (0.0, 0.5):
+        raise ValueError(f"turboquant_mse level must be whole or half bits, got {level}")
+    step["bits"] = int(bits)
+    step.pop("outlier_bits", None)
+    if half:
+        step["outliers"] = TURBOQUANT_HALF_OUTLIERS
+        step.setdefault("outlier_table", TURBOQUANT_OUTLIER_TABLE)
+    else:
+        step.pop("outliers", None)
+        step.pop("outlier_table", None)
 
 
 def _as_index_list(value, label: str) -> list[int]:

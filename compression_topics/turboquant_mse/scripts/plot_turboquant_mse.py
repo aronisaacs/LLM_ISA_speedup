@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WikiText sweep curves and task tables for the TurboQuant-MSE bit-width study.
+"""WikiText sweep curves and task tables for the first TurboQuant-MSE bit-width study (4/3/2/1 bits, independent signs).
 
   python compression_topics/turboquant_mse/scripts/plot_turboquant_mse.py
 """
@@ -35,7 +35,8 @@ def write_turboquant_mse_study(figures_dir=FIGURES, pretrained=_PRETRAINED) -> l
     """One WikiText curve per bit width, then CEval, GSM8K, and HumanEval."""
     destination = Path(figures_dir)
     destination.mkdir(parents=True, exist_ok=True)
-    dense_ppl, rows = load_sweep_scores(method="turboquant_mse", pretrained=pretrained)
+    dense_ppl, rows = load_sweep_scores(method="turboquant_mse", pretrained=pretrained,
+                                        step_filter=lambda step: "signs" not in step)
     n_layers = max(row.slot.layer for row in rows) + 1
     paths = []
     for bits in _BITS:

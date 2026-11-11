@@ -22,9 +22,16 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from catalog.compressions import TURBOQUANT_OUTLIER_TABLE as TABLE  # noqa: E402
 from catalog.models import LLAMA31_8B  # noqa: E402
 
-TABLE = "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+
+def ensure_table(path: str = TABLE) -> None:
+    """Run the calibration (one GPU, a few minutes) when its table is missing."""
+    if not (ROOT / path).exists():
+        import subprocess
+
+        subprocess.run([sys.executable, str(Path(__file__).resolve()), "--out", path], cwd=ROOT, check=True)
 
 
 class ChannelStats:
