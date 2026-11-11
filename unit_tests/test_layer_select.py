@@ -151,17 +151,17 @@ class ApplyTests(unittest.TestCase):
 
 
 class RungTests(unittest.TestCase):
-    def test_prune_climbs_three_rungs_qjl_climbs_bit_widths_and_spatial_is_on_or_off(self):
+    def test_prune_climbs_three_rungs_turboquant_mse_climbs_bit_widths_and_spatial_is_on_or_off(self):
         self.assertEqual([rung.level for rung in rungs_for("vector_compress")], [25, 50, 75])
         self.assertEqual([rung.fraction for rung in rungs_for("vector_compress")], [0.25, 0.50, 0.75])
         self.assertEqual([rung.level for rung in rungs_for("vector_compress_pair")], [25, 50, 75])
         pool = rungs_for("sparsify_nm")
         self.assertEqual(pool[0].level, 50)
         self.assertAlmostEqual(pool[0].fraction, 0.5)
-        qjl_rungs = rungs_for("qjl")
-        self.assertEqual([rung.level for rung in qjl_rungs], [4, 3, 2, 1])
-        self.assertAlmostEqual(qjl_rungs[0].fraction, 0.75)
-        self.assertAlmostEqual(qjl_rungs[-1].fraction, 15 / 16)
+        turboquant_mse_rungs = rungs_for("turboquant_mse")
+        self.assertEqual([rung.level for rung in turboquant_mse_rungs], [4, 3, 2, 1])
+        self.assertAlmostEqual(turboquant_mse_rungs[0].fraction, 0.75)
+        self.assertAlmostEqual(turboquant_mse_rungs[-1].fraction, 15 / 16)
         with self.assertRaises(ValueError):
             rungs_for("not_a_method")
 

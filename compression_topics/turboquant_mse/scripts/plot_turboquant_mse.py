@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""WikiText sweep curves and task tables for the QJL bit-width study.
+"""WikiText sweep curves and task tables for the TurboQuant-MSE bit-width study.
 
-  python compression_topics/qjl/scripts/plot_qjl.py
+  python compression_topics/turboquant_mse/scripts/plot_turboquant_mse.py
 """
 
 from __future__ import annotations
@@ -31,15 +31,15 @@ _TASKS = (
 )
 
 
-def write_qjl_study(figures_dir=FIGURES, pretrained=_PRETRAINED) -> list[Path]:
+def write_turboquant_mse_study(figures_dir=FIGURES, pretrained=_PRETRAINED) -> list[Path]:
     """One WikiText curve per bit width, then CEval, GSM8K, and HumanEval."""
     destination = Path(figures_dir)
     destination.mkdir(parents=True, exist_ok=True)
-    dense_ppl, rows = load_sweep_scores(method="qjl", pretrained=pretrained)
+    dense_ppl, rows = load_sweep_scores(method="turboquant_mse", pretrained=pretrained)
     n_layers = max(row.slot.layer for row in rows) + 1
     paths = []
     for bits in _BITS:
-        path = destination / f"qjl_sweep_{bits}bit.svg"
+        path = destination / f"turboquant_mse_sweep_{bits}bit.svg"
         write_sweep_svg(
             dense_ppl,
             rows,
@@ -48,22 +48,29 @@ def write_qjl_study(figures_dir=FIGURES, pretrained=_PRETRAINED) -> list[Path]:
             path,
             title=(
                 "Per layer resiliency run on Llama 3.1 8B Instruct using WikiText "
-                f"with QJL at {bits} bits"
+                f"with TurboQuant-MSE at {bits} bits"
             ),
         )
         paths.append(path)
     for task, title, stem in _TASKS:
-        path = destination / f"qjl_{stem}.svg"
-        path.write_text(_table_svg(f"{title}, QJL", _task_rows(task, pretrained)))
+        path = destination / f"turboquant_mse_{stem}.svg"
+        path.write_text(_table_svg(f"{title}, TurboQuant-MSE", _task_rows(task, pretrained)))
         paths.append(path)
     return paths
 
 
 def _task_rows(task: str, pretrained: str) -> list[tuple[str, str, str, str]]:
+    """Baseline row, then one row per budget.
+
+    The baseline is the dense run with the same settings as the compressed runs
+    (chat template, few-shot, generation options, dtype), so both sides match.
+    """
+    from engine.eval_runner.cache import identities_match
     from engine.eval_runner.index import simulations
 
-    baseline = None
+    dense = []
     points = []
+    settings = []
     for record in simulations():
         identity = record.get("identity") or {}
         if identity.get("pretrained") != pretrained or task not in (identity.get("tasks") or []):
@@ -73,14 +80,19 @@ def _task_rows(task: str, pretrained: str) -> list[tuple[str, str, str, str]]:
             continue
         pipeline = (identity.get("kv") or {}).get("pipeline") or []
         if not pipeline:
-            if baseline is None or record.get("budget") in (0, 0.0):
-                baseline = float(accuracy)
+            dense.append((_without_kv(identity), float(accuracy)))
             continue
-        if pipeline[0].get("method") != "qjl" or "budget" not in record:
+        if pipeline[0].get("method") != "turboquant_mse" or "budget" not in record:
             continue
+        if not any(identities_match(seen, _without_kv(identity)) for seen in settings):
+            settings.append(_without_kv(identity))
         points.append((float(record["budget"]), float(record.get("measured_compression", record.get("planned_compression", record.get("compression"))) or 0.0), float(accuracy)))
-    if baseline is None:
-        raise ValueError(f"no dense Llama 3.1 {task} baseline in the index")
+    if len(settings) != 1:
+        raise ValueError(f"expected TurboQuant-MSE {task} runs with one set of settings, found {len(settings)}")
+    matches = [accuracy for identity, accuracy in dense if identities_match(identity, settings[0])]
+    if not matches:
+        raise ValueError(f"no dense Llama 3.1 {task} baseline with settings {settings[0]}")
+    baseline = matches[0]
     points.sort()
     rows = [("Baseline", _show_accuracy(baseline), "0%", "0%")]
     for budget, compression, accuracy in points:
@@ -89,13 +101,18 @@ def _task_rows(task: str, pretrained: str) -> list[tuple[str, str, str, str]]:
     return rows
 
 
+def _without_kv(identity: dict) -> dict:
+    """A run's identity without its KV compression: the settings both sides must share."""
+    return {key: value for key, value in identity.items() if key != "kv"}
+
+
 def _show_accuracy(accuracy: float) -> str:
     shown = accuracy * 100.0 if accuracy <= 1 else accuracy
     return f"{shown:.2f}"
 
 
 def main() -> None:
-    for path in write_qjl_study():
+    for path in write_turboquant_mse_study():
         print(path)
 
 

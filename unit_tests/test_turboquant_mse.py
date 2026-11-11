@@ -9,19 +9,19 @@ from pathlib import Path
 
 import torch
 
-from catalog.compressions import qjl
-from compression_topics.qjl.algorithms.qjl import apply, centroids, hadamard, sign_diagonal
+from catalog.compressions import turboquant_mse
+from compression_topics.turboquant_mse.algorithms.turboquant_mse import apply, centroids, hadamard, sign_diagonal
 from engine.layer_select.apply import kv_for_assignment
 from engine.layer_select.greedy.rank_fill import rank_fill
 from engine.layer_select.levels import next_level
 from engine.layer_select.rungs import rungs_for
 from engine.layer_select.scores import ScoreRow
 from engine.layer_select.slots import Slot, all_slots
-from compression_topics.qjl.scripts.plot_qjl import write_qjl_study
-from compression_topics.qjl.scripts.qjl_study import sweep_run
+from compression_topics.turboquant_mse.scripts.plot_turboquant_mse import write_turboquant_mse_study
+from compression_topics.turboquant_mse.scripts.turboquant_mse_study import sweep_run
 
 
-class QjlRewriteTests(unittest.TestCase):
+class TurboquantMseRewriteTests(unittest.TestCase):
     def test_hadamard_is_its_own_inverse(self):
         values = torch.randn(2, 8)
         self.assertTrue(torch.allclose(hadamard(hadamard(values)), values, atol=1e-5))
@@ -55,26 +55,26 @@ class QjlRewriteTests(unittest.TestCase):
         self.assertTrue(torch.equal(apply(token, layer_idx=0, target="k", bits=4), token))
 
 
-class QjlRunTests(unittest.TestCase):
+class TurboquantMseRunTests(unittest.TestCase):
     def test_sweep_scores_every_slot_at_each_bit_width(self):
         configurations = sweep_run()["configurations"]
         names = [item["name"] for item in configurations]
         self.assertEqual(names[0], "llama31_dense")
         self.assertEqual(len(names), 1 + 32 * 2 * 4)
-        four = next(item for item in configurations if item["name"] == "llama31_qjl_k00_p4")
-        one = next(item for item in configurations if item["name"] == "llama31_qjl_k00_p1")
-        self.assertEqual(four["kv"]["pipeline"][0]["method"], "qjl")
+        four = next(item for item in configurations if item["name"] == "llama31_turboquant_mse_k00_p4")
+        one = next(item for item in configurations if item["name"] == "llama31_turboquant_mse_k00_p1")
+        self.assertEqual(four["kv"]["pipeline"][0]["method"], "turboquant_mse")
         self.assertEqual(four["kv"]["pipeline"][0]["bits"], 4)
         self.assertEqual(one["kv"]["pipeline"][0]["bits"], 1)
         self.assertEqual(four["tasks"], ["wikitext"])
 
     def test_climber_walks_four_bits_down_to_one(self):
-        widths = tuple(rung.level for rung in rungs_for("qjl"))
+        widths = tuple(rung.level for rung in rungs_for("turboquant_mse"))
         self.assertEqual(widths, (4, 3, 2, 1))
         self.assertEqual([next_level(0, widths), next_level(4, widths), next_level(1, widths)], [4, 3, None])
 
     def test_assignment_can_mix_four_bits_and_one_bit(self):
-        kv = kv_for_assignment(qjl(), {Slot(3, "k"): 4, Slot(7, "v"): 1})
+        kv = kv_for_assignment(turboquant_mse(), {Slot(3, "k"): 4, Slot(7, "v"): 1})
         by_bits = {step["bits"]: step for step in kv["pipeline"]}
         self.assertEqual(by_bits[4]["k_layers"], [3])
         self.assertEqual(by_bits[4]["v_layers"], [])
@@ -82,7 +82,7 @@ class QjlRunTests(unittest.TestCase):
         self.assertEqual(by_bits[1]["v_layers"], [7])
 
     def test_greedy_leaves_one_slot_at_four_bits_and_climbs_another_to_one(self):
-        levels = tuple(rung.level for rung in rungs_for("qjl"))
+        levels = tuple(rung.level for rung in rungs_for("turboquant_mse"))
         rows = []
         for slot in all_slots(1):
             for level in levels:
@@ -97,24 +97,24 @@ class QjlRunTests(unittest.TestCase):
         for (slot, level), delta in cheap.items():
             rows = [row for row in rows if not (row.slot == slot and row.level == level)]
             rows.append(ScoreRow(slot=slot, level=level, ppl=10.0 + delta, delta=delta, path=f"{slot.tag()}p{level}.json"))
-        chosen = rank_fill(rows, n_layers=1, budget=0.84, dense_ppl=10.0, rungs=rungs_for("qjl"))
+        chosen = rank_fill(rows, n_layers=1, budget=0.84, dense_ppl=10.0, rungs=rungs_for("turboquant_mse"))
         self.assertEqual(chosen, {Slot(0, "v"): 4, Slot(0, "k"): 1})
 
     def test_figures_cover_each_bit_width_and_each_task(self):
         with tempfile.TemporaryDirectory() as tmp:
-            paths = write_qjl_study(tmp)
+            paths = write_turboquant_mse_study(tmp)
             names = sorted(path.name for path in paths)
-            gsm8k = Path(tmp, "qjl_gsm8k.svg").read_text()
+            gsm8k = Path(tmp, "turboquant_mse_gsm8k.svg").read_text()
         self.assertEqual(
             names,
             [
-                "qjl_ceval.svg",
-                "qjl_gsm8k.svg",
-                "qjl_humaneval.svg",
-                "qjl_sweep_1bit.svg",
-                "qjl_sweep_2bit.svg",
-                "qjl_sweep_3bit.svg",
-                "qjl_sweep_4bit.svg",
+                "turboquant_mse_ceval.svg",
+                "turboquant_mse_gsm8k.svg",
+                "turboquant_mse_humaneval.svg",
+                "turboquant_mse_sweep_1bit.svg",
+                "turboquant_mse_sweep_2bit.svg",
+                "turboquant_mse_sweep_3bit.svg",
+                "turboquant_mse_sweep_4bit.svg",
             ],
         )
         self.assertIn("Baseline", gsm8k)

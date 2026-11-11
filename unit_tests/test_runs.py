@@ -56,8 +56,8 @@ class LoadRunTests(unittest.TestCase):
         self.assertNotIn("name_task", configurations[0])
 
     def test_one_task_without_a_name_stays_out_of_the_configuration_name(self):
-        configurations = grid(results="results", methods=(("qjl_k", DENSE),), tasks=[WIKITEXT_FULL])
-        self.assertEqual(configurations[0]["name"], "llama31_qjl_k")
+        configurations = grid(results="results", methods=(("turboquant_mse_k", DENSE),), tasks=[WIKITEXT_FULL])
+        self.assertEqual(configurations[0]["name"], "llama31_turboquant_mse_k")
         self.assertEqual(configurations[0]["tasks"], ["wikitext"])
 
     def test_python_run_requires_run_function(self):

@@ -7,7 +7,7 @@ another layer's values go to 1 bit. Budgets are 60/70/80/90 percent mean
 compression. A slot at 1 bit removes 15/16 of that slot, so 95 percent is
 above the ladder. No figures.
 
-  python compression_topics/qjl/scripts/qjl_study.py
+  python compression_topics/turboquant_mse/scripts/turboquant_mse_study.py
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from catalog.compressions import qjl  # noqa: E402
+from catalog.compressions import turboquant_mse  # noqa: E402
 from catalog.models import BATCH_SIZE, LLAMA31_8B  # noqa: E402
 from catalog.tasks import WIKITEXT_FULL  # noqa: E402
 from engine.eval_runner.progress import mirror_terminal  # noqa: E402
@@ -40,8 +40,8 @@ def sweep_run() -> dict:
     """Dense once, then every key and every value at 4, 3, 2, and 1 bits."""
     configurations = expand_singleton_configs(
         n_layers=LLAMA31_LAYERS,
-        method_kv=qjl(),
-        method_tag="qjl",
+        method_kv=turboquant_mse(),
+        method_tag="turboquant_mse",
         results_dir=FIGURES,
         name_prefix="llama31",
         extra=WIKITEXT_FULL,
@@ -56,10 +56,10 @@ def sweep_run() -> dict:
 
 def tasks_run() -> dict:
     """Dense, then the greedy assignment at 60/70/80/90 percent, on each task."""
-    dense_ppl, rows = load_sweep_scores(method="qjl", pretrained=PRETRAINED)
-    payloads = selections_for_budgets(rows, LLAMA31_LAYERS, qjl(), dense_ppl, budgets=BUDGETS)
+    dense_ppl, rows = load_sweep_scores(method="turboquant_mse", pretrained=PRETRAINED)
+    payloads = selections_for_budgets(rows, LLAMA31_LAYERS, turboquant_mse(), dense_ppl, budgets=BUDGETS)
     for payload in payloads:
-        payload["tag"] = f"qjl_{payload['tag']}"
+        payload["tag"] = f"turboquant_mse_{payload['tag']}"
     return budget_run(payloads)
 
 

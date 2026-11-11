@@ -95,7 +95,7 @@ def kv_brief(spec) -> str:
                 parts.append(f"vector |x|<{step.get('threshold', '?')}")
         elif method == "vector_compress_pair":
             parts.append(f"vector rope-pairs prune={step.get('prune_pct', '?')}%")
-        elif method == "qjl":
+        elif method == "turboquant_mse":
             parts.append(f"hadamard bits={step.get('bits', '?')}")
         elif method == "quantize":
             parts.append(f"quantize int{step.get('bits', '?')} group={step.get('group', '?')}")

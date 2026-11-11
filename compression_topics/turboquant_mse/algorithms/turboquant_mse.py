@@ -1,4 +1,4 @@
-"""Hadamard codebook stand-in. Stock attention still runs on full-width tensors.
+"""TurboQuant-MSE (no QJL residual). Stock attention still runs on full-width tensors.
 
 Each token is rotated by a fixed diagonal of ±1 and a Walsh–Hadamard transform,
 snapped onto a Lloyd–Max grid for a unit-vector coordinate, then rotated back
@@ -28,7 +28,7 @@ def apply(
     del _unused
     _check_bits(bits)
     if target not in {"k", "v"}:
-        raise ValueError(f"qjl target must be 'k' or 'v', got {target!r}")
+        raise ValueError(f"turboquant_mse target must be 'k' or 'v', got {target!r}")
     return _quantize(tensor, layer_idx, bits)
 
 
@@ -131,7 +131,7 @@ def _inverse_erf(value: float) -> float:
 
 def _check_bits(bits: int) -> None:
     if not isinstance(bits, int) or isinstance(bits, bool) or bits < 1 or bits > 8:
-        raise ValueError("qjl bits must be an integer 1..8")
+        raise ValueError("turboquant_mse bits must be an integer 1..8")
 
 
-METHODS["qjl"] = apply
+METHODS["turboquant_mse"] = apply

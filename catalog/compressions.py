@@ -60,12 +60,12 @@ def quantize(k_layers="all", v_layers="all", bits=8, group=32):
     return _step("quantize", k_layers, v_layers, bits=int(bits), group=int(group))
 
 
-def qjl(k_layers="all", v_layers="all", bits=4):
+def turboquant_mse(k_layers="all", v_layers="all", bits=4):
     """Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE.
 
     The sweep climber overwrites ``bits`` per slot, walking 4, then 3, then 2, then 1.
     """
-    return _step("qjl", k_layers, v_layers, bits=int(bits))
+    return _step("turboquant_mse", k_layers, v_layers, bits=int(bits))
 
 
 SPARSIFY_48 = sparsify_nm("all", "all")
