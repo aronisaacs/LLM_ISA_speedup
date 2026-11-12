@@ -1,0 +1,128 @@
+{
+  "arc_shots": 5,
+  "chat_template_kwargs": null,
+  "created_unix": 1792513674.7826216,
+  "domains": [
+    "wikitext",
+    "arc_5shot",
+    "gsm8k",
+    "mbpp"
+  ],
+  "dtype": "bfloat16",
+  "examples_per_domain": 128,
+  "experiment": "E15",
+  "format_version": 1,
+  "generation": {
+    "batch_size": 16,
+    "do_sample": false,
+    "eos_ids": [
+      128001,
+      128008,
+      128009
+    ],
+    "padding": "left"
+  },
+  "git_commit": "5944407f",
+  "gsm8k_shots": 5,
+  "manifest_sha256": "76ac295c81c8ccebf4d8c2ba597121b67756c0769436a148dfa9c0964ebca0a2",
+  "mbpp_fewshot_source": "lm_eval/tasks/mbpp/utils.py:list_fewshot_samples",
+  "mbpp_shots": 3,
+  "model": "meta-llama/Llama-3.1-8B-Instruct",
+  "modeling_variant": "modeling_checksparse",
+  "plain_stops": null,
+  "prompt_format": "chat",
+  "revision": "0e9e39f249a16976918f6564b8830bc894c89659",
+  "score_tokens": 256,
+  "seed": 1234,
+  "sources": {
+    "arc_5shot": {
+      "name": "ARC-Challenge",
+      "path": "allenai/ai2_arc",
+      "split": "train"
+    },
+    "gsm8k": {
+      "name": "main",
+      "path": "openai/gsm8k",
+      "split": "train"
+    },
+    "mbpp": {
+      "name": "full",
+      "path": "google-research-datasets/mbpp",
+      "split": "train"
+    },
+    "wikitext": {
+      "name": "wikitext-2-raw-v1",
+      "path": "EleutherAI/wikitext_document_level",
+      "split": "validation"
+    }
+  },
+  "stats": {
+    "arc_5shot": {
+      "dense_accuracy": 0.8984375,
+      "dense_stopped_on_eos": 0.96875,
+      "distinct_questions": 554,
+      "examples": 128,
+      "prompt_tokens_min_mean_max": [
+        102,
+        212.4296875,
+        343
+      ],
+      "scored_tokens": 32763,
+      "scored_tokens_min_mean_max": [
+        251,
+        255.9609375,
+        256
+      ]
+    },
+    "gsm8k": {
+      "dense_accuracy": 0.9296875,
+      "dense_stopped_on_eos": 1.0,
+      "examples": 128,
+      "prompt_tokens_min_mean_max": [
+        670,
+        948.078125,
+        1413
+      ],
+      "scored_tokens": 14087,
+      "scored_tokens_min_mean_max": [
+        31,
+        110.0546875,
+        256
+      ],
+      "shots": 5
+    },
+    "mbpp": {
+      "dense_stopped_on_eos": 1.0,
+      "examples": 128,
+      "prompt_tokens_min_mean_max": [
+        624,
+        687.8046875,
+        850
+      ],
+      "scored_tokens": 11288,
+      "scored_tokens_min_mean_max": [
+        13,
+        88.1875,
+        256
+      ],
+      "shots": 3
+    },
+    "wikitext": {
+      "documents": 60,
+      "examples": 128,
+      "prompt_tokens_min_mean_max": [
+        257,
+        1051.0,
+        1537
+      ],
+      "scored_tokens": 32768,
+      "scored_tokens_min_mean_max": [
+        256,
+        256.0,
+        256
+      ]
+    }
+  },
+  "wikitext_context_tokens": 1536,
+  "wikitext_min_context": 256
+}
