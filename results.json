@@ -122006,6 +122006,460 @@
       },
       "budget": 0.55,
       "planned_compression": 0.55078125
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "gsm8k"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": {
+          "max_gen_toks": 512
+        },
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 4,
+              "signs": "rope_pairs"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "gsm8k": {
+          "exact_match,strict-match": 0.0,
+          "exact_match,flexible-extract": 0.7604245640636846
+        }
+      },
+      "samples": {
+        "original": 1319,
+        "effective": 1319
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "gsm8k"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": {
+          "max_gen_toks": 512
+        },
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 3,
+              "signs": "rope_pairs"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "gsm8k": {
+          "exact_match,strict-match": 0.0,
+          "exact_match,flexible-extract": 0.7323730098559514
+        }
+      },
+      "samples": {
+        "original": 1319,
+        "effective": 1319
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "humaneval_instruct"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 4,
+              "signs": "rope_pairs"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "humaneval_instruct": {
+          "pass@1,create_test": 0.6524390243902439
+        }
+      },
+      "samples": {
+        "original": 164,
+        "effective": 164
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "humaneval_instruct"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "humaneval_instruct": {
+          "pass@1,create_test": 0.2682926829268293
+        }
+      },
+      "samples": {
+        "original": 164,
+        "effective": 164
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "outliers": 64,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "ceval-valid": {
+          "acc,none": 0.475482912332838,
+          "acc_norm,none": 0.475482912332838
+        }
+      },
+      "samples": {
+        "original": 1346,
+        "effective": 1346
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "gsm8k"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": {
+          "max_gen_toks": 512
+        },
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "outliers": 64,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "gsm8k": {
+          "exact_match,strict-match": 0.0,
+          "exact_match,flexible-extract": 0.7156937073540561
+        }
+      },
+      "samples": {
+        "original": 1319,
+        "effective": 1319
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "humaneval_instruct"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 3,
+              "signs": "rope_pairs"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "humaneval_instruct": {
+          "pass@1,create_test": 0.6341463414634146
+        }
+      },
+      "samples": {
+        "original": 164,
+        "effective": 164
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 4,
+              "signs": "rope_pairs"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "ceval-valid": {
+          "acc,none": 0.5512630014858841,
+          "acc_norm,none": 0.5512630014858841
+        }
+      },
+      "samples": {
+        "original": 1346,
+        "effective": 1346
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "gsm8k"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": {
+          "max_gen_toks": 512
+        },
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "gsm8k": {
+          "exact_match,strict-match": 0.0,
+          "exact_match,flexible-extract": 0.44275966641395
+        }
+      },
+      "samples": {
+        "original": 1319,
+        "effective": 1319
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "ceval-valid": {
+          "acc,none": 0.3573551263001486,
+          "acc_norm,none": 0.3573551263001486
+        }
+      },
+      "samples": {
+        "original": 1346,
+        "effective": 1346
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "humaneval_instruct"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "outliers": 64,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "humaneval_instruct": {
+          "pass@1,create_test": 0.5853658536585366
+        }
+      },
+      "samples": {
+        "original": 164,
+        "effective": 164
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "ceval-valid"
+        ],
+        "num_fewshot": 5,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 3,
+              "signs": "rope_pairs"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "ceval-valid": {
+          "acc,none": 0.5208023774145617,
+          "acc_norm,none": 0.5208023774145617
+        }
+      },
+      "samples": {
+        "original": 1346,
+        "effective": 1346
+      }
     }
   ]
 }
