@@ -21,6 +21,7 @@ from compression_topics.turboquant_mse.algorithms.turboquant_mse import (
 )
 from compression_topics.turboquant_mse.scripts.calibrate_outliers import ChannelStats
 from compression_topics.turboquant_mse.scripts.turboquant_mse_levels import levels_run
+from compression_topics.turboquant_mse.scripts.turboquant_mse_longbench import longbench_run, summary
 from engine.kv_compress import parse_kv_spec
 from engine.layer_select.apply import kv_for_assignment, kv_for_slot, parse_singleton
 from engine.layer_select.greedy.rank_fill import rank_fill
@@ -171,6 +172,46 @@ def _reference(part, layer_idx, bits, signs=None):
     rotated = hadamard(unit * signs)
     snapped = levels[(rotated.unsqueeze(-1) - levels).abs().argmin(dim=-1)]
     return hadamard(snapped) * signs * stored
+
+
+class TurboquantMseLongbenchTests(unittest.TestCase):
+    def test_run_list(self):
+        names = [c["name"] for c in longbench_run()["configurations"]]
+        self.assertEqual(len(names), 10)
+        self.assertTrue(names[0].startswith("llama31_longbench_e_chat_"))
+        self.assertEqual(sum("_dprompt" in n for n in names), 4)
+        self.assertFalse(any("ceval" in n for n in names))
+        for c in longbench_run()["configurations"]:
+            parse_kv_spec(c["kv"])
+            if "longbench" in c["name"]:
+                self.assertEqual(c["batch_size"], 1)
+
+    def test_paper_split_is_32_outliers_and_2_25_bits(self):
+        run = longbench_run()
+        paper = next(c for c in run["configurations"] if c["name"].endswith("_out32_3b_2b"))
+        self.assertEqual(paper["kv"]["pipeline"][0]["outliers"], 32)
+        self.assertAlmostEqual(paper["metadata"]["kv_compression"], 1 - 2.25 / 16)
+
+    def test_timing_run_is_limited_and_kept_out_of_results(self):
+        configurations = longbench_run(limit=5)["configurations"]
+        self.assertEqual(len(configurations), 4)
+        for c in configurations:
+            self.assertEqual(c["limit"], 5)
+            self.assertTrue(c["output_path"].startswith("logs/longbench_timing/"))
+
+    def test_summary_averages_categories_and_tasks(self):
+        from catalog.tasks import LONGBENCH_E_CHAT, LONGBENCH_E_PLAIN
+
+        rows = []
+        for task in (LONGBENCH_E_CHAT, LONGBENCH_E_PLAIN):
+            scores = {name: {"score,none": 0.5} for name in task["tasks"]}
+            rows.append({"identity": {"pretrained": "meta-llama/Llama-3.1-8B-Instruct", "tasks": task["tasks"],
+                                      "kv": {"pipeline": []}, "limit": None}, "scores": scores})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "results.json"
+            path.write_text(json.dumps({"simulations": rows}))
+            line = next(l for l in summary(path).splitlines() if l.startswith("ours dense"))
+        self.assertEqual(line.split()[2:], ["50.00"] * 7)
 
 
 class TurboquantMseOutlierSplitTests(unittest.TestCase):

@@ -207,6 +207,54 @@ class SparsifyNmTests(unittest.TestCase):
         self.assertIs(Cache.update, original)
 
 
+class PromptAttentionTests(unittest.TestCase):
+    _STEP = {"method": "turboquant_mse", "k_layers": "all", "v_layers": "all", "bits": 2}
+
+    def test_default_is_compressed_and_not_written(self):
+        spec = parse_kv_spec({"pipeline": [self._STEP]})
+        self.assertEqual(spec.prompt_attention, "compressed")
+        self.assertNotIn("prompt_attention", spec.to_dict())
+
+    def test_dense_is_written_and_unknown_is_rejected(self):
+        spec = parse_kv_spec({"pipeline": [self._STEP], "prompt_attention": "dense"})
+        self.assertEqual(spec.to_dict()["prompt_attention"], "dense")
+        with self.assertRaises(ValueError):
+            parse_kv_spec({"pipeline": [self._STEP], "prompt_attention": "exact"})
+
+    def test_prompt_attends_exactly_but_the_cache_and_decode_are_compressed(self):
+        from transformers.cache_utils import DynamicCache
+
+        spec = parse_kv_spec({"pipeline": [self._STEP], "prompt_attention": "dense"})
+        uninstall = patch_cache_update(spec)
+        try:
+            torch.manual_seed(0)
+            cache = DynamicCache()
+            key, value = torch.randn(1, 2, 5, 128), torch.randn(1, 2, 5, 128)
+            out_key, out_value = cache.update(key.clone(), value.clone(), 0)
+            self.assertTrue(torch.equal(out_key, key))
+            self.assertTrue(torch.equal(out_value, value))
+            stored = cache.layers[0].keys
+            self.assertFalse(torch.allclose(stored, key))
+            step_key, step_value = torch.randn(1, 2, 1, 128), torch.randn(1, 2, 1, 128)
+            decode_key, _ = cache.update(step_key.clone(), step_value.clone(), 0)
+            self.assertEqual(decode_key.shape[-2], 6)
+            self.assertTrue(torch.equal(decode_key[..., :5, :], stored))
+            self.assertFalse(torch.allclose(decode_key[..., 5:, :], step_key))
+        finally:
+            uninstall()
+
+    def test_compressed_prompt_attends_to_compressed_keys(self):
+        from transformers.cache_utils import DynamicCache
+
+        uninstall = patch_cache_update(parse_kv_spec({"pipeline": [self._STEP]}))
+        try:
+            key = torch.randn(1, 2, 5, 128)
+            out_key, _ = DynamicCache().update(key.clone(), key.clone(), 0)
+            self.assertFalse(torch.allclose(out_key, key))
+        finally:
+            uninstall()
+
+
 class ChecksparseL1Tests(unittest.TestCase):
     def test_zeros_weakest_tiles_by_l1(self):
         spec = parse_kv_spec(

@@ -2,6 +2,8 @@
 
 Turns {pipeline: [{method, k_layers, v_layers, ...}]} into KvSpec / PipelineStep.
 Unknown methods or keys fail here so a typo cannot silently run dense.
+``prompt_attention: "dense"`` stores the prompt compressed but lets the prompt's own
+attention use its uncompressed K/V (decode still reads the compressed cache).
 """
 
 from __future__ import annotations
@@ -13,7 +15,8 @@ from engine.kv_compress.methods import METHODS, validate_options
 
 LayerSelection = Literal["all"] | frozenset[int]
 
-_ALLOWED_KV_KEYS = {"pipeline"}
+_ALLOWED_KV_KEYS = {"pipeline", "prompt_attention"}
+PROMPT_ATTENTION = ("compressed", "dense")
 _STEP_RESERVED_KEYS = {"method", "k_layers", "v_layers"}
 
 
@@ -37,12 +40,17 @@ class PipelineStep:
 @dataclass(frozen=True)
 class KvSpec:
     pipeline: tuple[PipelineStep, ...] = ()
+    prompt_attention: str = "compressed"
 
     def is_identity(self) -> bool:
         return len(self.pipeline) == 0
 
     def to_dict(self) -> dict[str, Any]:
-        return {"pipeline": [step.to_dict() for step in self.pipeline]}
+        """The default ``prompt_attention`` is not written, so earlier runs keep their identity."""
+        payload: dict[str, Any] = {"pipeline": [step.to_dict() for step in self.pipeline]}
+        if self.prompt_attention != "compressed":
+            payload["prompt_attention"] = self.prompt_attention
+        return payload
 
 
 def parse_kv_spec(value: Any | None) -> KvSpec:
@@ -59,7 +67,13 @@ def parse_kv_spec(value: Any | None) -> KvSpec:
         pipeline_value = []
     if not isinstance(pipeline_value, list):
         raise TypeError("kv.pipeline must be a list")
-    return KvSpec(pipeline=tuple(_parse_step(step, index) for index, step in enumerate(pipeline_value)))
+    prompt_attention = value.get("prompt_attention", "compressed")
+    if prompt_attention not in PROMPT_ATTENTION:
+        raise ValueError(f"kv.prompt_attention must be one of {PROMPT_ATTENTION}, got {prompt_attention!r}")
+    return KvSpec(
+        pipeline=tuple(_parse_step(step, index) for index, step in enumerate(pipeline_value)),
+        prompt_attention=prompt_attention,
+    )
 
 
 def _parse_step(step: Any, index: int) -> PipelineStep:

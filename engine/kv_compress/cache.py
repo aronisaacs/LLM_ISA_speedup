@@ -36,9 +36,13 @@ def patch_cache_update(spec: KvSpec, rope: RopeTables | None = None) -> Callable
         start = _seq_length(self, layer_idx)
         end = start + key_states.shape[-2]
         metrics.observe(key_states, value_states, layer_idx, spec)
+        exact = (key_states, value_states)
         key_states, value_states = compress_kv(key_states, value_states, layer_idx, spec, seq_start=start, rope=rope)
         keys, values = saved(self, key_states, value_states, layer_idx, *args, **kwargs)
         _after_append(keys, values, layer_idx, spec, start, end, rope)
+        if _dense_prompt(spec, start, exact[0]):
+            # The cache keeps the compressed prompt; only this first call attends to it exactly.
+            return exact
         return keys, values
 
     Cache.update = update
@@ -58,6 +62,11 @@ def _after_append(keys, values, layer_idx, spec, start, end, rope):
             if _enabled(selection, layer_idx) and tensor.shape[-2] >= end:
                 callback(tensor, target=target, layer_idx=layer_idx, start=start,
                          end=end, rope_tables=rope, **step.kwargs)
+
+
+def _dense_prompt(spec: KvSpec, start: int, key_states) -> bool:
+    """The prompt (first multi-token update) attends to uncompressed K/V when the spec asks for it."""
+    return spec.prompt_attention == "dense" and start == 0 and key_states.shape[-2] > 1
 
 
 def _enabled(selection: LayerSelection, layer_idx: int) -> bool:
