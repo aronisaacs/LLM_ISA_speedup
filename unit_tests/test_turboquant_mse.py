@@ -174,6 +174,54 @@ def _reference(part, layer_idx, bits, signs=None):
     return hadamard(snapped) * signs * stored
 
 
+class TurboquantMseFastPathTests(unittest.TestCase):
+    """The matrix path against the algorithm written out step by step, one vector at a time."""
+
+    def _reference(self, x, layer, target, bits, outliers):
+        from compression_topics.turboquant_mse.algorithms.turboquant_mse import outlier_channels
+
+        d = x.shape[-1]
+        flipped = x.double() * rope_pair_signs(layer, d).double()
+        if outliers:
+            channels = outlier_channels(TURBOQUANT_OUTLIER_TABLE, layer, target, outliers)
+        out = torch.empty_like(flipped)
+        for head in range(x.shape[1]):
+            if outliers:
+                high = sorted(channels[head].tolist())
+                parts = [(high, bits + 1), ([c for c in range(d) if c not in high], bits)]
+            else:
+                parts = [(list(range(d)), bits)]
+            for index, part_bits in parts:
+                part = flipped[0, head, :, index]
+                norm = part.norm(dim=-1, keepdim=True)
+                n = len(index)
+                if n & (n - 1):
+                    rotation = orthogonal(layer, n).double()
+                    rotated = (part / norm) @ rotation.T
+                else:
+                    rotated = hadamard(part / norm).double()
+                levels = centroids(part_bits, n).double()
+                snapped = levels[(rotated.unsqueeze(-1) - levels).abs().argmin(-1)]
+                back = snapped @ rotation if n & (n - 1) else hadamard(snapped).double()
+                out[0, head, :, index] = back * norm.half().double()
+        return (out * rope_pair_signs(layer, d).double()).to(x.dtype)
+
+    def test_matches_the_step_by_step_algorithm(self):
+        torch.manual_seed(3)
+        x = torch.randn(1, 8, 50, 128, dtype=torch.bfloat16)
+        for bits, outliers in ((2, 0), (3, 0), (2, 64), (2, 32)):
+            for layer, target in ((0, "k"), (13, "v")):
+                kw = dict(bits=bits, signs="rope_pairs")
+                if outliers:
+                    kw.update(outliers=outliers, outlier_table=TURBOQUANT_OUTLIER_TABLE)
+                fast = apply(x, layer_idx=layer, target=target, **kw).float().reshape(-1, 128)
+                slow = self._reference(x, layer, target, bits, outliers).float().reshape(-1, 128)
+                relative = (fast - slow).norm(dim=-1) / slow.norm(dim=-1)
+                # A coordinate at a codebook midpoint may round either way; allow 1 % of vectors.
+                self.assertLess((relative > 1e-2).float().mean().item(), 0.01, (bits, outliers, layer))
+                self.assertLess(relative.median().item(), 1e-5, (bits, outliers, layer))
+
+
 class TurboquantMseLongbenchTests(unittest.TestCase):
     def test_run_list(self):
         names = [c["name"] for c in longbench_run()["configurations"]]

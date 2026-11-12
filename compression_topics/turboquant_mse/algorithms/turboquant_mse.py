@@ -21,6 +21,11 @@ channels (2 bits + 64 outliers at 3 = 2.5 bits), both parts use a 64-point Hadam
 A part whose length is not a power of two uses a seeded random orthogonal rotation
 (QR of a Gaussian matrix) instead.
 
+Implementation: per layer and target, D, the outlier split and the part rotations are folded
+into one rotation matrix per KV head (built once from the pieces above), so each call is a
+batched matmul, a nearest-level lookup per part and a matmul back: ~15-25 GPU operations
+instead of ~125-240, which matters for every generated token.
+
 The hardware order of operations (rotate the query once, sign/size sums, values'
 rotations folded into W_v and W_o) gives the same scores and outputs up to rounding,
 so it is not simulated separately.
@@ -42,20 +47,8 @@ _SIGNS: dict[tuple[int, int], torch.Tensor] = {}
 _ORTHOGONAL: dict[tuple[int, int], torch.Tensor] = {}
 _STANDARD_CENTROIDS: dict[int, torch.Tensor] = {}
 _TABLES: dict[str, dict] = {}
-# Small fixed tensors already on the model's device, and the outlier index lists per layer.
-# Building them on the CPU and copying them for every layer and every generated token
-# made the GPU wait on each copy; the values are the same either way.
-_ON_DEVICE: dict[tuple, torch.Tensor] = {}
-_SPLITS: dict[tuple, tuple[torch.Tensor, torch.Tensor]] = {}
-
-
-def _on_device(key: tuple, build, device: torch.device) -> torch.Tensor:
-    full = (*key, str(device))
-    cached = _ON_DEVICE.get(full)
-    if cached is None:
-        cached = build().to(device=device)
-        _ON_DEVICE[full] = cached
-    return cached
+# One plan per (layer, target, options, device): the per-head rotation matrix and its segments.
+_PLANS: dict[tuple, "_Plan"] = {}
 
 
 def apply(
@@ -75,21 +68,12 @@ def apply(
     _check_signs(signs)
     if target not in {"k", "v"}:
         raise ValueError(f"turboquant_mse target must be 'k' or 'v', got {target!r}")
-    features = tensor.shape[-1]
-    device = tensor.device
-    if not outliers:
-        vector = _on_device(("signs", signs, layer_idx, features), lambda: _sign_vector(signs, layer_idx, features), device)
-        return _quantize(tensor, layer_idx, bits, signs=vector)
     high = bits + 1 if outlier_bits is None else outlier_bits
-    _check_bits(high)
-    split = _split_indices(outlier_table, layer_idx, target, outliers, features, device)
-    if signs == "independent":
-        return _quantize_split(tensor, layer_idx, bits, high, split, part_signs=True)
-    # D on the original channels (so it can be folded into W_q / W_k), then each part is rotated by H alone.
-    diagonal = _on_device(("signs", "rope_pairs", layer_idx, features), lambda: rope_pair_signs(layer_idx, features), device)
-    flipped = (tensor.float() * diagonal).to(dtype=tensor.dtype)
-    rebuilt = _quantize_split(flipped, layer_idx, bits, high, split, part_signs=False)
-    return (rebuilt.float() * diagonal).to(dtype=tensor.dtype)
+    if outliers:
+        _check_bits(high)
+    plan = _plan(layer_idx, target, bits, outliers, high, outlier_table, signs, tensor.shape[1], tensor.shape[-1],
+                 tensor.device)
+    return _quantize_with(plan, tensor)
 
 
 def validate(options: dict) -> None:
@@ -126,25 +110,6 @@ def outlier_channels(path: str | None, layer_idx: int, target: str, outliers: in
         raise ValueError("turboquant_mse outliers needs outlier_table")
     ranked = load_outlier_table(path)["channels"][target][int(layer_idx)]
     return torch.tensor([head[:outliers] for head in ranked], dtype=torch.long)
-
-
-def _split_indices(path: str | None, layer_idx: int, target: str, outliers: int, features: int,
-                   device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
-    """Outlier and remaining channel indices per KV head, each ``[heads, n]`` in ascending order, on ``device``."""
-    key = (path, int(layer_idx), target, int(outliers), int(features), str(device))
-    cached = _SPLITS.get(key)
-    if cached is None:
-        channels = outlier_channels(path, layer_idx, target, outliers)
-        heads = channels.shape[0]
-        mask = torch.zeros(heads, features, dtype=torch.bool)
-        mask.scatter_(1, channels, True)
-        if int(mask.sum()) != channels.numel():
-            raise ValueError("outlier channels repeat within a head")
-        high_idx = torch.stack([torch.nonzero(row).squeeze(1) for row in mask])
-        low_idx = torch.stack([torch.nonzero(~row).squeeze(1) for row in mask])
-        cached = (high_idx.to(device=device), low_idx.to(device=device))
-        _SPLITS[key] = cached
-    return cached
 
 
 def sign_diagonal(layer_idx: int, features: int) -> torch.Tensor:
@@ -212,66 +177,125 @@ def orthogonal(layer_idx: int, features: int) -> torch.Tensor:
     return cached
 
 
-def _quantize_part(tensor: torch.Tensor, layer_idx: int, bits: int, part_signs: bool) -> torch.Tensor:
-    """TurboQuant on vectors of any length: Hadamard path for powers of two, random orthogonal otherwise.
+class _Plan:
+    """Per-head rotation ``matrix`` [heads or 1, d, d] (rows in, columns out: r = x @ matrix) and the
+    segments of r that are quantized as separate TurboQuant vectors: (start, length, levels, boundaries)."""
 
-    ``part_signs``: the Hadamard path draws its own ±1 diagonal for this part ("independent" signs);
-    otherwise the caller has already applied D to the whole vector and the part is rotated by H alone.
+    def __init__(self, matrix: torch.Tensor, segments: list[tuple[int, int, torch.Tensor, torch.Tensor]]):
+        self.matrix = matrix
+        self.back = matrix.transpose(-1, -2).contiguous()
+        self.segments = segments
+
+
+def _plan(layer_idx: int, target: str, bits: int, outliers: int, high: int, table: str | None, signs: str,
+          heads: int, features: int, device: torch.device) -> _Plan:
+    """Build the transform once from the reference pieces (signs, Hadamard, random orthogonal, outlier split).
+
+    The rotation is pushed through the identity, so the matrix is exactly the linear map those pieces define:
+    D on the original channels, then each part (all channels, or outliers and the rest) rotated on its own.
     """
-    features = tensor.shape[-1]
-    device = tensor.device
-    if not features & (features - 1):
+    key = (int(layer_idx), target, int(bits), int(outliers), int(high), table, signs, int(heads), int(features),
+           str(device))
+    cached = _PLANS.get(key)
+    if cached is not None:
+        return cached
+    eye = torch.eye(features, dtype=torch.float64)
+    if not outliers:
+        parts = [(torch.arange(features), bits)]
+    else:
+        channels = outlier_channels(table, layer_idx, target, outliers)
+        if channels.shape[0] != heads:
+            raise ValueError(f"outlier table has {channels.shape[0]} heads, tensor has {heads}")
+        mask = torch.zeros(heads, features, dtype=torch.bool)
+        mask.scatter_(1, channels, True)
+        if int(mask.sum()) != channels.numel():
+            raise ValueError("outlier channels repeat within a head")
+        parts = [(torch.stack([torch.nonzero(row).squeeze(1) for row in mask]), high),
+                 (torch.stack([torch.nonzero(~row).squeeze(1) for row in mask]), bits)]
+    whole_signs = signs == "rope_pairs" or not outliers
+    flipped = eye * _sign_vector(signs, layer_idx, features).double() if whole_signs else eye
+    per_head = []
+    for head in range(heads if outliers else 1):
+        columns = []
+        for index, _ in parts:
+            chosen = index if index.dim() == 1 else index[head]
+            columns.append(_rotate_part(flipped[:, chosen], layer_idx, part_signs=not whole_signs))
+        per_head.append(torch.cat(columns, dim=1))
+    matrix = torch.stack(per_head).to(dtype=torch.float32, device=device)
+    segments, start = [], 0
+    for index, part_bits in parts:
+        length = index.shape[-1]
+        levels = centroids(part_bits, length)
+        boundaries = (levels[1:] + levels[:-1]) / 2
+        segments.append((start, length, levels.to(device), boundaries.to(device)))
+        start += length
+    cached = _Plan(matrix, segments)
+    _PLANS[key] = cached
+    return cached
+
+
+def _rotate_part(rows: torch.Tensor, layer_idx: int, part_signs: bool) -> torch.Tensor:
+    """The reference rotation of one part, applied to each row: Hadamard (with its own signs when
+    ``part_signs``) for power-of-two lengths, the seeded random orthogonal matrix otherwise."""
+    length = rows.shape[-1]
+    if not length & (length - 1):
         if part_signs:
-            vector = _on_device(("signs", "independent", layer_idx, features), lambda: sign_diagonal(layer_idx, features), device)
-        else:
-            vector = _on_device(("ones", features), lambda: torch.ones(features), device)
-        return _quantize(tensor, layer_idx, bits, signs=vector)
-    flat = tensor.reshape(-1, features).float()
-    norm = flat.norm(dim=-1, keepdim=True)
-    stored = norm.to(dtype=torch.float16).float()
-    unit = torch.where(norm == 0, torch.zeros_like(flat), flat / norm.clamp_min(torch.finfo(torch.float32).tiny))
-    rotation = _on_device(("orthogonal", layer_idx, features), lambda: orthogonal(layer_idx, features), device)
-    rotated = unit @ rotation.T
-    levels = _on_device(("levels", bits, features), lambda: centroids(bits, features), device)
-    index = (rotated.unsqueeze(-1) - levels).abs().argmin(dim=-1)
-    restored = levels[index] @ rotation
-    rebuilt = torch.where(norm == 0, torch.zeros_like(restored), restored * stored)
-    return rebuilt.reshape_as(tensor)
+            rows = rows * sign_diagonal(layer_idx, length).double()
+        return _hadamard64(rows)
+    return rows @ orthogonal(layer_idx, length).double().T
 
 
-def _quantize_split(tensor: torch.Tensor, layer_idx: int, bits: int, high: int,
-                    split: tuple[torch.Tensor, torch.Tensor], part_signs: bool) -> torch.Tensor:
-    """Outlier channels at ``high`` bits and the rest at ``bits``, two independent TurboQuant vectors per head.
+def _hadamard64(rows: torch.Tensor) -> torch.Tensor:
+    """``hadamard`` in float64 (it computes in float32), for building the matrix exactly."""
+    features = rows.shape[-1]
+    values = rows.double()
+    step = 1
+    while step < features:
+        values = values.reshape(*values.shape[:-1], features // (2 * step), 2, step)
+        left, right = values[..., 0, :], values[..., 1, :]
+        values = torch.stack((left + right, left - right), dim=-2).reshape(*rows.shape[:-1], features)
+        step *= 2
+    return values / math.sqrt(features)
 
-    ``tensor`` is ``[batch, kv_heads, seq, head_dim]``; ``split`` is the (outlier, remaining) channel
-    indices from ``_split_indices``, each ``[kv_heads, n]``.
+
+def _quantize_with(plan: _Plan, tensor: torch.Tensor) -> torch.Tensor:
+    """Rotate (one batched matmul), quantize each segment against its own norm and codebook, rotate back.
+
+    Same algorithm as the reference (normalize each part, rotate, nearest level, rotate back, times the
+    fp16 norm), in a few GPU operations per call instead of ~100: a part's norm is taken after its
+    rotation (equal up to rounding) and the nearest level comes from the midpoints (``bucketize``;
+    ties go to the lower level, as argmin did).
     """
-    batch, heads, seq, features = tensor.shape
-    high_idx, low_idx = split
-    if high_idx.shape[0] != heads:
-        raise ValueError(f"outlier table has {high_idx.shape[0]} heads, tensor has {heads}")
     values = tensor.float()
-    rebuilt = torch.empty_like(values)
-    for index, part_bits in ((high_idx, high), (low_idx, bits)):
-        expanded = index.view(1, heads, 1, -1).expand(batch, heads, seq, -1)
-        part = torch.gather(values, -1, expanded)
-        rebuilt.scatter_(-1, expanded, _quantize_part(part, layer_idx, part_bits, part_signs))
-    return rebuilt.to(dtype=tensor.dtype)
+    with _full_fp32_matmul(values.device):
+        rotated = torch.matmul(values, plan.matrix.unsqueeze(0) if plan.matrix.shape[0] > 1 else plan.matrix[0])
+        pieces = []
+        for start, length, levels, boundaries in plan.segments:
+            part = rotated[..., start:start + length]
+            norm = part.norm(dim=-1, keepdim=True)
+            unit = part / norm.clamp_min(torch.finfo(torch.float32).tiny)
+            index = torch.bucketize(unit.contiguous(), boundaries)
+            pieces.append(levels[index] * norm.to(torch.float16).float())
+        restored = pieces[0] if len(pieces) == 1 else torch.cat(pieces, dim=-1)
+        back = plan.back.unsqueeze(0) if plan.back.shape[0] > 1 else plan.back[0]
+        return torch.matmul(restored, back).to(dtype=tensor.dtype)
 
 
-def _quantize(tensor: torch.Tensor, layer_idx: int, bits: int, signs: torch.Tensor) -> torch.Tensor:
-    features = tensor.shape[-1]
-    flat = tensor.reshape(-1, features).float()
-    norm = flat.norm(dim=-1, keepdim=True)
-    stored = norm.to(dtype=torch.float16).float()
-    unit = torch.where(norm == 0, torch.zeros_like(flat), flat / norm.clamp_min(torch.finfo(torch.float32).tiny))
-    signs = signs.to(device=flat.device)
-    rotated = hadamard(unit * signs)
-    levels = _on_device(("levels", bits, features), lambda: centroids(bits, features), flat.device)
-    index = (rotated.unsqueeze(-1) - levels).abs().argmin(dim=-1)
-    restored = hadamard(levels[index]) * signs
-    rebuilt = torch.where(norm == 0, torch.zeros_like(restored), restored * stored)
-    return rebuilt.reshape_as(tensor).to(dtype=tensor.dtype)
+class _full_fp32_matmul:
+    """Keep CUDA matmuls in full float32 (no TF32) inside the quantizer, whatever the global setting."""
+
+    def __init__(self, device: torch.device):
+        self.cuda = device.type == "cuda"
+
+    def __enter__(self):
+        if self.cuda:
+            self.saved = torch.backends.cuda.matmul.allow_tf32
+            torch.backends.cuda.matmul.allow_tf32 = False
+
+    def __exit__(self, *exc):
+        if self.cuda:
+            torch.backends.cuda.matmul.allow_tf32 = self.saved
+        return False
 
 
 def _lloyd_max(levels: int) -> torch.Tensor:
