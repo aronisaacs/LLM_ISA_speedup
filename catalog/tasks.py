@@ -67,13 +67,15 @@ WIKITEXT_FULL = {
 # own pred.py, the few-shot and code tasks get no chat template and keep the BOS token; the
 # other eight use the chat template. One example at a time (no padding), as LongBench does.
 # No prompt is cut: lm-eval takes Llama-3.1's 131,072-token limit from the model config.
+# The six "_lb" tasks (catalog/lm_eval_tasks/longbench_lb) are lm-eval's with LongBench's own
+# prompts; lm-eval's differ in trailing whitespace (e.g. "Next line of code:" without the newline).
 LONGBENCH_E_CATEGORIES = {
     "single_doc_qa": ("longbench_qasper_e", "longbench_multifieldqa_en_e"),
     "multi_doc_qa": ("longbench_hotpotqa_e", "longbench_2wikimqa_e"),
     "summarization": ("longbench_gov_report_e", "longbench_multi_news_e"),
-    "few_shot": ("longbench_trec_e", "longbench_triviaqa_e", "longbench_samsum_e"),
-    "synthetic": ("longbench_passage_count_e", "longbench_passage_retrieval_en_e"),
-    "code": ("longbench_lcc_e", "longbench_repobench-p_e"),
+    "few_shot": ("longbench_trec_e", "longbench_triviaqa_e_lb", "longbench_samsum_e_lb"),
+    "synthetic": ("longbench_passage_count_e_lb", "longbench_passage_retrieval_en_e_lb"),
+    "code": ("longbench_lcc_e_lb", "longbench_repobench-p_e_lb"),
 }
 _LONGBENCH_PLAIN = ("few_shot", "code")
 _LLAMA31_8B_BOS = "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16,add_bos_token=True"
