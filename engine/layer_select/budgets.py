@@ -83,8 +83,12 @@ def write_selections(scores_dir, out_dir, n_layers=None, budgets=BUDGETS, scored
     return payloads
 
 
-def budget_run(selections, tasks=TASKS, results_dir=FIGURES) -> dict:
-    """Dense plus one configuration per selection, for each task."""
+def budget_run(selections, tasks=TASKS, results_dir=FIGURES, log_samples=False) -> dict:
+    """Dense plus one configuration per selection, for each task.
+
+    ``log_samples`` writes per-question scores of the selections (not dense) next to each
+    result, for paired comparisons between allocators.
+    """
     configurations = []
     for task in tasks:
         configurations.append(
@@ -102,6 +106,8 @@ def budget_run(selections, tasks=TASKS, results_dir=FIGURES) -> dict:
                     results_dir=results_dir,
                 )
             )
+            if log_samples:
+                configurations[-1]["log_samples"] = True
     return {
         "model": "hf",
         "batch_size": BATCH_SIZE,

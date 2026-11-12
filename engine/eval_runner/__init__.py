@@ -8,6 +8,7 @@ from engine.eval_runner.execute import (
     result_output_path,
     shorten_result,
     write_result_json,
+    write_samples,
 )
 from engine.eval_runner.load_run import grid, load_run, merge, reject_deprecated_kv_keys, split_base_and_configurations
 
@@ -25,4 +26,5 @@ __all__ = [
     "shorten_result",
     "split_base_and_configurations",
     "write_result_json",
+    "write_samples",
 ]

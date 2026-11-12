@@ -68,7 +68,7 @@ def tasks_run() -> dict:
     payloads = selections_for_budgets(rows, LLAMA31_LAYERS, turboquant_mse(), dense_ppl, budgets=BUDGETS)
     for payload in payloads:
         payload["tag"] = f"{TAG}_{payload['tag']}"
-    return budget_run(payloads)
+    return budget_run(payloads, log_samples=True)  # per-question scores for the joint-KL comparison
 
 
 def main() -> None:

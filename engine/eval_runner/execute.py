@@ -167,6 +167,43 @@ def write_result_json(lm, base, configuration, results, simulation=None):
     return output_path
 
 
+def samples_output_path(base, configuration) -> Path:
+    """``<output>.samples.jsonl`` next to the run's JSON."""
+    path = result_output_path(base, configuration)
+    return path.with_name(path.stem + ".samples.jsonl")
+
+
+def write_samples(base, configuration, results) -> Path | None:
+    """Per-question scores of a run with ``log_samples``, one line per (task, question, filter).
+
+    Keeps what a paired comparison needs (task, doc_id, filter, prompt_hash, metric values) and
+    the filtered response. Not part of ``results.json`` or the run identity.
+    """
+    samples = results.get("samples") if isinstance(results, dict) else None
+    if not samples:
+        return None
+    lines = []
+    for task in sorted(samples):
+        for entry in sorted(samples[task], key=lambda e: (e.get("doc_id", 0), str(e.get("filter")))):
+            response = entry.get("filtered_resps")
+            if isinstance(response, list) and len(response) == 1:
+                response = response[0]
+            lines.append(json.dumps({
+                "task": task,
+                "doc_id": entry.get("doc_id"),
+                "filter": entry.get("filter"),
+                "prompt_hash": entry.get("prompt_hash"),
+                "metrics": {name: entry[name] for name in entry.get("metrics", []) if name in entry},
+                "response": response,
+            }, default=_json_default))
+    path = samples_output_path(base, configuration)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text("\n".join(lines) + "\n")
+    os.replace(tmp, path)
+    return path
+
+
 def _score_tasks(payload: dict) -> list[str]:
     groups = payload.get("groups") or {}
     if groups:

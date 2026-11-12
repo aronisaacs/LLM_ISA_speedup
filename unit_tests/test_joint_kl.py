@@ -134,5 +134,34 @@ class CalibrationSetTests(unittest.TestCase):
         self.assertEqual(merged, {"m": {"gsm8k": 0.75}})
 
 
+class SamplesTests(unittest.TestCase):
+    def test_write_samples_keeps_one_line_per_question_and_filter(self):
+        from engine.eval_runner.execute import write_samples
+
+        results = {"samples": {"gsm8k": [
+            {"doc_id": 1, "filter": "strict-match", "prompt_hash": "b", "metrics": ["exact_match"],
+             "exact_match": 0.0, "filtered_resps": ["[invalid]"], "doc": {"big": "x"}},
+            {"doc_id": 0, "filter": "flexible-extract", "prompt_hash": "a", "metrics": ["exact_match"],
+             "exact_match": 1.0, "filtered_resps": ["18"]},
+        ]}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_samples({}, {"output_path": f"{tmp}/gsm8k_x.json"}, results)
+            self.assertEqual(path.name, "gsm8k_x.samples.jsonl")
+            rows = [json.loads(line) for line in path.read_text().splitlines()]
+        self.assertEqual([r["doc_id"] for r in rows], [0, 1])
+        self.assertEqual(rows[0], {"task": "gsm8k", "doc_id": 0, "filter": "flexible-extract", "prompt_hash": "a",
+                                   "metrics": {"exact_match": 1.0}, "response": "18"})
+
+    def test_budget_run_logs_samples_of_selections_not_dense(self):
+        from engine.layer_select.budgets import budget_run
+
+        selection = {"tag": "x", "kv": turboquant_mse(), "budget": 0.7, "compression": 0.75}
+        run = budget_run([selection], log_samples=True)
+        logged = {c["name"]: c.get("log_samples", False) for c in run["configurations"]}
+        self.assertTrue(all(v for k, v in logged.items() if not k.endswith("_dense")))
+        self.assertFalse(any(v for k, v in logged.items() if k.endswith("_dense")))
+        self.assertFalse(any("log_samples" in c for c in budget_run([selection])["configurations"]))
+
+
 if __name__ == "__main__":
     unittest.main()

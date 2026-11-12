@@ -35,6 +35,7 @@ from engine.eval_runner import (  # noqa: E402
     shorten_result,
     result_output_path,
     write_result_json,
+    write_samples,
     split_base_and_configurations,
 )
 from engine.eval_runner.cache import reuse_cached_result, simulation_identity, identities_match
@@ -216,6 +217,8 @@ def _run_configurations(args) -> None:
                     write_result_json(lm, base, configuration, results,
                                       simulation_identity(base, configuration, kv_spec))
                 _record(results, simulation_identity(base, configuration, kv_spec), args.results_root)
+                if merge(base, configuration, "log_samples", False):
+                    write_samples(base, configuration, results)
 
         finished += 1
         elapsed = time.monotonic() - started

@@ -94,7 +94,7 @@ def search(args) -> list[dict]:
 
 
 def tasks_run(selections: list[dict]) -> dict:
-    run = budget_run(selections)
+    run = budget_run(selections, log_samples=True)  # per-question scores for the paired comparison
     task = lambda c: next(i for i, name in enumerate(TASK_ORDER) if f"llama31_{name}_" in c["name"])  # noqa: E731
     run["configurations"].sort(key=lambda c: (c["name"].endswith("_dense"), task(c)))
     return run
