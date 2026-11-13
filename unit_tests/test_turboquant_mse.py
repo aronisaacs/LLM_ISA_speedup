@@ -225,9 +225,10 @@ class TurboquantMseFastPathTests(unittest.TestCase):
 class TurboquantMseLongbenchTests(unittest.TestCase):
     def test_run_list(self):
         names = [c["name"] for c in longbench_run()["configurations"]]
-        self.assertEqual(len(names), 10)
+        self.assertEqual(len(names), 12)
         self.assertTrue(names[0].startswith("llama31_longbench_e_chat_"))
-        self.assertEqual(sum("_dprompt" in n for n in names), 4)
+        self.assertEqual(sum("_dprompt" in n for n in names), 6)
+        self.assertFalse(any("out32_3b_2b_dprompt" in n for n in names if "longbench" not in n))
         self.assertFalse(any("ceval" in n for n in names))
         for c in longbench_run()["configurations"]:
             parse_kv_spec(c["kv"])

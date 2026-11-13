@@ -8,8 +8,10 @@ Not a contract task: an internal check against the paper's only Llama-3.1-8B num
   64 outlier channels at 3 bits + 64 at 2 (our 2.5 level)      2.5 bits per value
   the same 2.5 bits, but the prompt attends to its own K/V uncompressed (``prompt_attention``);
   the cache still stores the compressed prompt, and every generated token reads it compressed
+  the paper's 2.25 bits with the same uncompressed prompt attention (added after the first run
+  showed most of the loss comes from compressing the prompt's attention)
 
-The last variant also runs on GSM8K and HumanEval, to see how much of the loss there comes
+The 2.5-bit dense-prompt variant also runs on GSM8K and HumanEval, to see how much of the loss there comes
 from compressing the prompt's own attention. (Not on CEval: it scores the prompt alone,
 so a dense prompt would leave nothing compressed.)
 
@@ -72,6 +74,7 @@ def selections() -> list[dict]:
         ("out32_3b_2b", _split(32), 32),
         ("out64_3b_2b", _split(64), 64),
         ("out64_3b_2b_dprompt", _split(64, dense_prompt=True), 64),
+        ("out32_3b_2b_dprompt", _split(32, dense_prompt=True), 32),
     ]
     out = []
     for tag, kv, outliers in rows:
@@ -84,7 +87,8 @@ def longbench_run(limit: int | None = None) -> dict:
     chosen = selections()
     if limit is None:
         run = budget_run(chosen, tasks=(LONGBENCH_E_CHAT, LONGBENCH_E_PLAIN))
-        contract = budget_run([chosen[-1]], tasks=(GSM8K_20PCT, HUMANEVAL_INSTRUCT))
+        dprompt = next(c for c in chosen if c["tag"] == "turboquant_mse_out64_3b_2b_dprompt")
+        contract = budget_run([dprompt], tasks=(GSM8K_20PCT, HUMANEVAL_INSTRUCT))
         # Dense GSM8K / HumanEval are already recorded; only the dense-prompt runs are new.
         run["configurations"] += [c for c in contract["configurations"] if not c["name"].endswith("_dense")]
     else:
