@@ -16,6 +16,9 @@ AFTER_APPEND: dict[str, Callable] = {}
 OPTION_SIGNATURES: dict[str, Callable] = {}
 # Optional declarative checks before model loading; algorithm-owned.
 OPTION_VALIDATORS: dict[str, Callable] = {}
+# Optional: how many consecutive tokens a step compresses together (its options -> group size);
+# a recent window ages tokens out in whole aligned groups. Default 1.
+WINDOW_GROUPS: dict[str, Callable] = {}
 
 
 def validate_options(name, options):

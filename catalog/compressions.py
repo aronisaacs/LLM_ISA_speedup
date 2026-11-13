@@ -70,7 +70,7 @@ TURBOQUANT_RECENT_WINDOW = 128
 
 def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_bits=None, outlier_table=None,
                    signs="rope_pairs", recent_window=TURBOQUANT_RECENT_WINDOW, rotation="hadamard",
-                   codebook="gaussian"):
+                   codebook="gaussian", outlier_group=0):
     """Randomized Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE.
 
     The sweep climber sets the level per slot: dense, then 4, 3, 2.5 (2 bits + 64 outlier
@@ -81,7 +81,8 @@ def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_b
 
     ``recent_window`` (default 128, Aron 2026-11-13): the newest tokens stay exact; 0 writes no key,
     the identity of runs made before the window. ``rotation="orthogonal"`` and ``codebook="beta"`` are
-    the paper-faithful variants (one LongBench check), written only when used.
+    the paper-faithful variants (one LongBench check), written only when used; so is
+    ``outlier_group`` (dynamic outliers per group of tokens instead of the table, that check only).
     """
     options = {} if signs == "independent" else {"signs": str(signs)}
     if recent_window:
@@ -91,7 +92,10 @@ def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_b
     if codebook != "gaussian":
         options["codebook"] = str(codebook)
     if outliers:
-        options.update(outliers=int(outliers), outlier_table=str(outlier_table))
+        if outlier_group:
+            options.update(outliers=int(outliers), outlier_group=int(outlier_group))
+        else:
+            options.update(outliers=int(outliers), outlier_table=str(outlier_table))
         if outlier_bits is not None:
             options["outlier_bits"] = int(outlier_bits)
     return _step("turboquant_mse", k_layers, v_layers, bits=int(bits), **options)

@@ -5,7 +5,8 @@ owns dispatch, layer selection, absolute positions and dense-byte observations.
 
 A step with ``recent_window`` W > 0 (only methods that compress each vector on its own accept
 it) leaves the newest W tokens exact: the cache stores new tokens as they are, and compresses a
-token in place once it is W tokens old. The prompt's own attention therefore sees its last W
+token in place once it is W tokens old. A method that compresses groups of G tokens together
+(``WINDOW_GROUPS``) ages them out in whole aligned groups, so W to W + G - 1 tokens stay exact. The prompt's own attention therefore sees its last W
 tokens exact and older ones compressed, unless ``prompt_attention`` is "dense".
 """
 
@@ -14,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from engine.kv_compress.methods import AFTER_APPEND, get_method
+from engine.kv_compress.methods import AFTER_APPEND, WINDOW_GROUPS, get_method
 from engine.kv_compress import metrics
 from engine.kv_compress.pipeline import compress_kv
 from engine.kv_compress.rope import RopeTables
@@ -80,7 +81,8 @@ def patch_cache_update(spec: KvSpec, rope: RopeTables | None = None) -> Callable
 def _compress_aged(step, keys, values, layer_idx, start, end, rope):
     """Compress, in place in the stored cache, the tokens that left this step's window in this update."""
     window = step.kwargs["recent_window"]
-    first, last = max(start - window, 0), max(end - window, 0)
+    group = WINDOW_GROUPS[step.method](step.kwargs) if step.method in WINDOW_GROUPS else 1
+    first, last = max(start - window, 0) // group * group, max(end - window, 0) // group * group
     if last <= first:
         return
     method = get_method(step.method)

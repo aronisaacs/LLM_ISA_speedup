@@ -33,6 +33,12 @@ Paper-faithful options (for one check against the paper's Table 1; not our desig
                              random unit vector in d dimensions, density ∝ (1 - x²)^((d-3)/2),
                              instead of the Gaussian approximation N(0, 1/d).
 
+  ``outlier_group=G``         dynamic outliers, as in the QJL code by the paper's first author: for
+                             each aligned group of G tokens, per KV head, the ``outliers`` channels
+                             with the largest norm over the group (instead of the calibration table).
+                             Needs a recent window (the cache ages tokens out in whole groups). The
+                             channel indices this needs are not counted in the bits per value.
+
 ``recent_window`` (tokens) is read by the cache (engine/kv_compress/cache.py): the newest
 ``recent_window`` tokens stay exact and each token is compressed when it leaves the window.
 This method compresses every vector on its own, so that equals compressing on arrival and
@@ -51,7 +57,7 @@ from pathlib import Path
 
 import torch
 
-from engine.kv_compress.methods import METHODS, OPTION_VALIDATORS
+from engine.kv_compress.methods import METHODS, OPTION_VALIDATORS, WINDOW_GROUPS
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -79,6 +85,7 @@ def apply(
     rotation: str = "hadamard",
     codebook: str = "gaussian",
     recent_window: int = 0,
+    outlier_group: int = 0,
     **_unused,
 ) -> torch.Tensor:
     del _unused, recent_window  # the window is the cache's job
@@ -91,6 +98,8 @@ def apply(
     high = bits + 1 if outlier_bits is None else outlier_bits
     if outliers:
         _check_bits(high)
+    if outlier_group:
+        return _quantize_grouped(tensor, layer_idx, bits, outliers, high, signs, outlier_group, rotation, codebook)
     plan = _plan(layer_idx, target, bits, outliers, high, outlier_table, signs, tensor.shape[1], tensor.shape[-1],
                  tensor.device, rotation, codebook)
     return _quantize_with(plan, tensor)
@@ -105,10 +114,17 @@ def validate(options: dict) -> None:
     if not isinstance(window, int) or isinstance(window, bool) or window < 0:
         raise ValueError("turboquant_mse recent_window must be a non-negative integer")
     outliers = options.get("outliers", 0)
+    group = options.get("outlier_group", 0)
+    if not isinstance(group, int) or isinstance(group, bool) or group < 0:
+        raise ValueError("turboquant_mse outlier_group must be a non-negative integer")
+    if group and not (outliers and window):
+        raise ValueError("turboquant_mse outlier_group needs outliers and a recent_window")
     if not outliers:
         return
     if not isinstance(outliers, int) or isinstance(outliers, bool) or outliers < 1:
         raise ValueError("turboquant_mse outliers must be a positive integer")
+    if group:
+        return
     if not options.get("outlier_table"):
         raise ValueError("turboquant_mse outliers needs outlier_table")
     table = load_outlier_table(options["outlier_table"])
@@ -312,6 +328,45 @@ def _hadamard64(rows: torch.Tensor) -> torch.Tensor:
     return values / math.sqrt(features)
 
 
+def _quantize_grouped(tensor: torch.Tensor, layer_idx: int, bits: int, outliers: int, high: int, signs: str,
+                      group: int, rotation: str, codebook: str) -> torch.Tensor:
+    """Dynamic outliers: per aligned group of ``group`` tokens and KV head, the ``outliers`` channels with the
+    largest norm over the group get ``high`` bits; each part is rotated (fixed per part length) and quantized
+    against its own norm and codebook, as in the fixed split. Tokens must come in whole groups."""
+    batch, heads, tokens, features = tensor.shape
+    if tokens % group:
+        raise ValueError(f"turboquant_mse outlier_group={group} needs whole groups, got {tokens} tokens")
+    values = tensor.float().reshape(batch, heads, tokens // group, group, features)
+    if signs == "rope_pairs":
+        values = values * rope_pair_signs(layer_idx, features).to(values.device)
+    chosen = values.norm(dim=-2).topk(outliers, dim=-1).indices.sort(dim=-1).values  # [b, h, groups, outliers]
+    mask = torch.zeros(batch, heads, tokens // group, features, dtype=torch.bool, device=values.device)
+    mask.scatter_(-1, chosen, True)
+    rest = torch.nonzero(~mask.reshape(-1, features))[:, 1].reshape(*mask.shape[:-1], features - outliers)
+    restored = torch.empty_like(values)
+    with _full_fp32_matmul(values.device):
+        for index, part_bits in ((chosen, high), (rest, bits)):
+            length = index.shape[-1]
+            gather = index.unsqueeze(-2).expand(-1, -1, -1, group, -1)
+            part = values.gather(-1, gather)
+            matrix = _part_matrix(layer_idx, length, signs, rotation).to(values.device)
+            rotated = part @ matrix
+            norm = rotated.norm(dim=-1, keepdim=True)
+            unit = rotated / norm.clamp_min(torch.finfo(torch.float32).tiny)
+            levels = (beta_centroids if codebook == "beta" else centroids)(part_bits, length).to(values.device)
+            snapped = levels[torch.bucketize(unit.contiguous(), (levels[1:] + levels[:-1]) / 2)]
+            restored.scatter_(-1, gather, (snapped * norm.to(torch.float16).float()) @ matrix.T)
+    if signs == "rope_pairs":
+        restored = restored * rope_pair_signs(layer_idx, features).to(values.device)
+    return restored.reshape(tensor.shape).to(dtype=tensor.dtype)
+
+
+def _part_matrix(layer_idx: int, length: int, signs: str, rotation: str) -> torch.Tensor:
+    """Rotation of one dynamic part (r = x @ matrix): the fixed split's part rotation for this length."""
+    eye = torch.eye(length, dtype=torch.float64)
+    return _rotate_part(eye, layer_idx, part_signs=signs != "rope_pairs", dense=rotation == "orthogonal").float()
+
+
 def _quantize_with(plan: _Plan, tensor: torch.Tensor) -> torch.Tensor:
     """Rotate (one batched matmul), quantize each segment against its own norm and codebook, rotate back.
 
@@ -412,3 +467,4 @@ def _check_bits(bits: int) -> None:
 
 METHODS["turboquant_mse"] = apply
 OPTION_VALIDATORS["turboquant_mse"] = validate
+WINDOW_GROUPS["turboquant_mse"] = lambda options: options.get("outlier_group", 0) or 1

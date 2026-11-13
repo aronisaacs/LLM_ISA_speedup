@@ -225,7 +225,7 @@ class TurboquantMseFastPathTests(unittest.TestCase):
 class TurboquantMseLongbenchTests(unittest.TestCase):
     def test_run_list(self):
         names = [c["name"] for c in longbench_run()["configurations"]]
-        self.assertEqual(len(names), 8)
+        self.assertEqual(len(names), 10)
         self.assertTrue(names[0].startswith("llama31_longbench_e_tr_chat_"))
         self.assertEqual(sum("_dense" in n for n in names), 2)
         for c in longbench_run()["configurations"]:
@@ -308,6 +308,51 @@ class TurboquantMsePaperOptionsTests(unittest.TestCase):
             parse_kv_spec(turboquant_mse(rotation="qr"))
         with self.assertRaises(ValueError):
             parse_kv_spec(turboquant_mse(codebook="uniform"))
+
+    def test_dynamic_outliers_pick_the_largest_channels_of_each_group(self):
+        torch.manual_seed(0)
+        tensor = torch.randn(1, 2, 64, 128)
+        tensor[:, :, :32, :32] *= 20  # group 0: channels 0-31 dominate
+        tensor[:, :, 32:, 96:] *= 20  # group 1: channels 96-127
+        options = dict(layer_idx=0, target="k", bits=2, outliers=32, rotation="orthogonal", codebook="beta",
+                       signs="rope_pairs")
+        grouped = apply(tensor, outlier_group=32, **options)
+        halves = torch.cat([apply(tensor[:, :, :32], outlier_group=32, **options),
+                            apply(tensor[:, :, 32:], outlier_group=32, **options)], dim=-2)
+        self.assertTrue(torch.allclose(grouped, halves, atol=1e-6))  # groups do not interact
+        # The dominant channels get the 3-bit part: their error is lower than with the outliers elsewhere.
+        swapped = torch.cat([tensor[:, :, 32:], tensor[:, :, :32]], dim=-2)
+        mixed = apply(torch.cat([tensor[:, :, :16], swapped[:, :, :16]], dim=-2), outlier_group=32, **options)
+        error = lambda out, ref: ((out - ref).norm() / ref.norm()).item()
+        self.assertLess(error(grouped, tensor), error(mixed, torch.cat([tensor[:, :, :16], swapped[:, :, :16]], dim=-2)))
+        with self.assertRaises(ValueError):
+            apply(tensor[:, :, :40], outlier_group=32, **options)
+
+    def test_dynamic_outliers_need_a_window_and_age_out_in_groups(self):
+        from transformers.cache_utils import DynamicCache
+        from engine.kv_compress.cache import patch_cache_update
+
+        with self.assertRaises(ValueError):
+            parse_kv_spec(turboquant_mse(bits=2, outliers=32, outlier_group=32, recent_window=0))
+        kv = turboquant_mse(bits=2, outliers=32, outlier_group=32, recent_window=4)
+        self.assertNotIn("outlier_table", kv["pipeline"][0])
+        uninstall = patch_cache_update(parse_kv_spec(kv))
+        try:
+            torch.manual_seed(0)
+            cache = DynamicCache()
+            tokens = [torch.randn(1, 2, 40, 128)] + [torch.randn(1, 2, 1, 128) for _ in range(28)]
+            out_key, _ = cache.update(tokens[0].clone(), tokens[0].clone(), 0)
+            self.assertTrue(torch.equal(out_key[..., 32:, :], tokens[0][..., 32:, :]))  # 36 aged: one whole group
+            self.assertFalse(torch.allclose(out_key[..., :32, :], tokens[0][..., :32, :]))
+            for step in tokens[1:]:
+                out_key, _ = cache.update(step.clone(), step.clone(), 0)
+            every = torch.cat(tokens, dim=-2)  # 68 tokens, 64 aged: two groups
+            self.assertTrue(torch.equal(out_key[..., 64:, :], every[..., 64:, :]))
+            self.assertTrue(torch.equal(out_key[..., 32:64, :],
+                                        apply(every[..., 32:64, :], layer_idx=0, target="k", bits=2, outliers=32,
+                                              outlier_group=32, signs="rope_pairs")))
+        finally:
+            uninstall()
 
     def test_truncation_keeps_both_ends(self):
         import importlib.util

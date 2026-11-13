@@ -9,6 +9,8 @@ Truncated set (the current run; prompts cut to 31,500 tokens in the middle, as L
             a dense random orthogonal rotation per part, Lloyd-Max levels for the exact unit-vector
             coordinate distribution, the prompt attending to its own K/V uncompressed, the newest
             128 tokens exact (the QJL code by the paper's first author does both)
+  paper_dynamic   the same, with outliers picked per group of 32 tokens and KV head (largest norm over
+                  the group), as the first author's QJL code does, instead of our calibration table
   out32_dprompt   the same split with our Hadamard + RoPE-pair signs and Gaussian levels
                   (shows whether the paper-faithful details matter)
   out64     64 + 64 (2.5 bits) with our defaults, including the 128-token window (our setup from now on)
@@ -82,6 +84,8 @@ def selections() -> list[dict]:
     """The truncated run."""
     return _rows([
         ("paper_out32", _split(32, dense_prompt=True, window=128, rotation="orthogonal", codebook="beta"), 32),
+        ("paper_out32_dynamic",
+         _split(32, dense_prompt=True, window=128, rotation="orthogonal", codebook="beta", outlier_group=32), 32),
         ("out32_3b_2b_dprompt_w128", _split(32, dense_prompt=True, window=128), 32),
         ("out64_3b_2b_w128", _split(64, window=128), 64),
     ])
