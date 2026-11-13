@@ -225,21 +225,27 @@ class TurboquantMseFastPathTests(unittest.TestCase):
 class TurboquantMseLongbenchTests(unittest.TestCase):
     def test_run_list(self):
         names = [c["name"] for c in longbench_run()["configurations"]]
-        self.assertEqual(len(names), 12)
-        self.assertTrue(names[0].startswith("llama31_longbench_e_chat_"))
-        self.assertEqual(sum("_dprompt" in n for n in names), 6)
-        self.assertFalse(any("out32_3b_2b_dprompt" in n for n in names if "longbench" not in n))
-        self.assertFalse(any("ceval" in n for n in names))
+        self.assertEqual(len(names), 8)
+        self.assertTrue(names[0].startswith("llama31_longbench_e_tr_chat_"))
+        self.assertEqual(sum("_dense" in n for n in names), 2)
         for c in longbench_run()["configurations"]:
-            parse_kv_spec(c["kv"])
-            if "longbench" in c["name"]:
-                self.assertEqual(c["batch_size"], 1)
+            spec = parse_kv_spec(c["kv"])
+            self.assertEqual(c["batch_size"], 1)
+            for step in spec.pipeline:
+                self.assertEqual(step.kwargs["recent_window"], 128)
 
-    def test_paper_split_is_32_outliers_and_2_25_bits(self):
-        run = longbench_run()
-        paper = next(c for c in run["configurations"] if c["name"].endswith("_out32_3b_2b"))
-        self.assertEqual(paper["kv"]["pipeline"][0]["outliers"], 32)
+    def test_paper_variant(self):
+        paper = next(c for c in longbench_run()["configurations"] if c["name"].endswith("_paper_out32"))
+        step = paper["kv"]["pipeline"][0]
+        self.assertEqual((step["outliers"], step["rotation"], step["codebook"]), (32, "orthogonal", "beta"))
+        self.assertEqual(paper["kv"]["prompt_attention"], "dense")
         self.assertAlmostEqual(paper["metadata"]["kv_compression"], 1 - 2.25 / 16)
+
+    def test_untruncated_rows_keep_their_identity(self):
+        from compression_topics.turboquant_mse.scripts.turboquant_mse_longbench import untruncated_selections
+
+        for selection in untruncated_selections():
+            self.assertNotIn("recent_window", selection["kv"]["pipeline"][0])
 
     def test_timing_run_is_limited_and_kept_out_of_results(self):
         configurations = longbench_run(limit=5)["configurations"]
@@ -249,23 +255,84 @@ class TurboquantMseLongbenchTests(unittest.TestCase):
             self.assertTrue(c["output_path"].startswith("logs/longbench_timing/"))
 
     def test_summary_averages_categories_and_tasks(self):
-        from catalog.tasks import LONGBENCH_E_CHAT, LONGBENCH_E_PLAIN
+        from catalog.tasks import LONGBENCH_E_TR_CHAT, LONGBENCH_E_TR_PLAIN
 
         rows = []
-        for task in (LONGBENCH_E_CHAT, LONGBENCH_E_PLAIN):
+        for task in (LONGBENCH_E_TR_CHAT, LONGBENCH_E_TR_PLAIN):
             scores = {name: {"score,none": 0.5} for name in task["tasks"]}
             rows.append({"identity": {"pretrained": "meta-llama/Llama-3.1-8B-Instruct", "tasks": task["tasks"],
                                       "kv": {"pipeline": []}, "limit": None}, "scores": scores})
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "results.json"
             path.write_text(json.dumps({"simulations": rows}))
-            line = next(l for l in summary(path).splitlines() if l.startswith("ours dense"))
+            text = summary(path).split("-- truncated")[1]
+            line = next(l for l in text.splitlines() if l.startswith("ours dense"))
         self.assertEqual(line.split()[2:], ["50.00"] * 7)
+
+
+class TurboquantMsePaperOptionsTests(unittest.TestCase):
+    def test_beta_levels_approach_the_gaussian_ones_in_high_dimension(self):
+        from compression_topics.turboquant_mse.algorithms.turboquant_mse import beta_centroids
+
+        for bits in (2, 3):
+            gaussian = centroids(bits, 1024)
+            beta = beta_centroids(bits, 1024)
+            self.assertLess(((beta - gaussian).abs() / gaussian.abs()).max().item(), 0.01)
+            small = beta_centroids(bits, 32)
+            self.assertTrue(torch.allclose(small, -small.flip(0), atol=1e-6))
+            self.assertTrue(bool((small[1:] > small[:-1]).all()))
+            self.assertLess(small.abs().max().item(), 1.0)
+
+    def test_paper_known_two_bit_levels(self):
+        from compression_topics.turboquant_mse.algorithms.turboquant_mse import beta_centroids
+
+        # Paper, Section 3.1: b = 2 gives ±0.453/sqrt(d) and ±1.51/sqrt(d) for moderately large d.
+        scaled = beta_centroids(2, 512) * math.sqrt(512)
+        self.assertTrue(torch.allclose(scaled[2:], torch.tensor([0.453, 1.51]), atol=0.01))
+
+    def test_orthogonal_rotation_is_orthogonal_and_differs_from_hadamard(self):
+        from compression_topics.turboquant_mse.algorithms.turboquant_mse import _plan
+
+        dense = _plan(0, "k", 2, 32, 3, TURBOQUANT_OUTLIER_TABLE, "rope_pairs", 8, 128, torch.device("cpu"),
+                      "orthogonal", "beta")
+        ours = _plan(0, "k", 2, 32, 3, TURBOQUANT_OUTLIER_TABLE, "rope_pairs", 8, 128, torch.device("cpu"))
+        eye = torch.eye(128)
+        self.assertTrue(torch.allclose(dense.matrix[0] @ dense.matrix[0].T, eye, atol=1e-5))
+        self.assertFalse(torch.allclose(dense.matrix, ours.matrix))
+
+    def test_options_are_validated_and_written_only_when_used(self):
+        self.assertNotIn("rotation", turboquant_mse()["pipeline"][0])
+        self.assertEqual(turboquant_mse()["pipeline"][0]["recent_window"], 128)
+        self.assertNotIn("recent_window", turboquant_mse(recent_window=0)["pipeline"][0])
+        with self.assertRaises(ValueError):
+            parse_kv_spec(turboquant_mse(rotation="qr"))
+        with self.assertRaises(ValueError):
+            parse_kv_spec(turboquant_mse(codebook="uniform"))
+
+    def test_truncation_keeps_both_ends(self):
+        import importlib.util
+        from unittest import mock
+
+        spec = importlib.util.spec_from_file_location(
+            "tr_prompts", Path(__file__).resolve().parents[1] / "catalog/lm_eval_tasks/longbench_tr/tr_prompts.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        class Words:
+            def __call__(self, text, truncation=False):
+                return type("T", (), {"input_ids": text.split(" ")})()
+
+            def decode(self, ids, skip_special_tokens=True):
+                return " ".join(ids) + "|"
+
+        with mock.patch.object(module, "_tokenizer", lambda: Words()):
+            self.assertEqual(module.truncate("a b c", maxlen=4), "a b c")
+            self.assertEqual(module.truncate("a b c d e f", maxlen=4), "a b|e f|")
 
 
 class TurboquantMseOutlierSplitTests(unittest.TestCase):
     def test_independent_signs_keep_the_earlier_kv_options(self):
-        self.assertEqual(turboquant_mse(bits=3, signs="independent")["pipeline"][0],
+        self.assertEqual(turboquant_mse(bits=3, signs="independent", recent_window=0)["pipeline"][0],
                          {"method": "turboquant_mse", "k_layers": "all", "v_layers": "all", "bits": 3})
         self.assertEqual(turboquant_mse(bits=3)["pipeline"][0]["signs"], "rope_pairs")
 

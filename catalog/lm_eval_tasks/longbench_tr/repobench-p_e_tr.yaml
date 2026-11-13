@@ -1,0 +1,22 @@
+# LongBench-E repobench-p: LongBench's prompt, truncated to 31,500 tokens as pred.py does (tr_prompts.py).
+task: longbench_repobench-p_e_tr
+dataset_path: Xnhyacinth/LongBench
+test_split: test
+dataset_name: repobench-p_e
+doc_to_text: !function tr_prompts.repobench_p
+doc_to_target: '{{answers}}'
+process_results: !function tr_metrics.get_code_sim_with_score
+generation_kwargs:
+  max_gen_toks: 64
+  temperature: 1
+  do_sample: False
+  until: []
+metric_list:
+  - metric: "score"
+    aggregation: mean
+    higher_is_better: True
+  - metric: "code_sim_score"
+    aggregation: mean
+    higher_is_better: True
+metadata:
+  version: 5.0

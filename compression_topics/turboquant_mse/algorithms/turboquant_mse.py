@@ -26,6 +26,18 @@ into one rotation matrix per KV head (built once from the pieces above), so each
 batched matmul, a nearest-level lookup per part and a matmul back: ~15-25 GPU operations
 instead of ~125-240, which matters for every generated token.
 
+Paper-faithful options (for one check against the paper's Table 1; not our design):
+  ``rotation="orthogonal"``  every part uses a seeded random orthogonal matrix (QR of a Gaussian
+                             matrix, the paper's Section 3.1) instead of a Hadamard transform.
+  ``codebook="beta"``        Lloyd–Max levels for the exact distribution of one coordinate of a
+                             random unit vector in d dimensions, density ∝ (1 - x²)^((d-3)/2),
+                             instead of the Gaussian approximation N(0, 1/d).
+
+``recent_window`` (tokens) is read by the cache (engine/kv_compress/cache.py): the newest
+``recent_window`` tokens stay exact and each token is compressed when it leaves the window.
+This method compresses every vector on its own, so that equals compressing on arrival and
+reading the window's exact copies.
+
 The hardware order of operations (rotate the query once, sign/size sums, values'
 rotations folded into W_v and W_o) gives the same scores and outputs up to rounding,
 so it is not simulated separately.
@@ -46,6 +58,9 @@ ROOT = Path(__file__).resolve().parents[3]
 _SIGNS: dict[tuple[int, int], torch.Tensor] = {}
 _ORTHOGONAL: dict[tuple[int, int], torch.Tensor] = {}
 _STANDARD_CENTROIDS: dict[int, torch.Tensor] = {}
+_BETA_CENTROIDS: dict[tuple[int, int], torch.Tensor] = {}
+ROTATIONS = ("hadamard", "orthogonal")
+CODEBOOKS = ("gaussian", "beta")
 _TABLES: dict[str, dict] = {}
 # One plan per (layer, target, options, device): the per-head rotation matrix and its segments.
 _PLANS: dict[tuple, "_Plan"] = {}
@@ -61,24 +76,34 @@ def apply(
     outlier_bits: int | None = None,
     outlier_table: str | None = None,
     signs: str = "independent",
+    rotation: str = "hadamard",
+    codebook: str = "gaussian",
+    recent_window: int = 0,
     **_unused,
 ) -> torch.Tensor:
-    del _unused
+    del _unused, recent_window  # the window is the cache's job
     _check_bits(bits)
     _check_signs(signs)
+    _check_choice("rotation", rotation, ROTATIONS)
+    _check_choice("codebook", codebook, CODEBOOKS)
     if target not in {"k", "v"}:
         raise ValueError(f"turboquant_mse target must be 'k' or 'v', got {target!r}")
     high = bits + 1 if outlier_bits is None else outlier_bits
     if outliers:
         _check_bits(high)
     plan = _plan(layer_idx, target, bits, outliers, high, outlier_table, signs, tensor.shape[1], tensor.shape[-1],
-                 tensor.device)
+                 tensor.device, rotation, codebook)
     return _quantize_with(plan, tensor)
 
 
 def validate(options: dict) -> None:
     """Before model load: a known sign scheme, and an outlier split needs a readable table with that many channels."""
     _check_signs(options.get("signs", "independent"))
+    _check_choice("rotation", options.get("rotation", "hadamard"), ROTATIONS)
+    _check_choice("codebook", options.get("codebook", "gaussian"), CODEBOOKS)
+    window = options.get("recent_window", 0)
+    if not isinstance(window, int) or isinstance(window, bool) or window < 0:
+        raise ValueError("turboquant_mse recent_window must be a non-negative integer")
     outliers = options.get("outliers", 0)
     if not outliers:
         return
@@ -163,6 +188,33 @@ def centroids(bits: int, features: int) -> torch.Tensor:
     return standard / math.sqrt(features)
 
 
+def beta_centroids(bits: int, features: int) -> torch.Tensor:
+    """Lloyd–Max levels for the exact density of one coordinate of a random unit vector in ``features``
+    dimensions, f(x) ∝ (1 - x²)^((features - 3) / 2) on [-1, 1] (the paper's Lemma 1), on a fine grid."""
+    _check_bits(bits)
+    key = (int(bits), int(features))
+    cached = _BETA_CENTROIDS.get(key)
+    if cached is None:
+        grid = torch.linspace(-1, 1, 400_001, dtype=torch.float64)[1:-1]
+        weight = (1 - grid * grid).pow((features - 3) / 2)
+        weight = weight / weight.sum()
+        centers = centroids(bits, features).double()
+        for _ in range(500):
+            bounds = (centers[1:] + centers[:-1]) / 2
+            cell = torch.bucketize(grid, bounds)
+            mass = torch.zeros_like(centers).index_add_(0, cell, weight)
+            first = torch.zeros_like(centers).index_add_(0, cell, weight * grid)
+            updated = first / mass
+            updated = (updated - updated.flip(0)) / 2  # the density is symmetric; keep the levels exactly so
+            if (updated - centers).abs().max() < 1e-12:
+                centers = updated
+                break
+            centers = updated
+        cached = centers.to(torch.float32)
+        _BETA_CENTROIDS[key] = cached
+    return cached
+
+
 def orthogonal(layer_idx: int, features: int) -> torch.Tensor:
     """Seeded random orthogonal matrix (QR of a Gaussian matrix, sign-fixed), shape ``[features, features]``."""
     key = (int(layer_idx), int(features))
@@ -188,14 +240,15 @@ class _Plan:
 
 
 def _plan(layer_idx: int, target: str, bits: int, outliers: int, high: int, table: str | None, signs: str,
-          heads: int, features: int, device: torch.device) -> _Plan:
+          heads: int, features: int, device: torch.device, rotation: str = "hadamard",
+          codebook: str = "gaussian") -> _Plan:
     """Build the transform once from the reference pieces (signs, Hadamard, random orthogonal, outlier split).
 
     The rotation is pushed through the identity, so the matrix is exactly the linear map those pieces define:
     D on the original channels, then each part (all channels, or outliers and the rest) rotated on its own.
     """
     key = (int(layer_idx), target, int(bits), int(outliers), int(high), table, signs, int(heads), int(features),
-           str(device))
+           str(device), rotation, codebook)
     cached = _PLANS.get(key)
     if cached is not None:
         return cached
@@ -219,13 +272,14 @@ def _plan(layer_idx: int, target: str, bits: int, outliers: int, high: int, tabl
         columns = []
         for index, _ in parts:
             chosen = index if index.dim() == 1 else index[head]
-            columns.append(_rotate_part(flipped[:, chosen], layer_idx, part_signs=not whole_signs))
+            columns.append(_rotate_part(flipped[:, chosen], layer_idx, part_signs=not whole_signs,
+                                        dense=rotation == "orthogonal"))
         per_head.append(torch.cat(columns, dim=1))
     matrix = torch.stack(per_head).to(dtype=torch.float32, device=device)
     segments, start = [], 0
     for index, part_bits in parts:
         length = index.shape[-1]
-        levels = centroids(part_bits, length)
+        levels = beta_centroids(part_bits, length) if codebook == "beta" else centroids(part_bits, length)
         boundaries = (levels[1:] + levels[:-1]) / 2
         segments.append((start, length, levels.to(device), boundaries.to(device)))
         start += length
@@ -234,11 +288,11 @@ def _plan(layer_idx: int, target: str, bits: int, outliers: int, high: int, tabl
     return cached
 
 
-def _rotate_part(rows: torch.Tensor, layer_idx: int, part_signs: bool) -> torch.Tensor:
+def _rotate_part(rows: torch.Tensor, layer_idx: int, part_signs: bool, dense: bool = False) -> torch.Tensor:
     """The reference rotation of one part, applied to each row: Hadamard (with its own signs when
-    ``part_signs``) for power-of-two lengths, the seeded random orthogonal matrix otherwise."""
+    ``part_signs``) for power-of-two lengths, the seeded random orthogonal matrix otherwise or when ``dense``."""
     length = rows.shape[-1]
-    if not length & (length - 1):
+    if not dense and not length & (length - 1):
         if part_signs:
             rows = rows * sign_diagonal(layer_idx, length).double()
         return _hadamard64(rows)
@@ -344,6 +398,11 @@ def _inverse_erf(value: float) -> float:
 def _check_signs(signs) -> None:
     if signs not in {"independent", "rope_pairs"}:
         raise ValueError(f"turboquant_mse signs must be 'independent' or 'rope_pairs', got {signs!r}")
+
+
+def _check_choice(name: str, value, allowed: tuple[str, ...]) -> None:
+    if value not in allowed:
+        raise ValueError(f"turboquant_mse {name} must be one of {allowed}, got {value!r}")
 
 
 def _check_bits(bits: int) -> None:

@@ -1,0 +1,23 @@
+# LongBench-E samsum: LongBench's prompt, truncated to 31,500 tokens as pred.py does (tr_prompts.py).
+task: longbench_samsum_e_tr
+dataset_path: Xnhyacinth/LongBench
+test_split: test
+dataset_name: samsum_e
+doc_to_text: !function tr_prompts.samsum
+doc_to_target: '{{answers}}'
+target_delimiter: ""
+process_results: !function tr_metrics.get_rouge_with_score
+generation_kwargs:
+  max_gen_toks: 128
+  temperature: 1
+  do_sample: False
+  until: ["\n"]
+metric_list:
+  - metric: "score"
+    aggregation: mean
+    higher_is_better: True
+  - metric: "rouge_score"
+    aggregation: mean
+    higher_is_better: True
+metadata:
+  version: 5.0

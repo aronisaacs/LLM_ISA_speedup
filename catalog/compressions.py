@@ -64,8 +64,13 @@ def quantize(k_layers="all", v_layers="all", bits=8, group=32):
 TURBOQUANT_OUTLIER_TABLE = "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
 
 
+# Newest tokens kept exact in every TurboQuant run from now on (Aron, 2026-11-13).
+TURBOQUANT_RECENT_WINDOW = 128
+
+
 def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_bits=None, outlier_table=None,
-                   signs="rope_pairs"):
+                   signs="rope_pairs", recent_window=TURBOQUANT_RECENT_WINDOW, rotation="hadamard",
+                   codebook="gaussian"):
     """Randomized Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE.
 
     The sweep climber sets the level per slot: dense, then 4, 3, 2.5 (2 bits + 64 outlier
@@ -73,8 +78,18 @@ def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_b
     head separately at ``outlier_bits`` (default ``bits`` + 1). ``signs="rope_pairs"`` shares
     one random sign per RoPE pair; ``signs="independent"`` writes no ``signs`` key, the
     identity of runs made before that option existed. The split options are only written when used.
+
+    ``recent_window`` (default 128, Aron 2026-11-13): the newest tokens stay exact; 0 writes no key,
+    the identity of runs made before the window. ``rotation="orthogonal"`` and ``codebook="beta"`` are
+    the paper-faithful variants (one LongBench check), written only when used.
     """
     options = {} if signs == "independent" else {"signs": str(signs)}
+    if recent_window:
+        options["recent_window"] = int(recent_window)
+    if rotation != "hadamard":
+        options["rotation"] = str(rotation)
+    if codebook != "gaussian":
+        options["codebook"] = str(codebook)
     if outliers:
         options.update(outliers=int(outliers), outlier_table=str(outlier_table))
         if outlier_bits is not None:

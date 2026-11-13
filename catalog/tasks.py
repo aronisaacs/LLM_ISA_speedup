@@ -98,3 +98,25 @@ LONGBENCH_E_PLAIN = {
     "apply_chat_template": False,
     "model_args": _LLAMA31_8B_BOS,
 }
+
+# The same 13 tasks as LongBench's pred.py runs them: LongBench's prompts for all 13 and middle
+# truncation to 31,500 tokens (catalog/lm_eval_tasks/longbench_tr). Faster than the untruncated
+# set, and our best guess at the paper's setup (it does not state its truncation).
+LONGBENCH_E_TR_CATEGORIES = {
+    category: tuple(t.removesuffix("_lb").removesuffix("_e") + "_e_tr" for t in tasks)
+    for category, tasks in LONGBENCH_E_CATEGORIES.items()
+}
+
+LONGBENCH_E_TR_CHAT = {
+    **LONGBENCH_E_CHAT,
+    "name_task": "longbench_e_tr_chat",
+    "file": "longbench_e_tr_chat",
+    "tasks": [t for c, ts in LONGBENCH_E_TR_CATEGORIES.items() if c not in _LONGBENCH_PLAIN for t in ts],
+}
+
+LONGBENCH_E_TR_PLAIN = {
+    **LONGBENCH_E_PLAIN,
+    "name_task": "longbench_e_tr_plain",
+    "file": "longbench_e_tr_plain",
+    "tasks": [t for c in _LONGBENCH_PLAIN for t in LONGBENCH_E_TR_CATEGORIES[c]],
+}

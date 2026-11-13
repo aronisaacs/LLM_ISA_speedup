@@ -255,6 +255,59 @@ class PromptAttentionTests(unittest.TestCase):
             uninstall()
 
 
+class RecentWindowTests(unittest.TestCase):
+    _STEP = {"method": "turboquant_mse", "k_layers": "all", "v_layers": "all", "bits": 2, "recent_window": 4}
+
+    def _expected(self, tensor, target):
+        from compression_topics.turboquant_mse.algorithms.turboquant_mse import apply as turboquant
+
+        return turboquant(tensor, layer_idx=0, target=target, bits=2)
+
+    def test_newest_tokens_stay_exact_and_older_ones_are_compressed_as_they_age(self):
+        from transformers.cache_utils import DynamicCache
+
+        uninstall = patch_cache_update(parse_kv_spec({"pipeline": [self._STEP]}))
+        try:
+            torch.manual_seed(0)
+            cache = DynamicCache()
+            key, value = torch.randn(1, 2, 10, 128), torch.randn(1, 2, 10, 128)
+            out_key, out_value = cache.update(key.clone(), value.clone(), 0)
+            self.assertTrue(torch.equal(out_key[..., 6:, :], key[..., 6:, :]))
+            self.assertTrue(torch.equal(out_key[..., :6, :], self._expected(key[..., :6, :], "k")))
+            self.assertTrue(torch.equal(out_value[..., :6, :], self._expected(value[..., :6, :], "v")))
+            steps = [torch.randn(1, 2, 1, 128) for _ in range(3)]
+            for step in steps:
+                out_key, _ = cache.update(step.clone(), step.clone(), 0)
+            every = torch.cat([key, *steps], dim=-2)
+            self.assertEqual(out_key.shape[-2], 13)
+            self.assertTrue(torch.equal(out_key[..., 9:, :], every[..., 9:, :]))
+            self.assertTrue(torch.equal(out_key[..., :9, :], self._expected(every[..., :9, :], "k")))
+            self.assertTrue(torch.equal(cache.layers[0].keys, out_key))
+        finally:
+            uninstall()
+
+    def test_dense_prompt_with_a_window_returns_the_exact_prompt(self):
+        from transformers.cache_utils import DynamicCache
+
+        spec = parse_kv_spec({"pipeline": [self._STEP], "prompt_attention": "dense"})
+        uninstall = patch_cache_update(spec)
+        try:
+            key = torch.randn(1, 2, 10, 128)
+            cache = DynamicCache()
+            out_key, _ = cache.update(key.clone(), key.clone(), 0)
+            self.assertTrue(torch.equal(out_key, key))
+            self.assertTrue(torch.equal(cache.layers[0].keys[..., :6, :], self._expected(key[..., :6, :], "k")))
+        finally:
+            uninstall()
+
+    def test_window_is_a_turboquant_option_only(self):
+        with self.assertRaises(ValueError):
+            parse_kv_spec({"pipeline": [{"method": "sparsify_nm", "k_layers": "all", "v_layers": "all",
+                                         "recent_window": 4}]})
+        with self.assertRaises(ValueError):
+            parse_kv_spec({"pipeline": [{**self._STEP, "recent_window": -1}]})
+
+
 class ChecksparseL1Tests(unittest.TestCase):
     def test_zeros_weakest_tiles_by_l1(self):
         spec = parse_kv_spec(

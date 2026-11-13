@@ -1,0 +1,23 @@
+# LongBench-E trec: LongBench's prompt, truncated to 31,500 tokens as pred.py does (tr_prompts.py).
+task: longbench_trec_e_tr
+dataset_path: Xnhyacinth/LongBench
+test_split: test
+dataset_name: trec_e
+doc_to_text: !function tr_prompts.trec
+doc_to_target: '{{answers}}'
+target_delimiter: ""
+process_results: !function tr_metrics.get_classification_with_score
+generation_kwargs:
+  max_gen_toks: 64
+  temperature: 1
+  do_sample: False
+  until: ["\n"]
+metric_list:
+  - metric: "score"
+    aggregation: mean
+    higher_is_better: True
+  - metric: "classification_score"
+    aggregation: mean
+    higher_is_better: True
+metadata:
+  version: 5.0
