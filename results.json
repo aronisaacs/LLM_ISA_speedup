@@ -123063,6 +123063,820 @@
         "original": 164,
         "effective": 164
       }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {
+          "add_bos_token": true
+        },
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_lcc_e_lb",
+          "longbench_repobench-p_e_lb",
+          "longbench_samsum_e_lb",
+          "longbench_trec_e",
+          "longbench_triviaqa_e_lb"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": false,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "outliers": 32,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ],
+          "prompt_attention": "dense"
+        }
+      },
+      "scores": {
+        "longbench_lcc_e_lb": {
+          "score,none": 0.6304333333333333,
+          "code_sim_score,none": 0.6304333333333333
+        },
+        "longbench_repobench-p_e_lb": {
+          "score,none": 0.48539999999999994,
+          "code_sim_score,none": 0.48539999999999994
+        },
+        "longbench_samsum_e_lb": {
+          "score,none": 0.39498717263655014,
+          "rouge_score,none": 0.39498717263655014
+        },
+        "longbench_trec_e": {
+          "score,none": 0.6566666666666666,
+          "classification_score,none": 0.6566666666666666
+        },
+        "longbench_triviaqa_e_lb": {
+          "score,none": 0.9235396825396823,
+          "qa_f1_score,none": 0.9235396825396823
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_2wikimqa_e",
+          "longbench_gov_report_e",
+          "longbench_hotpotqa_e",
+          "longbench_multi_news_e",
+          "longbench_multifieldqa_en_e",
+          "longbench_passage_count_e_lb",
+          "longbench_passage_retrieval_en_e_lb",
+          "longbench_qasper_e"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "outliers": 32,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ],
+          "prompt_attention": "dense"
+        }
+      },
+      "scores": {
+        "longbench_2wikimqa_e": {
+          "score,none": 0.4394038319208598,
+          "qa_f1_score,none": 0.4394038319208598
+        },
+        "longbench_gov_report_e": {
+          "score,none": 0.31621883488880587,
+          "rouge_score,none": 0.31621883488880587
+        },
+        "longbench_hotpotqa_e": {
+          "score,none": 0.6055446196586959,
+          "qa_f1_score,none": 0.6055446196586959
+        },
+        "longbench_multi_news_e": {
+          "score,none": 0.24783067604587763,
+          "rouge_score,none": 0.24783067604587763
+        },
+        "longbench_multifieldqa_en_e": {
+          "score,none": 0.5556309909204955,
+          "qa_f1_score,none": 0.5556309909204955
+        },
+        "longbench_passage_count_e_lb": {
+          "score,none": 0.17,
+          "count_score,none": 0.17
+        },
+        "longbench_passage_retrieval_en_e_lb": {
+          "score,none": 0.9966666666666667,
+          "retrieval_score,none": 0.9966666666666667
+        },
+        "longbench_qasper_e": {
+          "score,none": 0.42921140878580477,
+          "qa_f1_score,none": 0.42921140878580477
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_2wikimqa_e_tr",
+          "longbench_gov_report_e_tr",
+          "longbench_hotpotqa_e_tr",
+          "longbench_multi_news_e_tr",
+          "longbench_multifieldqa_en_e_tr",
+          "longbench_passage_count_e_tr",
+          "longbench_passage_retrieval_en_e_tr",
+          "longbench_qasper_e_tr"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "recent_window": 128,
+              "rotation": "orthogonal",
+              "codebook": "beta",
+              "outliers": 32,
+              "outlier_group": 32
+            }
+          ],
+          "prompt_attention": "dense"
+        }
+      },
+      "scores": {
+        "longbench_2wikimqa_e_tr": {
+          "score,none": 0.46864078884078897,
+          "qa_f1_score,none": 0.46864078884078897
+        },
+        "longbench_gov_report_e_tr": {
+          "score,none": 0.31706044751327017,
+          "rouge_score,none": 0.31706044751327017
+        },
+        "longbench_hotpotqa_e_tr": {
+          "score,none": 0.5944481036106424,
+          "qa_f1_score,none": 0.5944481036106424
+        },
+        "longbench_multi_news_e_tr": {
+          "score,none": 0.24805647943306414,
+          "rouge_score,none": 0.24805647943306414
+        },
+        "longbench_multifieldqa_en_e_tr": {
+          "score,none": 0.5582732901321935,
+          "qa_f1_score,none": 0.5582732901321935
+        },
+        "longbench_passage_count_e_tr": {
+          "score,none": 0.17,
+          "count_score,none": 0.17
+        },
+        "longbench_passage_retrieval_en_e_tr": {
+          "score,none": 0.9933333333333333,
+          "retrieval_score,none": 0.9933333333333333
+        },
+        "longbench_qasper_e_tr": {
+          "score,none": 0.42713504436793154,
+          "qa_f1_score,none": 0.42713504436793154
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_2wikimqa_e_tr",
+          "longbench_gov_report_e_tr",
+          "longbench_hotpotqa_e_tr",
+          "longbench_multi_news_e_tr",
+          "longbench_multifieldqa_en_e_tr",
+          "longbench_passage_count_e_tr",
+          "longbench_passage_retrieval_en_e_tr",
+          "longbench_qasper_e_tr"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": []
+        }
+      },
+      "scores": {
+        "longbench_2wikimqa_e_tr": {
+          "score,none": 0.4737116984380144,
+          "qa_f1_score,none": 0.4737116984380144
+        },
+        "longbench_gov_report_e_tr": {
+          "score,none": 0.3416669217749545,
+          "rouge_score,none": 0.3416669217749545
+        },
+        "longbench_hotpotqa_e_tr": {
+          "score,none": 0.6034038456097282,
+          "qa_f1_score,none": 0.6034038456097282
+        },
+        "longbench_multi_news_e_tr": {
+          "score,none": 0.256245445343369,
+          "rouge_score,none": 0.256245445343369
+        },
+        "longbench_multifieldqa_en_e_tr": {
+          "score,none": 0.5633857123226093,
+          "qa_f1_score,none": 0.5633857123226093
+        },
+        "longbench_passage_count_e_tr": {
+          "score,none": 0.17,
+          "count_score,none": 0.17
+        },
+        "longbench_passage_retrieval_en_e_tr": {
+          "score,none": 0.9966666666666667,
+          "retrieval_score,none": 0.9966666666666667
+        },
+        "longbench_qasper_e_tr": {
+          "score,none": 0.4430347432353738,
+          "qa_f1_score,none": 0.4430347432353738
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {
+          "add_bos_token": true
+        },
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_lcc_e_tr",
+          "longbench_repobench-p_e_tr",
+          "longbench_samsum_e_tr",
+          "longbench_trec_e_tr",
+          "longbench_triviaqa_e_tr"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": false,
+        "kv": {
+          "pipeline": []
+        }
+      },
+      "scores": {
+        "longbench_lcc_e_tr": {
+          "score,none": 0.6673666666666667,
+          "code_sim_score,none": 0.6673666666666667
+        },
+        "longbench_repobench-p_e_tr": {
+          "score,none": 0.5323333333333334,
+          "code_sim_score,none": 0.5323333333333334
+        },
+        "longbench_samsum_e_tr": {
+          "score,none": 0.4272081376712174,
+          "rouge_score,none": 0.4272081376712174
+        },
+        "longbench_trec_e_tr": {
+          "score,none": 0.68,
+          "classification_score,none": 0.68
+        },
+        "longbench_triviaqa_e_tr": {
+          "score,none": 0.922038707880813,
+          "qa_f1_score,none": 0.922038707880813
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_2wikimqa_e_tr",
+          "longbench_gov_report_e_tr",
+          "longbench_hotpotqa_e_tr",
+          "longbench_multi_news_e_tr",
+          "longbench_multifieldqa_en_e_tr",
+          "longbench_passage_count_e_tr",
+          "longbench_passage_retrieval_en_e_tr",
+          "longbench_qasper_e_tr"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "recent_window": 128,
+              "rotation": "orthogonal",
+              "codebook": "beta",
+              "outliers": 32,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ],
+          "prompt_attention": "dense"
+        }
+      },
+      "scores": {
+        "longbench_2wikimqa_e_tr": {
+          "score,none": 0.4653648686257383,
+          "qa_f1_score,none": 0.4653648686257383
+        },
+        "longbench_gov_report_e_tr": {
+          "score,none": 0.3074411114385241,
+          "rouge_score,none": 0.3074411114385241
+        },
+        "longbench_hotpotqa_e_tr": {
+          "score,none": 0.5995688668629846,
+          "qa_f1_score,none": 0.5995688668629846
+        },
+        "longbench_multi_news_e_tr": {
+          "score,none": 0.24579825683671333,
+          "rouge_score,none": 0.24579825683671333
+        },
+        "longbench_multifieldqa_en_e_tr": {
+          "score,none": 0.563933738452675,
+          "qa_f1_score,none": 0.563933738452675
+        },
+        "longbench_passage_count_e_tr": {
+          "score,none": 0.16777777777777778,
+          "count_score,none": 0.16777777777777778
+        },
+        "longbench_passage_retrieval_en_e_tr": {
+          "score,none": 0.9933333333333333,
+          "retrieval_score,none": 0.9933333333333333
+        },
+        "longbench_qasper_e_tr": {
+          "score,none": 0.43703796632227904,
+          "qa_f1_score,none": 0.43703796632227904
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {
+          "add_bos_token": true
+        },
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_lcc_e_tr",
+          "longbench_repobench-p_e_tr",
+          "longbench_samsum_e_tr",
+          "longbench_trec_e_tr",
+          "longbench_triviaqa_e_tr"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": false,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "recent_window": 128,
+              "outliers": 32,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ],
+          "prompt_attention": "dense"
+        }
+      },
+      "scores": {
+        "longbench_lcc_e_tr": {
+          "score,none": 0.6619333333333334,
+          "code_sim_score,none": 0.6619333333333334
+        },
+        "longbench_repobench-p_e_tr": {
+          "score,none": 0.5145666666666667,
+          "code_sim_score,none": 0.5145666666666667
+        },
+        "longbench_samsum_e_tr": {
+          "score,none": 0.42353292529582226,
+          "rouge_score,none": 0.42353292529582226
+        },
+        "longbench_trec_e_tr": {
+          "score,none": 0.6666666666666666,
+          "classification_score,none": 0.6666666666666666
+        },
+        "longbench_triviaqa_e_tr": {
+          "score,none": 0.9215238095238093,
+          "qa_f1_score,none": 0.9215238095238093
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_2wikimqa_e_tr",
+          "longbench_gov_report_e_tr",
+          "longbench_hotpotqa_e_tr",
+          "longbench_multi_news_e_tr",
+          "longbench_multifieldqa_en_e_tr",
+          "longbench_passage_count_e_tr",
+          "longbench_passage_retrieval_en_e_tr",
+          "longbench_qasper_e_tr"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "recent_window": 128,
+              "outliers": 32,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ],
+          "prompt_attention": "dense"
+        }
+      },
+      "scores": {
+        "longbench_2wikimqa_e_tr": {
+          "score,none": 0.4679585161427268,
+          "qa_f1_score,none": 0.4679585161427268
+        },
+        "longbench_gov_report_e_tr": {
+          "score,none": 0.3117937822303924,
+          "rouge_score,none": 0.3117937822303924
+        },
+        "longbench_hotpotqa_e_tr": {
+          "score,none": 0.6007785702031228,
+          "qa_f1_score,none": 0.6007785702031228
+        },
+        "longbench_multi_news_e_tr": {
+          "score,none": 0.24372702322503031,
+          "rouge_score,none": 0.24372702322503031
+        },
+        "longbench_multifieldqa_en_e_tr": {
+          "score,none": 0.5613385480060435,
+          "qa_f1_score,none": 0.5613385480060435
+        },
+        "longbench_passage_count_e_tr": {
+          "score,none": 0.17,
+          "count_score,none": 0.17
+        },
+        "longbench_passage_retrieval_en_e_tr": {
+          "score,none": 0.9933333333333333,
+          "retrieval_score,none": 0.9933333333333333
+        },
+        "longbench_qasper_e_tr": {
+          "score,none": 0.43965196698529546,
+          "qa_f1_score,none": 0.43965196698529546
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {},
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_2wikimqa_e_tr",
+          "longbench_gov_report_e_tr",
+          "longbench_hotpotqa_e_tr",
+          "longbench_multi_news_e_tr",
+          "longbench_multifieldqa_en_e_tr",
+          "longbench_passage_count_e_tr",
+          "longbench_passage_retrieval_en_e_tr",
+          "longbench_qasper_e_tr"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": true,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "recent_window": 128,
+              "outliers": 64,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "longbench_2wikimqa_e_tr": {
+          "score,none": 0.4528547008547009,
+          "qa_f1_score,none": 0.4528547008547009
+        },
+        "longbench_gov_report_e_tr": {
+          "score,none": 0.31960862391373906,
+          "rouge_score,none": 0.31960862391373906
+        },
+        "longbench_hotpotqa_e_tr": {
+          "score,none": 0.5929431037372215,
+          "qa_f1_score,none": 0.5929431037372215
+        },
+        "longbench_multi_news_e_tr": {
+          "score,none": 0.25130725635378026,
+          "rouge_score,none": 0.25130725635378026
+        },
+        "longbench_multifieldqa_en_e_tr": {
+          "score,none": 0.5429206351383693,
+          "qa_f1_score,none": 0.5429206351383693
+        },
+        "longbench_passage_count_e_tr": {
+          "score,none": 0.06,
+          "count_score,none": 0.06
+        },
+        "longbench_passage_retrieval_en_e_tr": {
+          "score,none": 0.9633333333333334,
+          "retrieval_score,none": 0.9633333333333334
+        },
+        "longbench_qasper_e_tr": {
+          "score,none": 0.43678938793490296,
+          "qa_f1_score,none": 0.43678938793490296
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {
+          "add_bos_token": true
+        },
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_lcc_e_tr",
+          "longbench_repobench-p_e_tr",
+          "longbench_samsum_e_tr",
+          "longbench_trec_e_tr",
+          "longbench_triviaqa_e_tr"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": false,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "recent_window": 128,
+              "rotation": "orthogonal",
+              "codebook": "beta",
+              "outliers": 32,
+              "outlier_group": 32
+            }
+          ],
+          "prompt_attention": "dense"
+        }
+      },
+      "scores": {
+        "longbench_lcc_e_tr": {
+          "score,none": 0.6540000000000001,
+          "code_sim_score,none": 0.6540000000000001
+        },
+        "longbench_repobench-p_e_tr": {
+          "score,none": 0.5213333333333336,
+          "code_sim_score,none": 0.5213333333333336
+        },
+        "longbench_samsum_e_tr": {
+          "score,none": 0.42306094711218245,
+          "rouge_score,none": 0.42306094711218245
+        },
+        "longbench_trec_e_tr": {
+          "score,none": 0.6666666666666666,
+          "classification_score,none": 0.6666666666666666
+        },
+        "longbench_triviaqa_e_tr": {
+          "score,none": 0.9251540616246497,
+          "qa_f1_score,none": 0.9251540616246497
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {
+          "add_bos_token": true
+        },
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_lcc_e_tr",
+          "longbench_repobench-p_e_tr",
+          "longbench_samsum_e_tr",
+          "longbench_trec_e_tr",
+          "longbench_triviaqa_e_tr"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": false,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "recent_window": 128,
+              "rotation": "orthogonal",
+              "codebook": "beta",
+              "outliers": 32,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ],
+          "prompt_attention": "dense"
+        }
+      },
+      "scores": {
+        "longbench_lcc_e_tr": {
+          "score,none": 0.6609333333333337,
+          "code_sim_score,none": 0.6609333333333337
+        },
+        "longbench_repobench-p_e_tr": {
+          "score,none": 0.5161000000000004,
+          "code_sim_score,none": 0.5161000000000004
+        },
+        "longbench_samsum_e_tr": {
+          "score,none": 0.4199300541451763,
+          "rouge_score,none": 0.4199300541451763
+        },
+        "longbench_trec_e_tr": {
+          "score,none": 0.6633333333333333,
+          "classification_score,none": 0.6633333333333333
+        },
+        "longbench_triviaqa_e_tr": {
+          "score,none": 0.926142857142857,
+          "qa_f1_score,none": 0.926142857142857
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
+    },
+    {
+      "identity": {
+        "pretrained": "meta-llama/Llama-3.1-8B-Instruct",
+        "dtype": "bfloat16",
+        "model_options": {
+          "add_bos_token": true
+        },
+        "model": "hf",
+        "evaluation_options": {},
+        "tasks": [
+          "longbench_lcc_e_tr",
+          "longbench_repobench-p_e_tr",
+          "longbench_samsum_e_tr",
+          "longbench_trec_e_tr",
+          "longbench_triviaqa_e_tr"
+        ],
+        "num_fewshot": 0,
+        "limit": null,
+        "gen_kwargs": null,
+        "apply_chat_template": false,
+        "kv": {
+          "pipeline": [
+            {
+              "method": "turboquant_mse",
+              "k_layers": "all",
+              "v_layers": "all",
+              "bits": 2,
+              "signs": "rope_pairs",
+              "recent_window": 128,
+              "outliers": 64,
+              "outlier_table": "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
+            }
+          ]
+        }
+      },
+      "scores": {
+        "longbench_lcc_e_tr": {
+          "score,none": 0.5956333333333329,
+          "code_sim_score,none": 0.5956333333333329
+        },
+        "longbench_repobench-p_e_tr": {
+          "score,none": 0.4475666666666669,
+          "code_sim_score,none": 0.4475666666666669
+        },
+        "longbench_samsum_e_tr": {
+          "score,none": 0.418945382613063,
+          "rouge_score,none": 0.418945382613063
+        },
+        "longbench_trec_e_tr": {
+          "score,none": 0.6966666666666667,
+          "classification_score,none": 0.6966666666666667
+        },
+        "longbench_triviaqa_e_tr": {
+          "score,none": 0.8917407407407406,
+          "qa_f1_score,none": 0.8917407407407406
+        }
+      },
+      "samples": {
+        "original": 300,
+        "effective": 300
+      }
     }
   ]
 }
