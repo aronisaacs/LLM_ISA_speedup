@@ -178,13 +178,24 @@ class CombinedRunTests(unittest.TestCase):
         self.assertTrue(all(n.endswith("_dense") for n in names[-3:]))
         self.assertIn("gsm8k", names[0])
 
-    def test_arm_a_reads_only_sweep_rows_with_rope_pairs_and_the_window(self):
-        from compression_topics.turboquant_mse.scripts.turboquant_mse_study import rope_pair_steps
+    def test_calibration_uses_the_32_token_window_and_tasks_128(self):
+        from compression_topics.turboquant_mse.scripts.turboquant_mse_joint_kl import task_kv
+        from compression_topics.turboquant_mse.scripts.turboquant_mse_study import rope_pair_steps, sweep_run
 
+        swept = [c["kv"]["pipeline"][0] for c in sweep_run()["configurations"] if (c.get("kv") or {}).get("pipeline")]
+        self.assertTrue(swept and all(step["recent_window"] == 32 for step in swept))
+        self.assertTrue(all(rope_pair_steps(step) for step in swept))
         step = turboquant_mse()["pipeline"][0]
-        self.assertTrue(rope_pair_steps(step))
-        self.assertFalse(rope_pair_steps({**step, "recent_window": 0}))
-        self.assertFalse(rope_pair_steps({k: v for k, v in step.items() if k != "signs"}))
+        self.assertEqual(step["recent_window"], 128)
+        self.assertFalse(rope_pair_steps(step))  # rows swept with the task window are not mixed in
+        self.assertFalse(rope_pair_steps({k: v for k, v in swept[0].items() if k != "signs"}))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            snap = run_search(Counting(additive), config(budgets=(0.70,)), tmp, log=quiet)[0]
+        windowed = json.loads(json.dumps(snap).replace('"recent_window": 128', '"recent_window": 32'))
+        fixed = task_kv(windowed)
+        self.assertEqual({s["recent_window"] for s in fixed["kv"]["pipeline"]}, {128})
+        self.assertEqual(parse_kv_spec(fixed["kv"]), parse_kv_spec(snap["kv"]))
 
 
 if __name__ == "__main__":

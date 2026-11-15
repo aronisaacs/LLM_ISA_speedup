@@ -74,9 +74,9 @@ class TurboquantMseRunTests(unittest.TestCase):
         self.assertEqual(names[0], "llama31_dense")
         self.assertEqual(len(names), 1 + 32 * 2 * 4)
         by_name = {item["name"]: item["kv"]["pipeline"][0] for item in configurations[1:]}
-        four = by_name["llama31_turboquant_mse_rp_k00_p4"]
-        half = by_name["llama31_turboquant_mse_rp_k00_p2_5"]
-        two = by_name["llama31_turboquant_mse_rp_v31_p2"]
+        four = by_name["llama31_turboquant_mse_rp_w32_k00_p4"]
+        half = by_name["llama31_turboquant_mse_rp_w32_k00_p2_5"]
+        two = by_name["llama31_turboquant_mse_rp_w32_v31_p2"]
         self.assertEqual((four["method"], four["bits"], four["signs"]), ("turboquant_mse", 4, "rope_pairs"))
         self.assertNotIn("outliers", four)
         self.assertEqual((half["bits"], half["outliers"], half["outlier_table"]), (2, 64, TURBOQUANT_OUTLIER_TABLE))

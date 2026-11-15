@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from catalog.compressions import TURBOQUANT_RECENT_WINDOW, turboquant_mse  # noqa: E402
+from catalog.compressions import TURBOQUANT_CALIBRATION_WINDOW, turboquant_mse  # noqa: E402
 from catalog.models import BATCH_SIZE, LLAMA31_8B  # noqa: E402
 from catalog.tasks import WIKITEXT_FULL  # noqa: E402
 from engine.eval_runner.progress import mirror_terminal  # noqa: E402
@@ -40,16 +40,16 @@ TAG = "turboquant_mse_rp"
 
 
 def rope_pair_steps(step: dict) -> bool:
-    """Sweep rows of this study only: RoPE-pair signs and the current exact window."""
-    return step.get("signs") == "rope_pairs" and step.get("recent_window", 0) == TURBOQUANT_RECENT_WINDOW
+    """Sweep rows of this study only: RoPE-pair signs and the calibration window."""
+    return step.get("signs") == "rope_pairs" and step.get("recent_window", 0) == TURBOQUANT_CALIBRATION_WINDOW
 
 
 def sweep_run() -> dict:
-    """Dense once, then every key and every value at 4, 3, 2.5 and 2 bits."""
+    """Dense once, then every key and every value at 4, 3, 2.5 and 2 bits, calibration window."""
     configurations = expand_singleton_configs(
         n_layers=LLAMA31_LAYERS,
-        method_kv=turboquant_mse(),
-        method_tag=TAG,
+        method_kv=turboquant_mse(recent_window=TURBOQUANT_CALIBRATION_WINDOW),
+        method_tag=f"{TAG}_w{TURBOQUANT_CALIBRATION_WINDOW}",
         results_dir=FIGURES,
         name_prefix="llama31",
         extra=WIKITEXT_FULL,
@@ -63,7 +63,7 @@ def sweep_run() -> dict:
 
 
 def rank_fill_selections() -> list[dict]:
-    """The greedy assignment at each budget, from the finished sweep."""
+    """The greedy assignment at each budget, from the finished sweep; kv with the task window (128)."""
     dense_ppl, rows = load_sweep_scores(method="turboquant_mse", pretrained=PRETRAINED, step_filter=rope_pair_steps)
     payloads = selections_for_budgets(rows, LLAMA31_LAYERS, turboquant_mse(), dense_ppl, budgets=BUDGETS)
     for payload in payloads:

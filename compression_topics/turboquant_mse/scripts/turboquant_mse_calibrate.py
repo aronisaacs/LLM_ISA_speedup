@@ -10,6 +10,9 @@ dense runs once. Every step resumes: the sweep and the tasks skip rows in result
 search continues from its ``state.json``. Per-question scores (``.samples.jsonl``) are kept
 for the paired A vs B comparison.
 
+Window: both calibrations keep the newest 32 tokens exact (``TURBOQUANT_CALIBRATION_WINDOW``),
+since they score prompt + answer in one pass; the task runs keep the usual 128.
+
   python compression_topics/turboquant_mse/scripts/turboquant_mse_calibrate.py
 
 GPUs: every id in CUDA_VISIBLE_DEVICES (one worker or scorer per GPU).

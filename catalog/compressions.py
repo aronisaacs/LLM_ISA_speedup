@@ -66,6 +66,10 @@ TURBOQUANT_OUTLIER_TABLE = "compression_topics/turboquant_mse/calibration/llama3
 
 # Newest tokens kept exact in every TurboQuant run from now on (Aron, 2026-11-13).
 TURBOQUANT_RECENT_WINDOW = 128
+# Exact window while calibrating per-slot bit widths (WikiText sweep, joint-KL search). Calibration
+# scores prompt + answer in one pass, so the window sits at the end of the whole sequence; a smaller
+# one keeps the calibration close to what decoding sees (Aron, 2026-11-15). Task runs keep 128.
+TURBOQUANT_CALIBRATION_WINDOW = 32
 
 
 def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_bits=None, outlier_table=None,

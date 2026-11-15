@@ -11,6 +11,8 @@ rank fill. Only the allocator differs (``engine/layer_select/joint_kl``):
   search   from dense, each round scores every eligible slot's next rung on top of the
            current map and keeps the smallest kl_mean increase per unit of saving;
            lazy rounds score the 16 best estimates, every 5th round scores all slots
+  window   the search keeps the newest 32 tokens exact (calibration window); the saved
+           maps run the tasks with the usual 128
 
 The search resumes from ``state.json`` in its output folder. Task rows already in
 results.json are skipped.
@@ -36,12 +38,13 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from catalog.compressions import TURBOQUANT_OUTLIER_TABLE as TABLE, turboquant_mse  # noqa: E402
+from catalog.compressions import TURBOQUANT_CALIBRATION_WINDOW, TURBOQUANT_OUTLIER_TABLE as TABLE, turboquant_mse  # noqa: E402
 from engine.layer_select.budgets import budget_run  # noqa: E402
 from engine.layer_select.joint_kl import calibration_set  # noqa: E402
+from engine.layer_select.apply import kv_for_assignment, method_template  # noqa: E402
 from engine.layer_select.joint_kl.search import SearchConfig, run_search  # noqa: E402
 from engine.layer_select.rungs import TURBOQUANT_MSE  # noqa: E402
-from engine.layer_select.slots import all_slots  # noqa: E402
+from engine.layer_select.slots import Slot, all_slots  # noqa: E402
 
 BUDGETS = (0.70, 0.80, 0.85)
 REFERENCE_BITS = 3
@@ -68,7 +71,7 @@ def search(args) -> list[dict]:
     n_layers = int(AutoConfig.from_pretrained(model).num_hidden_layers)
     slots = all_slots(n_layers)
     config = SearchConfig(
-        method_kv=turboquant_mse(),
+        method_kv=turboquant_mse(recent_window=TURBOQUANT_CALIBRATION_WINDOW),
         rungs=TURBOQUANT_MSE,
         slots=slots,
         budgets=BUDGETS,
@@ -105,7 +108,13 @@ def saved_selections() -> list[dict]:
     missing = [p.name for p in paths if not p.exists()]
     if missing:
         raise SystemExit(f"search not finished, missing {missing} in {OUT}")
-    return [json.loads(p.read_text()) for p in paths]
+    return [task_kv(json.loads(p.read_text())) for p in paths]
+
+
+def task_kv(selection: dict) -> dict:
+    """The search scores with the calibration window; task runs use the default (128)."""
+    assignment = {Slot.from_dict(a): a["level"] for a in selection["assignment"]}
+    return {**selection, "kv": kv_for_assignment(method_template(turboquant_mse()), assignment)}
 
 
 def parser() -> argparse.ArgumentParser:
