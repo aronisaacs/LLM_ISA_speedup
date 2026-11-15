@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from catalog.compressions import turboquant_mse  # noqa: E402
+from catalog.compressions import TURBOQUANT_RECENT_WINDOW, turboquant_mse  # noqa: E402
 from catalog.models import BATCH_SIZE, LLAMA31_8B  # noqa: E402
 from catalog.tasks import WIKITEXT_FULL  # noqa: E402
 from engine.eval_runner.progress import mirror_terminal  # noqa: E402
@@ -40,8 +40,8 @@ TAG = "turboquant_mse_rp"
 
 
 def rope_pair_steps(step: dict) -> bool:
-    """Sweep rows of this study only (not the earlier independent-sign sweep)."""
-    return step.get("signs") == "rope_pairs"
+    """Sweep rows of this study only: RoPE-pair signs and the current exact window."""
+    return step.get("signs") == "rope_pairs" and step.get("recent_window", 0) == TURBOQUANT_RECENT_WINDOW
 
 
 def sweep_run() -> dict:
@@ -62,13 +62,18 @@ def sweep_run() -> dict:
     }
 
 
-def tasks_run() -> dict:
-    """Dense, then the greedy assignment at each budget, on each task."""
+def rank_fill_selections() -> list[dict]:
+    """The greedy assignment at each budget, from the finished sweep."""
     dense_ppl, rows = load_sweep_scores(method="turboquant_mse", pretrained=PRETRAINED, step_filter=rope_pair_steps)
     payloads = selections_for_budgets(rows, LLAMA31_LAYERS, turboquant_mse(), dense_ppl, budgets=BUDGETS)
     for payload in payloads:
         payload["tag"] = f"{TAG}_{payload['tag']}"
-    return budget_run(payloads, log_samples=True)  # per-question scores for the joint-KL comparison
+    return payloads
+
+
+def tasks_run() -> dict:
+    """Dense, then the greedy assignment at each budget, on each task."""
+    return budget_run(rank_fill_selections(), log_samples=True)  # per-question scores for the joint-KL comparison
 
 
 def main() -> None:

@@ -163,5 +163,29 @@ class SamplesTests(unittest.TestCase):
         self.assertFalse(any("log_samples" in c for c in budget_run([selection])["configurations"]))
 
 
+class CombinedRunTests(unittest.TestCase):
+    def test_both_arms_share_one_task_run_with_dense_once(self):
+        from compression_topics.turboquant_mse.scripts.turboquant_mse_calibrate import tasks_run
+
+        maps = [{"tag": f"{arm}p{b}", "kv": turboquant_mse(), "budget": b / 100, "compression": b / 100}
+                for arm in ("turboquant_mse_rp_", "turboquant_mse_jkl_") for b in (70, 80, 85)]
+        names = [c["name"] for c in tasks_run(maps)["configurations"]]
+        outputs = [c["output_path"] for c in tasks_run(maps)["configurations"]]
+        self.assertEqual(len(names), 3 * 7)
+        self.assertEqual(len(set(names)), len(names))
+        self.assertEqual(len(set(outputs)), len(outputs))
+        self.assertEqual(sum(n.endswith("_dense") for n in names), 3)
+        self.assertTrue(all(n.endswith("_dense") for n in names[-3:]))
+        self.assertIn("gsm8k", names[0])
+
+    def test_arm_a_reads_only_sweep_rows_with_rope_pairs_and_the_window(self):
+        from compression_topics.turboquant_mse.scripts.turboquant_mse_study import rope_pair_steps
+
+        step = turboquant_mse()["pipeline"][0]
+        self.assertTrue(rope_pair_steps(step))
+        self.assertFalse(rope_pair_steps({**step, "recent_window": 0}))
+        self.assertFalse(rope_pair_steps({k: v for k, v in step.items() if k != "signs"}))
+
+
 if __name__ == "__main__":
     unittest.main()

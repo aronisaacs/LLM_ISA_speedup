@@ -108,7 +108,7 @@ def saved_selections() -> list[dict]:
     return [json.loads(p.read_text()) for p in paths]
 
 
-def main() -> None:
+def parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--search-only", action="store_true")
     parser.add_argument("--tasks-only", action="store_true", help="task runs from a finished search")
@@ -118,7 +118,11 @@ def main() -> None:
     parser.add_argument("--out", help="output folder (default: joint_kl/llama31 or joint_kl/timing_N)")
     parser.add_argument("--model", help="checks only: another model with the same tokenizer")
     parser.add_argument("--dtype", help="checks only: e.g. float32 on a Mac")
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> None:
+    args = parser().parse_args()
 
     from engine.eval_runner.progress import mirror_terminal
     from compression_topics.turboquant_mse.scripts.calibrate_outliers import ensure_table
