@@ -11,7 +11,7 @@ search continues from its ``state.json``. Per-question scores (``.samples.jsonl`
 for the paired A vs B comparison.
 
 Window: both calibrations keep the newest 32 tokens exact (``TURBOQUANT_CALIBRATION_WINDOW``),
-since they score prompt + answer in one pass; the task runs keep the usual 128.
+since they score prompt + answer in one pass; job 1864's task runs kept 128 (the default is 32 since 2026-11-16).
 
   python compression_topics/turboquant_mse/scripts/turboquant_mse_calibrate.py
 

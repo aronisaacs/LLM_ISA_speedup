@@ -64,12 +64,12 @@ def quantize(k_layers="all", v_layers="all", bits=8, group=32):
 TURBOQUANT_OUTLIER_TABLE = "compression_topics/turboquant_mse/calibration/llama31_8b_outliers.json"
 
 
-# Newest tokens kept exact in every TurboQuant run from now on (Aron, 2026-11-13).
-TURBOQUANT_RECENT_WINDOW = 128
-# Exact window while calibrating per-slot bit widths (WikiText sweep, joint-KL search). Calibration
-# scores prompt + answer in one pass, so the window sits at the end of the whole sequence; a smaller
-# one keeps the calibration close to what decoding sees (Aron, 2026-11-15). Task runs keep 128.
-TURBOQUANT_CALIBRATION_WINDOW = 32
+# Newest tokens kept exact in every TurboQuant run: 32 (Aron, 2026-11-16; 128 from 2026-11-13 until
+# then). With the contract tasks' short prompts, 128 kept most of each prompt exact.
+TURBOQUANT_RECENT_WINDOW = 32
+# Exact window while calibrating per-slot bit widths (WikiText sweep, joint-KL search), 32 since
+# 2026-11-15; now the same as the task window.
+TURBOQUANT_CALIBRATION_WINDOW = TURBOQUANT_RECENT_WINDOW
 
 
 def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_bits=None, outlier_table=None,
@@ -83,7 +83,7 @@ def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_b
     one random sign per RoPE pair; ``signs="independent"`` writes no ``signs`` key, the
     identity of runs made before that option existed. The split options are only written when used.
 
-    ``recent_window`` (default 128, Aron 2026-11-13): the newest tokens stay exact; 0 writes no key,
+    ``recent_window`` (default 32, Aron 2026-11-16; 128 before): the newest tokens stay exact; 0 writes no key,
     the identity of runs made before the window. ``rotation="orthogonal"`` and ``codebook="beta"`` are
     the paper-faithful variants (one LongBench check), written only when used; so is
     ``outlier_group`` (dynamic outliers per group of tokens instead of the table, that check only).

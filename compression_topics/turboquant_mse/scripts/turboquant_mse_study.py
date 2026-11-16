@@ -63,7 +63,7 @@ def sweep_run() -> dict:
 
 
 def rank_fill_selections() -> list[dict]:
-    """The greedy assignment at each budget, from the finished sweep; kv with the task window (128)."""
+    """The greedy assignment at each budget, from the finished sweep; kv with the default task window."""
     dense_ppl, rows = load_sweep_scores(method="turboquant_mse", pretrained=PRETRAINED, step_filter=rope_pair_steps)
     payloads = selections_for_budgets(rows, LLAMA31_LAYERS, turboquant_mse(), dense_ppl, budgets=BUDGETS)
     for payload in payloads:

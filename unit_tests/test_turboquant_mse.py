@@ -302,7 +302,7 @@ class TurboquantMsePaperOptionsTests(unittest.TestCase):
 
     def test_options_are_validated_and_written_only_when_used(self):
         self.assertNotIn("rotation", turboquant_mse()["pipeline"][0])
-        self.assertEqual(turboquant_mse()["pipeline"][0]["recent_window"], 128)
+        self.assertEqual(turboquant_mse()["pipeline"][0]["recent_window"], 32)
         self.assertNotIn("recent_window", turboquant_mse(recent_window=0)["pipeline"][0])
         with self.assertRaises(ValueError):
             parse_kv_spec(turboquant_mse(rotation="qr"))

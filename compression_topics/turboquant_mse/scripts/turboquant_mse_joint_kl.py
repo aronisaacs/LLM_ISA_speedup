@@ -12,7 +12,7 @@ rank fill. Only the allocator differs (``engine/layer_select/joint_kl``):
            current map and keeps the smallest kl_mean increase per unit of saving;
            lazy rounds score the 16 best estimates, every 5th round scores all slots
   window   the search keeps the newest 32 tokens exact (calibration window); the saved
-           maps run the tasks with the usual 128
+           maps run the tasks with the default window (32 since 2026-11-16, 128 before)
 
 The search resumes from ``state.json`` in its output folder. Task rows already in
 results.json are skipped.
@@ -115,7 +115,7 @@ def saved_selections() -> list[dict]:
 
 
 def task_kv(selection: dict) -> dict:
-    """The search scores with the calibration window; task runs use the default (128)."""
+    """The search scores with the calibration window; task runs use the default window."""
     assignment = {Slot.from_dict(a): a["level"] for a in selection["assignment"]}
     return {**selection, "kv": kv_for_assignment(method_template(turboquant_mse()), assignment)}
 

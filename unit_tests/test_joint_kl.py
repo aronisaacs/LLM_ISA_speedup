@@ -139,7 +139,7 @@ class SearchTests(unittest.TestCase):
         self.assertTrue(set(start.values()) <= {4, 3, 2})
         first = whole.start_selection(start)
         self.assertAlmostEqual(first["compression"], (3 * 12 + 26 * 13 + 35 * 14) / 16 / 64)
-        self.assertEqual({s["recent_window"] for s in first["kv"]["pipeline"]}, {128})
+        self.assertEqual({s["recent_window"] for s in first["kv"]["pipeline"]}, {32})
         run = whole.jkl.tasks_run([first, whole.uniform_2_bits()])
         self.assertEqual(len(run["configurations"]), 3 * 3)
 
@@ -215,24 +215,36 @@ class CombinedRunTests(unittest.TestCase):
         self.assertTrue(all(n.endswith("_dense") for n in names[-3:]))
         self.assertIn("gsm8k", names[0])
 
-    def test_calibration_uses_the_32_token_window_and_tasks_128(self):
+    def test_calibration_and_tasks_use_the_32_token_window(self):
         from compression_topics.turboquant_mse.scripts.turboquant_mse_joint_kl import task_kv
         from compression_topics.turboquant_mse.scripts.turboquant_mse_study import rope_pair_steps, sweep_run
 
         swept = [c["kv"]["pipeline"][0] for c in sweep_run()["configurations"] if (c.get("kv") or {}).get("pipeline")]
         self.assertTrue(swept and all(step["recent_window"] == 32 for step in swept))
         self.assertTrue(all(rope_pair_steps(step) for step in swept))
-        step = turboquant_mse()["pipeline"][0]
-        self.assertEqual(step["recent_window"], 128)
-        self.assertFalse(rope_pair_steps(step))  # rows swept with the task window are not mixed in
+        self.assertEqual(turboquant_mse()["pipeline"][0]["recent_window"], 32)
+        self.assertFalse(rope_pair_steps(turboquant_mse(recent_window=128)["pipeline"][0]))  # old 128 rows stay out
         self.assertFalse(rope_pair_steps({k: v for k, v in swept[0].items() if k != "signs"}))
 
         with tempfile.TemporaryDirectory() as tmp:
             snap = run_search(Counting(additive), config(budgets=(0.70,)), tmp, log=quiet)[0]
-        windowed = json.loads(json.dumps(snap).replace('"recent_window": 128', '"recent_window": 32'))
+        windowed = json.loads(json.dumps(snap).replace('"recent_window": 32', '"recent_window": 128'))
         fixed = task_kv(windowed)
-        self.assertEqual({s["recent_window"] for s in fixed["kv"]["pipeline"]}, {128})
+        self.assertEqual({s["recent_window"] for s in fixed["kv"]["pipeline"]}, {32})
         self.assertEqual(parse_kv_spec(fixed["kv"]), parse_kv_spec(snap["kv"]))
+
+    def test_w32_rerun_has_own_tags_and_32_token_window(self):
+        from compression_topics.turboquant_mse.scripts import turboquant_mse_tasks_w32 as w32
+
+        for ab, maps in ((False, 4), (True, 10)):
+            chosen = w32.selections(ab)
+            self.assertEqual(len(chosen), maps)
+            self.assertTrue(all(s["tag"].endswith("_w32") for s in chosen))
+            run = w32.jkl.tasks_run(chosen)
+            compressed = [c for c in run["configurations"] if not c["name"].endswith("_dense")]
+            self.assertEqual(len(compressed), 3 * maps)
+            self.assertTrue(all(c["output_path"].endswith("_w32.json") and c.get("log_samples") for c in compressed))
+            self.assertEqual({s["recent_window"] for c in compressed for s in c["kv"]["pipeline"]}, {32})
 
 
 if __name__ == "__main__":

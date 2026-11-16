@@ -6,7 +6,7 @@ Starts from the joint-KL 85 % map of the 4 / 3 / 2.5 / 2 study (``joint_kl/llama
 set, score (4-domain KL to dense, divided by uniform 3 bits), lazy rounds and 32-token calibration
 window. No split level: every slot is 4, 3, 2 or 1 bits (Aron, 2026-11-16).
 
-Tasks (GSM8K, HumanEval, CEval, 128-token window, per-question samples): the starting map, the
+Tasks (GSM8K, HumanEval, CEval, default window: 128 in job 1886, 32 since; per-question samples): the starting map, the
 85 % and 90 % maps, and uniform 2 bits (87.5 %, the plain reference). Dense rows already in
 results.json are reused.
 
