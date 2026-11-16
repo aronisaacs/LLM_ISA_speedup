@@ -390,6 +390,29 @@ def _quantize_with(plan: _Plan, tensor: torch.Tensor) -> torch.Tensor:
         return torch.matmul(restored, back).to(dtype=tensor.dtype)
 
 
+def codes(tensor: torch.Tensor, *, layer_idx: int, target: str, bits: int, signs: str = "rope_pairs",
+          rotation: str = "hadamard", codebook: str = "gaussian") -> tuple[torch.Tensor, torch.Tensor]:
+    """The stored form of ``apply`` without an outlier split: level indices and fp16 norms.
+
+    ``tensor`` [batch, kv_heads, tokens, d] in HF channel order. Returns ``index`` (uint8, the position in
+    the sorted codebook, coordinate by coordinate of the rotated vector) and ``norm`` (float16
+    [batch, kv_heads, tokens]); ``levels[index] * norm`` rotated back is exactly what ``apply`` returns.
+    For read-only profiling of the codes (scripts/turboquant_code_locality.py).
+    """
+    _check_bits(bits)
+    _check_signs(signs)
+    plan = _plan(layer_idx, target, bits, 0, bits + 1, None, signs, tensor.shape[1], tensor.shape[-1],
+                 tensor.device, rotation, codebook)
+    values = tensor.float()
+    with _full_fp32_matmul(values.device):
+        rotated = torch.matmul(values, plan.matrix[0])
+        (_, _, _, boundaries), = plan.segments
+        norm = rotated.norm(dim=-1, keepdim=True)
+        unit = rotated / norm.clamp_min(torch.finfo(torch.float32).tiny)
+        index = torch.bucketize(unit.contiguous(), boundaries)
+    return index.to(torch.uint8), norm.squeeze(-1).to(torch.float16)
+
+
 class _full_fp32_matmul:
     """Keep CUDA matmuls in full float32 (no TF32) inside the quantizer, whatever the global setting."""
 
