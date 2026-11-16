@@ -1,6 +1,6 @@
 """Joint greedy rung climb scored by normalised KL to dense, with lazy rounds.
 
-Start dense. Each round, every eligible slot's next rung is scored with the whole current map
+Start dense (or from ``start``). Each round, every eligible slot's next rung is scored with the whole current map
 applied, and the step with the smallest ``kl_mean`` increase per unit of saving is kept. A
 budget's map is saved as soon as the mean saving reaches it (as in ``rank_fill``), so one climb
 gives nested maps for every budget.
@@ -45,6 +45,7 @@ class SearchConfig:
     tag_prefix: str = ""
     max_rounds: int | None = None  # timing runs stop early
     extra: dict = field(default_factory=dict)  # recorded in state and snapshots
+    start: Assignment | None = None  # climb from this map instead of dense; levels must be on the ladder
 
     def identity(self) -> dict:
         """What must match for a saved state to be resumed."""
@@ -55,6 +56,7 @@ class SearchConfig:
             "reference": _assignment_key(self.reference),
             "lazy_top": self.lazy_top,
             "full_every": self.full_every,
+            **({"start": _assignment_key(self.start)} if self.start else {}),
             **self.extra,
         }
 
@@ -90,6 +92,12 @@ def run_search(score: ScoreFn, config: SearchConfig, out_dir: str | Path, log=pr
         log(f"resumed at round {rnd}, saving {_saving(index, config):.4f}")
     else:
         index = {slot: -1 for slot in config.slots}
+        if config.start:
+            ladder = [r.level for r in config.rungs]
+            for slot, level in config.start.items():
+                if level not in ladder:
+                    raise ValueError(f"start level {level} of {slot.tag()} is not on the ladder {ladder}")
+                index[slot] = ladder.index(level)
         est = {slot: None for slot in config.slots}
         cache, rnd, done = {}, 0, []
         reference_kl = None

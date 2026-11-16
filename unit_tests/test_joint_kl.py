@@ -16,7 +16,7 @@ from engine.layer_select.rungs import TURBOQUANT_MSE
 from engine.layer_select.slots import Slot, all_slots
 
 DOMAINS = ("wikitext", "arc_5shot", "gsm8k", "mbpp")
-BITS_COST = {4: 1.0, 3: 3.0, 2.5: 5.0, 2: 9.0}
+BITS_COST = {4: 1.0, 3: 3.0, 2.5: 5.0, 2: 9.0, 1: 20.0}
 
 
 def additive(assignment):
@@ -105,6 +105,43 @@ class SearchTests(unittest.TestCase):
             snaps_lazy = run_search(lazy, config(lazy_top=3, n_layers=6), b, log=quiet)
             self.assertEqual([s["assignment"] for s in snaps_full], [s["assignment"] for s in snaps_lazy])
             self.assertLess(lazy.maps, full.maps)
+
+    def test_search_can_start_from_a_map_on_the_whole_bit_ladder(self):
+        from engine.layer_select.rungs import TURBOQUANT_MSE_WHOLE
+
+        slots = all_slots(4)
+        start = {s: (3 if s.layer < 2 else 2) for s in slots}
+        cfg = SearchConfig(method_kv=turboquant_mse(), rungs=TURBOQUANT_MSE_WHOLE, slots=slots, budgets=(0.90,),
+                           reference={s: 3 for s in slots}, lazy_top=3, full_every=3, tag_prefix="w_", start=start)
+        with tempfile.TemporaryDirectory() as tmp:
+            snap = run_search(Counting(additive), cfg, tmp, log=quiet)[0]
+            history = [json.loads(line) for line in (Path(tmp) / "history.jsonl").read_text().splitlines()]
+        levels = {Slot.from_dict(a): a["level"] for a in snap["assignment"]}
+        self.assertTrue(all(levels[s] <= start[s] for s in slots))  # only climbs from the start
+        self.assertGreaterEqual(snap["compression"], 0.90 - 1e-12)
+        start_saving = (4 * 13 / 16 + 4 * 14 / 16) / 8
+        self.assertEqual(len(history), round((snap["compression"] - start_saving) * 8 * 16))  # one 1/16 step per round
+        self.assertNotEqual(cfg.identity(), config().identity())
+        self.assertIn("start", cfg.identity())
+
+    def test_start_level_off_the_ladder_is_refused(self):
+        slots = all_slots(2)
+        cfg = SearchConfig(method_kv=turboquant_mse(), rungs=TURBOQUANT_MSE, slots=slots, budgets=(0.85,),
+                           reference={s: 3 for s in slots}, start={slots[0]: 1})
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaises(ValueError):
+            run_search(Counting(additive), cfg, tmp, log=quiet)
+
+    def test_whole_bit_start_map_moves_2_5_to_3(self):
+        from compression_topics.turboquant_mse.scripts import turboquant_mse_joint_kl_whole as whole
+
+        start = whole.start_map()
+        self.assertEqual(len(start), 64)
+        self.assertTrue(set(start.values()) <= {4, 3, 2})
+        first = whole.start_selection(start)
+        self.assertAlmostEqual(first["compression"], (3 * 12 + 26 * 13 + 35 * 14) / 16 / 64)
+        self.assertEqual({s["recent_window"] for s in first["kv"]["pipeline"]}, {128})
+        run = whole.jkl.tasks_run([first, whole.uniform_2_bits()])
+        self.assertEqual(len(run["configurations"]), 3 * 3)
 
     def test_budget_above_top_rung_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp, self.assertRaises(ValueError):

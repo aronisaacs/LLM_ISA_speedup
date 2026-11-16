@@ -61,7 +61,8 @@ def devices() -> list[str]:
     return ["mps" if torch.backends.mps.is_available() else "cpu"]
 
 
-def search(args) -> list[dict]:
+def search(args, rungs=TURBOQUANT_MSE, budgets=BUDGETS, tag=TAG, out_dir=OUT, start=None, extra=None) -> list[dict]:
+    """The joint-KL climb; the defaults are the 4 / 3 / 2.5 / 2 study from dense."""
     from transformers import AutoConfig
 
     from engine.layer_select.joint_kl.pool import ScorerPool
@@ -72,18 +73,20 @@ def search(args) -> list[dict]:
     slots = all_slots(n_layers)
     config = SearchConfig(
         method_kv=turboquant_mse(recent_window=TURBOQUANT_CALIBRATION_WINDOW),
-        rungs=TURBOQUANT_MSE,
+        rungs=rungs,
         slots=slots,
-        budgets=BUDGETS,
+        budgets=budgets,
         reference={slot: REFERENCE_BITS for slot in slots},
         lazy_top=args.lazy_top,
         full_every=args.full_every,
-        tag_prefix=TAG,
+        tag_prefix=tag,
         max_rounds=2 if args.timing else None,
         extra={"model": model, "manifest_sha256": meta["manifest_sha256"], "examples": len(rows),
-               "reference_map": f"uniform {REFERENCE_BITS} bits"},
+               "reference_map": f"uniform {REFERENCE_BITS} bits", **(extra or {})},
+        start=start,
     )
-    out = Path(args.out) if args.out else (OUT.parent / f"timing_{args.timing}" if args.timing else OUT)
+    timing = f"timing_{args.timing}" if out_dir == OUT else f"{out_dir.name}_timing_{args.timing}"
+    out = Path(args.out) if args.out else (out_dir.parent / timing if args.timing else out_dir)
     found = devices()
     print(f"devices {found}, {len(rows)} examples, {len(slots)} slots -> {out}", flush=True)
     pool = ScorerPool(found, rows, meta, config.method_kv, model=args.model, dtype=args.dtype)

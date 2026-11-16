@@ -23,6 +23,8 @@ PRUNE = (Rung(25, 0.25), Rung(50, 0.50), Rung(75, 0.75))
 _ON_SPARSIFY = (Rung(50, 0.5),)
 # Mildest code first (a slot can also stay dense). 4 bits removes 12/16 of a slot; 2 bits removes 14/16.
 TURBOQUANT_MSE = (Rung(4, 12 / 16), Rung(3, 13 / 16), Rung(2.5, 13.5 / 16), Rung(2, 14 / 16))
+# Whole bits only, down to 1 bit (no split level; Aron 2026-11-16). Used by the joint-KL push past 85%.
+TURBOQUANT_MSE_WHOLE = (Rung(4, 12 / 16), Rung(3, 13 / 16), Rung(2, 14 / 16), Rung(1, 15 / 16))
 # int8 removes half a slot. int4 removes three quarters. Milder code first.
 QUANT = (Rung(8, 0.5), Rung(4, 0.75))
 
