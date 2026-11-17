@@ -11,7 +11,7 @@
 set -euo pipefail
 source /opt/conda/etc/profile.d/conda.sh
 conda activate llm_isa_dgx
-cd /data/users/aroni/projects/LLM_ISA_speedup
+cd "$HOME/projects/LLM_ISA_speedup"
 export HF_HUB_CACHE="$HOME/models/huggingface"
 export HF_DATASETS_CACHE="$HOME/datasets/huggingface"
 export OMP_NUM_THREADS=8
