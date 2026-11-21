@@ -27,7 +27,7 @@ changes were within noise (Llama, one slot at 25 %: 8.81-8.84 around dense 8.83)
 | window | tasks: newest **32 tokens** exact (`recent_window`); calibration: none | **32 tokens** (calibration and tasks) |
 | budgets (net) | 10 / 20 / 30 / 40 / 50 % | 10 / 20 / 30 / 35 / 40 % |
 | reference map | every slot 37 % (30.5 % net) | every slot 30 % |
-| task batch size | 8 | 1 |
+| task batch size | 8 | 8 for GSM8K and HumanEval, 1 for C-Eval |
 
 Qwen3.5 has a KV cache only in its 8 full-attention layers (3, 7, ..., 31): 16 slots, and budgets
 are shares of that cache. Spatial query weights are each model's official calibration
@@ -45,3 +45,9 @@ every candidate), `selected_p<budget>.json` and `selections.json` (maps; `kv` is
 
 The spatial window is the `window` option of `SpatialConfig` (default 32). Spec steps without a
 `window` key are 16-token windows: every spatial result recorded before 2026-11-21.
+
+Spatial runs batched generation: each row's windows start at its first real token, read from the
+attention mask lm-eval passes to `generate` (`engine/kv_compress/padding.py`), so a row is compressed
+exactly as in a batch of one (`unit_tests/test_spatial_batching.py`: same tokens and storage bits).
+lm-eval's log-likelihood calls (C-Eval) are right-padded with no mask, so they stay at batch size 1;
+spatial refuses a larger batch without a mask.

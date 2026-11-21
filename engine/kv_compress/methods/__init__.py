@@ -19,6 +19,8 @@ OPTION_VALIDATORS: dict[str, Callable] = {}
 # Optional: how many consecutive tokens a step compresses together (its options -> group size);
 # a recent window ages tokens out in whole aligned groups. Default 1.
 WINDOW_GROUPS: dict[str, Callable] = {}
+# Methods that group consecutive tokens and so need each row's left padding (engine/kv_compress/padding.py).
+NEEDS_PADDING: set[str] = set()
 
 
 def validate_options(name, options):

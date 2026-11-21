@@ -147,10 +147,12 @@ class TaskRunTests(unittest.TestCase):
         (out / "singles.json").write_text(json.dumps({"identity": {}, "kl": kl}))
         return rerun.greedy(SimpleNamespace(timing=None), name, method)
 
-    def test_spatial_run_uses_batch_one_and_the_models_tasks(self):
+    def test_spatial_run_batches_generation_but_not_ceval(self):
         self._selections("qwen", "spatial")
         run = rerun.tasks_run(SimpleNamespace(timing=None), "qwen", "spatial")
-        self.assertEqual(run["batch_size"], 1)
+        self.assertEqual(run["batch_size"], rerun.BATCH_SIZE)
+        for c in run["configurations"]:
+            self.assertEqual(c.get("batch_size", run["batch_size"]), 1 if c["tasks"] == ["ceval-valid"] else 8)
         self.assertIn("Qwen3.5-9B", run["model_args"])
         configs = run["configurations"]
         self.assertEqual(len(configs), 3 * 6)

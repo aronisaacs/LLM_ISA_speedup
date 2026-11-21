@@ -113,13 +113,17 @@ class Method:
     levels: tuple[int, ...]  # per-slot levels, mildest first
     budgets: tuple[float, ...]
     reference: int  # level of every slot in the reference map
-    batch_size: int
+    batch_size: int  # generation tasks (GSM8K, HumanEval)
+    loglikelihood_batch_size: int  # C-Eval
 
 
+LOGLIKELIHOOD_TASKS = ("ceval-valid",)
 METHODS = {
-    "vector": Method((25, 50, 75), (0.10, 0.20, 0.30, 0.40, 0.50), 37, BATCH_SIZE),
-    # Spatial compression needs batch size one.
-    "spatial": Method((10, 25, 40, 47, 49), (0.10, 0.20, 0.30, 0.35, 0.40), 30, 1),
+    "vector": Method((25, 50, 75), (0.10, 0.20, 0.30, 0.40, 0.50), 37, BATCH_SIZE, BATCH_SIZE),
+    # Spatial aligns each row's windows at its first real token from the attention mask, which lm-eval
+    # passes to generate (left padding) but not to log-likelihood calls (right padding, no mask): C-Eval
+    # runs one question at a time.
+    "spatial": Method((10, 25, 40, 47, 49), (0.10, 0.20, 0.30, 0.35, 0.40), 30, BATCH_SIZE, 1),
 }
 
 
@@ -339,6 +343,8 @@ def tasks_run(args, name: str, method: str) -> dict:
     run.update(model="hf", model_args=model.model_args, batch_size=spec.batch_size)
     for configuration in run["configurations"]:
         configuration["name"] = configuration["name"].replace("llama31_", f"{name}_{method}_", 1)
+        if configuration["tasks"][0] in LOGLIKELIHOOD_TASKS and spec.loglikelihood_batch_size != spec.batch_size:
+            configuration["batch_size"] = spec.loglikelihood_batch_size
     rank = lambda c: next(i for i, t in enumerate(TASK_ORDER) if c["tasks"][0].startswith(t))  # noqa: E731
     run["configurations"].sort(key=lambda c: (rank(c), not c["name"].endswith("_dense")))
     _write_atomic(out / "tasks_run.json", json.dumps(run, indent=2) + "\n")

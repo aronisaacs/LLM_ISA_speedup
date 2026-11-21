@@ -24,7 +24,22 @@ def install(lm: Any, spec: KvSpec) -> Callable[[], None]:
     if spec.is_identity():
         return _noop
     _validate_layer_indices(lm, spec)
-    return patch_cache_update(spec, _rope_tables(lm))
+    uninstall = patch_cache_update(spec, _rope_tables(lm))
+    from engine.kv_compress.methods import NEEDS_PADDING
+
+    model = getattr(lm, "model", None)
+    if not any(step.method in NEEDS_PADDING for step in spec.pipeline) or model is None:
+        return uninstall
+    from engine.kv_compress import padding
+
+    handle = model.register_forward_pre_hook(padding.record, with_kwargs=True)
+
+    def uninstall_all() -> None:
+        handle.remove()
+        padding.clear()
+        uninstall()
+
+    return uninstall_all
 
 
 def _noop() -> None:
