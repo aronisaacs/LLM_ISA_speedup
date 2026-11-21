@@ -44,6 +44,15 @@ def report(ok: bool, what: str, fix: str = "") -> None:
         failures.append(what)
 
 
+def fetch(code: str) -> None:
+    """Download in a fresh process: the hub and datasets read their offline switches at import."""
+    import subprocess
+
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("HF_HUB_OFFLINE", "HF_DATASETS_OFFLINE", "HF_EVALUATE_OFFLINE", "TRANSFORMERS_OFFLINE")}
+    subprocess.run([sys.executable, "-c", code], check=False, env=env)
+
+
 def offline(on: bool) -> None:
     for key in ("HF_HUB_OFFLINE", "HF_DATASETS_OFFLINE", "HF_EVALUATE_OFFLINE", "TRANSFORMERS_OFFLINE"):
         os.environ[key] = "1" if on else "0"
@@ -77,9 +86,7 @@ def check_models(models, download: bool) -> None:
     for name, model in models.items():
         repo = model.pretrained
         if download:
-            offline(False)
-            snapshot_download(repo, allow_patterns=MODEL_FILES)
-            offline(True)
+            fetch(f"from huggingface_hub import snapshot_download; snapshot_download({repo!r}, allow_patterns={MODEL_FILES!r})")
         try:
             try:
                 index = Path(hf_hub_download(repo, "model.safetensors.index.json", local_files_only=True))
@@ -107,9 +114,7 @@ def check_datasets(entries, label: str, download: bool, quiet: bool = False) -> 
     for path, config, split in entries:
         what = f"{path}" + (f" [{config}]" if config else "") + f" {split}"
         if download:
-            offline(False)
-            load_dataset(path, config, split=split)
-            offline(True)
+            fetch(f"from datasets import load_dataset; load_dataset({path!r}, {config!r}, split={split!r})")
         try:
             rows = len(load_dataset(path, config, split=split))
             found += rows > 0
