@@ -22,5 +22,5 @@ export OMP_NUM_THREADS=8
 export PYTHONUNBUFFERED=1
 echo "Slurm job ${SLURM_JOB_ID:-manual}; GPUs ${CUDA_VISIBLE_DEVICES:-unset}; args: $*"
 git log -1 --oneline
-python -m unittest unit_tests.test_kl_greedy_rerun unit_tests.test_joint_kl unit_tests.test_spatial_algorithms unit_tests.test_storage_contract
+python -m unittest unit_tests.test_kl_greedy_rerun unit_tests.test_spatial_batching unit_tests.test_joint_kl unit_tests.test_spatial_algorithms unit_tests.test_storage_contract
 python -u compression_topics/kl_greedy/scripts/rerun.py "$@"
