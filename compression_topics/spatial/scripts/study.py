@@ -27,7 +27,7 @@ from catalog.tasks import (
     HUMANEVAL_INSTRUCT,
     WIKITEXT_FULL,
 )
-from compression_topics.spatial.algorithms.formats import ACCOUNTING, RESIDUALS, WINDOW
+from compression_topics.spatial.algorithms.formats import ACCOUNTING, OFFICIAL_WINDOW, RESIDUALS
 from engine.eval_runner.cache import identities_match, simulation_identity
 from engine.eval_runner.files import write_json
 from engine.eval_runner.index import record_simulation
@@ -72,7 +72,7 @@ def base_plan(
         seq_len=2048,
         scoring_prefix=1536,
         residuals=list(RESIDUALS),
-        window=WINDOW,
+        window=OFFICIAL_WINDOW,  # SpatialConfig's default
         accounting=ACCOUNTING,
         allocation_basis="measured_calibration_bytes",
         matching_tolerance=0.01,

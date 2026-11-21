@@ -1,7 +1,8 @@
 """The ``spatial`` KV compression method: spatial pair compression.
 
-Adjacent tokens are merged in pairs per KV head. Every 16-token window of every
-head is compressed to the slot's saving, into a fixed-size block, as soon as its
+Adjacent tokens are merged in pairs per KV head. Every window of every head (32
+tokens since 2026-11-21; a step without a ``window`` key uses 16, as all earlier
+runs did) is compressed to the slot's saving, into a fixed-size block, as soon as its
 last token is written to the cache, in the prompt and during generation alike
 (``windows.py``). Tokens of an unfinished window stay dense until it completes.
 Keys use the query-aware reconstruction error when query weights are given;
@@ -16,6 +17,7 @@ from compression_topics.spatial.algorithms.formats import (
     ACCOUNTING,
     HEADER_BITS,
     TAG_BITS,
+    OFFICIAL_WINDOW,
     WINDOW,
     dense_bits,
 )
@@ -27,15 +29,18 @@ from engine.kv_compress.methods import AFTER_APPEND, METHODS, OPTION_VALIDATORS
 class SpatialConfig:
     query_weights: str | None = None  # calibrated E[q^2] file, for keys
     query_weights_sha256: str | None = None
+    window: int = OFFICIAL_WINDOW  # tokens per window; written only when not 16, the identity of older runs
 
     def __post_init__(self):
         if (self.query_weights is None) != (self.query_weights_sha256 is None):
             raise ValueError("query weights need their checksum, and the checksum its weights")
+        _check_window(self.window)
 
     def pipeline(self, saving, *, k_layers="all", v_layers="all"):
         if not math.isfinite(saving) or not 0 < saving < 1:
             raise ValueError("saving must be between zero and one")
-        options = {k: v for k, v in asdict(self).items() if v is not None}
+        options = {k: v for k, v in asdict(self).items()
+                   if v is not None and not (k == "window" and v == WINDOW)}
         return {"pipeline": [dict(method="spatial", saving=saving, k_layers=k_layers,
                                   v_layers=v_layers, **options)]}
 
@@ -50,7 +55,7 @@ def _stats(target, layer_idx):
     )
 
 
-def store(tensor, *, saving, query_weights=None, query_weights_sha256=None, **context):
+def store(tensor, *, saving, query_weights=None, query_weights_sha256=None, window=WINDOW, **context):
     """New tokens are stored as written; :func:`after_append` compresses whole windows."""
     return tensor
 
@@ -60,8 +65,8 @@ _DONE = {}
 
 
 def after_append(cache_tensor, *, target, layer_idx, start, end, saving, rope_tables=None,
-                 query_weights=None, query_weights_sha256=None):
-    """Compress, in place, every 16-token window completed by this cache update."""
+                 query_weights=None, query_weights_sha256=None, window=WINDOW):
+    """Compress, in place, every ``window``-token window completed by this cache update."""
     if cache_tensor.ndim != 4 or cache_tensor.shape[0] != 1:
         raise ValueError("spatial compression requires batch size one")
     key = (layer_idx, target)
@@ -73,14 +78,15 @@ def after_append(cache_tensor, *, target, layer_idx, start, end, saving, rope_ta
     new = heads * dense_bits(end - start, dim)
     row["dense_bits"] += new
     row["stored_bits"] += new
-    complete = end // WINDOW * WINDOW
+    complete = end // window * window
     if complete <= done:
         return
     body = cache_tensor[..., done:complete, :]
     energy = None
     if target == "k" and query_weights is not None:
         energy = query_energy(query_weights, query_weights_sha256, layer_idx, body)
-    out, bits, counts = windows.compress(body, target=target, saving=saving, query_energy=energy)
+    out, bits, counts = windows.compress(body, target=target, saving=saving, query_energy=energy,
+                                         window=window)
     cache_tensor[..., done:complete, :] = out
     header = HEADER_BITS if done == 0 else 0
     row["stored_bits"] -= heads * dense_bits(complete - done, dim) - bits - header
@@ -94,6 +100,11 @@ def after_append(cache_tensor, *, target, layer_idx, start, end, saving, rope_ta
 def reset():
     """Forget per-sequence state (a new sequence also resets it automatically)."""
     _DONE.clear()
+
+
+def _check_window(window):
+    if isinstance(window, bool) or not isinstance(window, int) or window < 2 or window % 2:
+        raise ValueError("spatial window must be an even number of tokens")
 
 
 def _validate(options):

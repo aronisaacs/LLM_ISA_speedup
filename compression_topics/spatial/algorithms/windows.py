@@ -1,4 +1,4 @@
-"""Compress each 16-token window of each KV head to the target saving.
+"""Compress each window (16 tokens by default; ``window``) of each KV head to the target saving.
 
 Every head of a layer slot gets the same budget in every window: a fixed-size
 block of (1 - saving) x the head's dense window bits, plus one format tag per
@@ -26,10 +26,10 @@ from compression_topics.spatial.algorithms.representation import error, prepare,
 STEP_ORDER = [2, 1, 0]
 
 
-def candidates(tensor, *, target, query_energy=None):
+def candidates(tensor, *, target, query_energy=None, window=WINDOW):
     """Reconstruction error and reconstruction of every pair in every merged format.
 
-    ``tensor`` is [1, heads, tokens, dim], tokens a multiple of :data:`WINDOW`.
+    ``tensor`` is [1, heads, tokens, dim], tokens a multiple of ``window``.
     Returns (errors [heads, pairs, len(RESIDUALS)], infinite where a pair cannot
     be rebuilt; reconstructions {residual: [1, heads, tokens, dim]}).
     Query energy applies to keys only.
@@ -37,8 +37,8 @@ def candidates(tensor, *, target, query_energy=None):
     if tensor.ndim != 4 or tensor.shape[0] != 1 or tensor.shape[-1] < 32:
         raise ValueError("need batch-one [1, KV heads, tokens, head_dim >= 32]")
     heads, length, dim = tensor.shape[1:]
-    if length % WINDOW or not length:
-        raise ValueError(f"need whole {WINDOW}-token windows")
+    if window <= 0 or window % 2 or length % window or not length:
+        raise ValueError(f"need whole {window}-token windows of an even size")
     energy = query_energy if target == "k" else None
     pairs = prepare(tensor)
     columns, reconstructions = [], {}
@@ -50,20 +50,20 @@ def candidates(tensor, *, target, query_energy=None):
     return torch.stack(columns, -1), reconstructions
 
 
-def solve(errors, dim, saving):
+def solve(errors, dim, saving, window=WINDOW):
     """Format code of every pair: sort each head's merge steps per window and take them
     until the head saves ``saving`` of its dense window bits.
 
     Each pair moves from dense to its merged formats in steps along its lower convex
     hull of (bits saved, error). A pair's steps always get more expensive, and a
     stable sort keeps a pair's later step after its earlier one.
-    Returns codes [heads, windows, WINDOW] (both tokens of a pair share a code).
+    Returns codes [heads, windows, window] (both tokens of a pair share a code).
     """
     # Small per-window bookkeeping: done on the CPU whatever device the cache is on.
     table = errors.to("cpu", torch.float64)  # [heads, pairs, 3]: PR0, PR16, PR32
     heads, count = table.shape[:2]
-    windows = count * 2 // WINDOW
-    pairs = WINDOW // 2
+    windows = count * 2 // window
+    pairs = window // 2
     dense = dense_bits(2, dim)
     saved = torch.tensor([dense - pair_bits(RESIDUALS[j], dim) for j in STEP_ORDER],
                          dtype=torch.float64)
@@ -93,7 +93,7 @@ def solve(errors, dim, saving):
         return x.permute(1, 0, 2, 3).reshape(windows * heads, -1)
 
     step_saved, step_rate = per_head_window(steps_saved), per_head_window(steps_rate)
-    need = torch.as_tensor(saving, dtype=torch.float64) * dense_bits(WINDOW, dim)
+    need = torch.as_tensor(saving, dtype=torch.float64) * dense_bits(window, dim)
     rank = torch.sort(step_rate, dim=1, stable=True).indices
     cumulative = step_saved.gather(1, rank).cumsum(1)
     before = cumulative - step_saved.gather(1, rank)
@@ -106,28 +106,28 @@ def solve(errors, dim, saving):
         taken > 0,
         codes.gather(-1, (taken - 1).clamp_min(0).unsqueeze(-1)).squeeze(-1),
         torch.zeros(heads, windows, pairs, dtype=torch.long))
-    return pair_code.unsqueeze(-1).expand(heads, windows, pairs, 2).reshape(heads, windows, WINDOW)
+    return pair_code.unsqueeze(-1).expand(heads, windows, pairs, 2).reshape(heads, windows, window)
 
 
-def block_bits(dim, saving):
+def block_bits(dim, saving, window=WINDOW):
     """Bits reserved per head per window: (1 - saving) x dense bits plus the pair tags."""
-    return (1 - saving) * dense_bits(WINDOW, dim) + (WINDOW // 2) * TAG_BITS
+    return (1 - saving) * dense_bits(window, dim) + (window // 2) * TAG_BITS
 
 
-def compress(tensor, *, target, saving, query_energy=None):
+def compress(tensor, *, target, saving, query_energy=None, window=WINDOW):
     """Compress the whole windows of ``tensor``.
 
     Returns (reconstructed tensor, stored bits, pair count per format). Stored bits
     count each head's full block, or the bits it used if that is more (a head that
     cannot reach the budget).
     """
-    errors, reconstructions = candidates(tensor, target=target, query_energy=query_energy)
+    errors, reconstructions = candidates(tensor, target=target, query_energy=query_energy, window=window)
     heads, length, dim = tensor.shape[1:]
-    code = solve(errors, dim, saving)
+    code = solve(errors, dim, saving, window)
     bits_of = torch.tensor([dense_bits(2, dim)] + [pair_bits(r, dim) for r in RESIDUALS],
                            dtype=torch.float64) + TAG_BITS
     used = bits_of[code[..., ::2]].sum(-1)  # [heads, windows]
-    block = torch.tensor(block_bits(dim, saving), dtype=torch.float64)
+    block = torch.tensor(block_bits(dim, saving, window), dtype=torch.float64)
     bits = torch.maximum(used, block).sum(0).sum()  # per window, then over windows
     code = code.reshape(1, heads, length, 1).to(tensor.device)
     out = tensor.clone()

@@ -117,6 +117,9 @@ def _set_level(step: dict, pct) -> None:
     if method == "quantize":
         step["bits"] = int(pct)
         return
+    if method == "spatial":  # the level is the slot's saving in percent
+        step["saving"] = pct / 100
+        return
     if method in {"vector_compress", "vector_compress_pair",
                   "checksparse_l1", "checksparse_row"}:
         step["prune_pct"] = int(pct)
@@ -133,6 +136,8 @@ def _level_from_step(step: dict) -> int | None:
         return _level(bits + outliers * (high - bits) / TURBOQUANT_HEAD_DIM)
     if step.get("method") == "quantize" and step.get("bits") is not None:
         return int(step["bits"])
+    if step.get("method") == "spatial" and step.get("saving") is not None:
+        return _level(round(100 * step["saving"], 6))
     if step.get("prune_pct") is not None:
         return int(step["prune_pct"])
     return None
