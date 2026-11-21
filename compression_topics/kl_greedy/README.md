@@ -34,6 +34,8 @@ are shares of that cache. Spatial query weights are each model's official calibr
 (`spatial/figures/official_<model>/query_weights.pt`).
 
 ```bash
+python compression_topics/kl_greedy/scripts/preflight.py             # login node, CPU, offline: all inputs present?
+python compression_topics/kl_greedy/scripts/preflight.py --download  # fetch missing models and datasets
 sbatch compression_topics/kl_greedy/scripts/rerun_dgx.sh                  # everything, resumable
 sbatch compression_topics/kl_greedy/scripts/rerun_dgx.sh --through greedy # KL scores and maps only
 ```
