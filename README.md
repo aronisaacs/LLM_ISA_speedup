@@ -9,11 +9,11 @@ The official spatial pair compression method and its sweep are documented in
 
 ## DGX
 
-Lab notes on the machine: `/home/aroni/README.md` (user `aroni`, host `DGX-host-01`).
+Lab notes on the machine: `~/README.md` (user `aron.isaacs`, host `DGX-host-01`).
 
 | | |
 |---|---|
-| Repo | `/data/users/aroni/projects/LLM_ISA_speedup` |
+| Repo | `/home/aron.isaacs/projects/LLM_ISA_speedup` |
 | Env | `llm_isa_dgx` |
 | Conda | `source /opt/conda/etc/profile.d/conda.sh` |
 | Model cache | `HF_HUB_CACHE=$HOME/models/huggingface` |
@@ -33,7 +33,7 @@ First-time env setup is in `env/environment.dgx.yml`.
 The node has 8 GPUs and one partition, `prod`, with no time limit and no account. It is shared, so ask for only the cards a study needs. Slurm sets `CUDA_VISIBLE_DEVICES` to the granted cards, and `engine/multi_run.py` starts one worker on each. About 32 CPUs per GPU is a fair share.
 
 ```bash
-cd /data/users/aroni/projects/LLM_ISA_speedup
+cd /home/aron.isaacs/projects/LLM_ISA_speedup
 git pull
 mkdir -p logs
 
@@ -48,7 +48,7 @@ cat > logs/study.sbatch <<'EOF'
 #SBATCH --output=logs/study_%j.out
 source /opt/conda/etc/profile.d/conda.sh
 conda activate llm_isa_dgx
-cd /data/users/aroni/projects/LLM_ISA_speedup
+cd /home/aron.isaacs/projects/LLM_ISA_speedup
 export HF_HUB_CACHE=$HOME/models/huggingface
 export HF_DATASETS_CACHE=$HOME/datasets/huggingface
 echo "GPUs: $CUDA_VISIBLE_DEVICES"
@@ -64,7 +64,7 @@ Change `--gres=gpu:N`, the CPU count, and the last line for another study. `sque
 A shell for an experiment script looks like this. `git log -1` must be the commit that contains that script. If `tlist` already shows the session name, `tkill` it first. The `python -u` line is that script, not a generic runner.
 
 ```bash
-cd /data/users/aroni/projects/LLM_ISA_speedup
+cd /home/aron.isaacs/projects/LLM_ISA_speedup
 source /opt/conda/etc/profile.d/conda.sh
 conda activate llm_isa_dgx
 git pull
@@ -74,7 +74,7 @@ gpuwho
 nvidia-smi --query-gpu=index,memory.used,utilization.gpu --format=csv
 tlist
 
-job vector_study 'bash -lc "source /opt/conda/etc/profile.d/conda.sh && conda activate llm_isa_dgx && cd /data/users/aroni/projects/LLM_ISA_speedup && export CUDA_VISIBLE_DEVICES=0,1,2,3 && export HF_HUB_CACHE=$HOME/models/huggingface && export HF_DATASETS_CACHE=$HOME/datasets/huggingface && python -u compression_topics/vector/scripts/vector_study.py"'
+job vector_study 'bash -lc "source /opt/conda/etc/profile.d/conda.sh && conda activate llm_isa_dgx && cd /home/aron.isaacs/projects/LLM_ISA_speedup && export CUDA_VISIBLE_DEVICES=0,1,2,3 && export HF_HUB_CACHE=$HOME/models/huggingface && export HF_DATASETS_CACHE=$HOME/datasets/huggingface && python -u compression_topics/vector/scripts/vector_study.py"'
 ```
 
 See it with `tat vector_study`. Ctrl+B then D detaches.
