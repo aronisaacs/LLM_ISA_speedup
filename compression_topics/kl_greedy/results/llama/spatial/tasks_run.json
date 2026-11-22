@@ -1,0 +1,1555 @@
+{
+  "model": "hf",
+  "batch_size": 8,
+  "model_args": "pretrained=meta-llama/Llama-3.1-8B-Instruct,dtype=bfloat16",
+  "configurations": [
+    {
+      "name": "llama_spatial_gsm8k_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/gsm8k_20pct_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_gsm8k_p10",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.1,
+            "k_layers": [
+              18
+            ],
+            "v_layers": [],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              19,
+              20,
+              21,
+              27,
+              28,
+              30,
+              31
+            ],
+            "v_layers": [
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              22,
+              23,
+              24,
+              25,
+              26
+            ],
+            "v_layers": [
+              22,
+              23,
+              24,
+              25,
+              29,
+              30
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/gsm8k_20pct_p10.json",
+      "metadata": {
+        "kv_budget": 0.1,
+        "kv_compression": 0.10140991210937501
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_gsm8k_p20",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.1,
+            "k_layers": [],
+            "v_layers": [
+              16
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              11,
+              12,
+              13,
+              14,
+              16,
+              29,
+              31
+            ],
+            "v_layers": [
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              30
+            ],
+            "v_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/gsm8k_20pct_p20.json",
+      "metadata": {
+        "kv_budget": 0.2,
+        "kv_compression": 0.20128784179687512
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_gsm8k_p30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              29
+            ],
+            "v_layers": [
+              2,
+              7,
+              12,
+              14,
+              15,
+              16,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              30,
+              31
+            ],
+            "v_layers": [
+              5,
+              6,
+              8,
+              9,
+              10,
+              13,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              24,
+              25,
+              26,
+              28,
+              29,
+              30
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/gsm8k_20pct_p30.json",
+      "metadata": {
+        "kv_budget": 0.3,
+        "kv_compression": 0.30019775390625
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_gsm8k_p35",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              1,
+              2,
+              3,
+              4,
+              6,
+              7,
+              9,
+              12,
+              13,
+              14,
+              15,
+              16,
+              29
+            ],
+            "v_layers": [
+              0,
+              4,
+              12,
+              14
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              5,
+              8,
+              10,
+              11,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              30,
+              31
+            ],
+            "v_layers": [
+              2,
+              3,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              13,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              22,
+              24,
+              25,
+              26,
+              28,
+              29,
+              30,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [],
+            "v_layers": [
+              21,
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/gsm8k_20pct_p35.json",
+      "metadata": {
+        "kv_budget": 0.35,
+        "kv_compression": 0.35046447753906224
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_gsm8k_p40",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              0,
+              1,
+              2,
+              4,
+              7,
+              14
+            ],
+            "v_layers": [
+              1
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              3,
+              5,
+              6,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              24,
+              25,
+              26,
+              27,
+              29,
+              30,
+              31
+            ],
+            "v_layers": [
+              0,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              29,
+              30,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [
+              21,
+              22,
+              23,
+              28
+            ],
+            "v_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/gsm8k_20pct_p40.json",
+      "metadata": {
+        "kv_budget": 0.4,
+        "kv_compression": 0.4006054687499995
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_humaneval_instruct_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/humaneval_instruct_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_humaneval_instruct_p10",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.1,
+            "k_layers": [
+              18
+            ],
+            "v_layers": [],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              19,
+              20,
+              21,
+              27,
+              28,
+              30,
+              31
+            ],
+            "v_layers": [
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              22,
+              23,
+              24,
+              25,
+              26
+            ],
+            "v_layers": [
+              22,
+              23,
+              24,
+              25,
+              29,
+              30
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/humaneval_instruct_p10.json",
+      "metadata": {
+        "kv_budget": 0.1,
+        "kv_compression": 0.10140991210937501
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_humaneval_instruct_p20",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.1,
+            "k_layers": [],
+            "v_layers": [
+              16
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              11,
+              12,
+              13,
+              14,
+              16,
+              29,
+              31
+            ],
+            "v_layers": [
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              30
+            ],
+            "v_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/humaneval_instruct_p20.json",
+      "metadata": {
+        "kv_budget": 0.2,
+        "kv_compression": 0.20128784179687512
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_humaneval_instruct_p30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              29
+            ],
+            "v_layers": [
+              2,
+              7,
+              12,
+              14,
+              15,
+              16,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              30,
+              31
+            ],
+            "v_layers": [
+              5,
+              6,
+              8,
+              9,
+              10,
+              13,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              24,
+              25,
+              26,
+              28,
+              29,
+              30
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/humaneval_instruct_p30.json",
+      "metadata": {
+        "kv_budget": 0.3,
+        "kv_compression": 0.30019775390625
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_humaneval_instruct_p35",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              1,
+              2,
+              3,
+              4,
+              6,
+              7,
+              9,
+              12,
+              13,
+              14,
+              15,
+              16,
+              29
+            ],
+            "v_layers": [
+              0,
+              4,
+              12,
+              14
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              5,
+              8,
+              10,
+              11,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              30,
+              31
+            ],
+            "v_layers": [
+              2,
+              3,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              13,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              22,
+              24,
+              25,
+              26,
+              28,
+              29,
+              30,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [],
+            "v_layers": [
+              21,
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/humaneval_instruct_p35.json",
+      "metadata": {
+        "kv_budget": 0.35,
+        "kv_compression": 0.35046447753906224
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_humaneval_instruct_p40",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              0,
+              1,
+              2,
+              4,
+              7,
+              14
+            ],
+            "v_layers": [
+              1
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              3,
+              5,
+              6,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              24,
+              25,
+              26,
+              27,
+              29,
+              30,
+              31
+            ],
+            "v_layers": [
+              0,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              29,
+              30,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [
+              21,
+              22,
+              23,
+              28
+            ],
+            "v_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/humaneval_instruct_p40.json",
+      "metadata": {
+        "kv_budget": 0.4,
+        "kv_compression": 0.4006054687499995
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "llama_spatial_ceval_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/ceval_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    },
+    {
+      "name": "llama_spatial_ceval_p10",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.1,
+            "k_layers": [
+              18
+            ],
+            "v_layers": [],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              19,
+              20,
+              21,
+              27,
+              28,
+              30,
+              31
+            ],
+            "v_layers": [
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              22,
+              23,
+              24,
+              25,
+              26
+            ],
+            "v_layers": [
+              22,
+              23,
+              24,
+              25,
+              29,
+              30
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/ceval_p10.json",
+      "metadata": {
+        "kv_budget": 0.1,
+        "kv_compression": 0.10140991210937501
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    },
+    {
+      "name": "llama_spatial_ceval_p20",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.1,
+            "k_layers": [],
+            "v_layers": [
+              16
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              11,
+              12,
+              13,
+              14,
+              16,
+              29,
+              31
+            ],
+            "v_layers": [
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              30
+            ],
+            "v_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/ceval_p20.json",
+      "metadata": {
+        "kv_budget": 0.2,
+        "kv_compression": 0.20128784179687512
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    },
+    {
+      "name": "llama_spatial_ceval_p30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              29
+            ],
+            "v_layers": [
+              2,
+              7,
+              12,
+              14,
+              15,
+              16,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              30,
+              31
+            ],
+            "v_layers": [
+              5,
+              6,
+              8,
+              9,
+              10,
+              13,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              24,
+              25,
+              26,
+              28,
+              29,
+              30
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/ceval_p30.json",
+      "metadata": {
+        "kv_budget": 0.3,
+        "kv_compression": 0.30019775390625
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    },
+    {
+      "name": "llama_spatial_ceval_p35",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              1,
+              2,
+              3,
+              4,
+              6,
+              7,
+              9,
+              12,
+              13,
+              14,
+              15,
+              16,
+              29
+            ],
+            "v_layers": [
+              0,
+              4,
+              12,
+              14
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              5,
+              8,
+              10,
+              11,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              30,
+              31
+            ],
+            "v_layers": [
+              2,
+              3,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              13,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              22,
+              24,
+              25,
+              26,
+              28,
+              29,
+              30,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [],
+            "v_layers": [
+              21,
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/ceval_p35.json",
+      "metadata": {
+        "kv_budget": 0.35,
+        "kv_compression": 0.35046447753906224
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    },
+    {
+      "name": "llama_spatial_ceval_p40",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              0,
+              1,
+              2,
+              4,
+              7,
+              14
+            ],
+            "v_layers": [
+              1
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              3,
+              5,
+              6,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              24,
+              25,
+              26,
+              27,
+              29,
+              30,
+              31
+            ],
+            "v_layers": [
+              0,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              29,
+              30,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [
+              21,
+              22,
+              23,
+              28
+            ],
+            "v_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_llama/query_weights.pt",
+            "query_weights_sha256": "fa148eb68bb488a9c3edb095044893eb36f56c0f7c378d0a9a639d7a164340dd",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/llama/spatial/tasks/ceval_p40.json",
+      "metadata": {
+        "kv_budget": 0.4,
+        "kv_compression": 0.4006054687499995
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    }
+  ]
+}

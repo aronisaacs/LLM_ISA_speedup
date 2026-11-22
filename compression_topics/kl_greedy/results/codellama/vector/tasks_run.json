@@ -1,0 +1,455 @@
+{
+  "model": "hf",
+  "batch_size": 8,
+  "model_args": "pretrained=codellama/CodeLlama-7b-hf,dtype=bfloat16",
+  "configurations": [
+    {
+      "name": "codellama_vector_humaneval_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "compression_topics/kl_greedy/results/codellama/vector/tasks/humaneval_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "humaneval_codellama"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true
+    },
+    {
+      "name": "codellama_vector_humaneval_p10",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              28,
+              31
+            ],
+            "v_layers": [],
+            "prune_pct": 25,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              23,
+              24,
+              25,
+              26,
+              27,
+              29,
+              30
+            ],
+            "v_layers": [
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/codellama/vector/tasks/humaneval_p10.json",
+      "metadata": {
+        "kv_budget": 0.1,
+        "kv_compression": 0.1015625
+      },
+      "tasks": [
+        "humaneval_codellama"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true
+    },
+    {
+      "name": "codellama_vector_humaneval_p20",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              16,
+              17,
+              18
+            ],
+            "v_layers": [],
+            "prune_pct": 25,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31
+            ],
+            "v_layers": [
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/codellama/vector/tasks/humaneval_p20.json",
+      "metadata": {
+        "kv_budget": 0.2,
+        "kv_compression": 0.2001953125
+      },
+      "tasks": [
+        "humaneval_codellama"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true
+    },
+    {
+      "name": "codellama_vector_humaneval_p30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              6,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            "v_layers": [
+              14,
+              15,
+              16
+            ],
+            "prune_pct": 25,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31
+            ],
+            "v_layers": [
+              0,
+              3,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/codellama/vector/tasks/humaneval_p30.json",
+      "metadata": {
+        "kv_budget": 0.3,
+        "kv_compression": 0.3037109375
+      },
+      "tasks": [
+        "humaneval_codellama"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true
+    },
+    {
+      "name": "codellama_vector_humaneval_p40",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              10,
+              15
+            ],
+            "v_layers": [],
+            "prune_pct": 25,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              9,
+              11,
+              12,
+              13,
+              14,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31
+            ],
+            "v_layers": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              29,
+              30,
+              31
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [],
+            "v_layers": [
+              0,
+              27,
+              28
+            ],
+            "prune_pct": 75,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/codellama/vector/tasks/humaneval_p40.json",
+      "metadata": {
+        "kv_budget": 0.4,
+        "kv_compression": 0.400390625
+      },
+      "tasks": [
+        "humaneval_codellama"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true
+    },
+    {
+      "name": "codellama_vector_humaneval_p50",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              0,
+              1
+            ],
+            "v_layers": [],
+            "prune_pct": 25,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22,
+              23,
+              27,
+              28,
+              31
+            ],
+            "v_layers": [
+              1,
+              2,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              24,
+              25,
+              26,
+              29,
+              30
+            ],
+            "v_layers": [
+              0,
+              3,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28,
+              29,
+              30,
+              31
+            ],
+            "prune_pct": 75,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/codellama/vector/tasks/humaneval_p50.json",
+      "metadata": {
+        "kv_budget": 0.5,
+        "kv_compression": 0.5
+      },
+      "tasks": [
+        "humaneval_codellama"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true
+    }
+  ]
+}
