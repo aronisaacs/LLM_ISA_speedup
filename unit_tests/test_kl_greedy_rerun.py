@@ -119,6 +119,8 @@ class HigherBudgetTests(unittest.TestCase):
                 kl = json.loads((folder / "singles.json").read_text())["kl"]
                 committed = json.loads((folder / "selections.json").read_text())
                 for old in committed:
+                    if old["calibration"]["allocator"] == "uniform":  # p50: a fixed map, not a budget
+                        continue
                     new = rerun.allocate(method, model, kl, old["budget"])
                     self.assertEqual(new["assignment"], old["assignment"], (name, method, old["tag"]))
                     self.assertEqual(new["kv"], old["kv"])
