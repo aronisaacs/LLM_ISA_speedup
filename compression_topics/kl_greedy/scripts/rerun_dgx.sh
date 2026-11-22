@@ -8,8 +8,8 @@
 # Resubmitting resumes (saved KL scores and results.json rows are skipped).
 #SBATCH --job-name=kl-greedy
 #SBATCH --partition=prod
-#SBATCH --gres=gpu:4
-#SBATCH --cpus-per-task=32
+#SBATCH --gres=gpu:8
+#SBATCH --cpus-per-task=64
 #SBATCH --mem=300000
 #SBATCH --time=UNLIMITED
 #SBATCH --output=logs/kl_greedy_%j.out

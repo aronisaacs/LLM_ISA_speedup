@@ -44,7 +44,8 @@ results.json are skipped. Outputs: ``compression_topics/kl_greedy/results/<model
   python compression_topics/kl_greedy/scripts/rerun.py --through greedy         # no tasks yet
   python compression_topics/kl_greedy/scripts/rerun.py --timing 4 --models llama  # 4 ex/domain, own folder
 
-GPUs: one KL scorer per visible GPU; tasks go through engine/multi_run.py (one worker per GPU).
+GPUs: one KL scorer per visible GPU. Tasks: every pending run of every model and method in one
+engine/multi_run.py call (one worker per GPU), longest first, dealt so the GPUs finish together.
 """
 
 from __future__ import annotations
@@ -385,8 +386,59 @@ def tasks_run(args, name: str, method: str) -> dict:
     return run
 
 
-def tasks(args, name: str, method: str) -> None:
-    run = tasks_run(args, name, method)
+# Rough minutes per run, to hand the longest runs out first (GSM8K and HumanEval generate; Qwen is
+# slowest without its fast linear-attention kernels; spatial C-Eval runs at batch 1).
+MINUTES = {"gsm8k": 55, "humaneval_instruct": 25, "humaneval_codellama": 30, "ceval-valid": 10}
+
+
+def pending(args, pairs) -> list[dict]:
+    """Every (model, method) run not yet in results.json, each configuration self-contained.
+
+    One list for all models and methods, so every GPU stays busy: multi_run deals configurations
+    to its workers in turn, and done runs left in the list would still take their turns.
+    """
+    from engine.eval_runner.cache import simulation_identity
+    from engine.eval_runner.index import find_result
+    from engine.kv_compress import parse_kv_spec
+
+    found, seen = [], set()
+    for name, method in pairs:
+        run = tasks_run(args, name, method)
+        base = {key: value for key, value in run.items() if key != "configurations"}
+        for configuration in run["configurations"]:
+            full = {**base, **configuration}
+            identity = simulation_identity({}, full, parse_kv_spec(full["kv"]))
+            key = json.dumps(identity, sort_keys=True)
+            if key in seen or find_result(identity) is not None:
+                continue  # done, or the same run under another name (a shared dense row)
+            seen.add(key)
+            minutes = MINUTES[full["tasks"][0]] * (1.5 if name == "qwen" else 1)
+            found.append((minutes, full))
+    found.sort(key=lambda item: -item[0])
+    return [full for _, full in found]
+
+
+def deal(configurations: list[dict], workers: int) -> list[dict]:
+    """Order longest-first runs so multi_run's turn-taking (position i to worker i mod n) deals
+    them in a snake, 0..n-1 then n-1..0, keeping the workers' totals close. A short last round
+    is dealt as it comes."""
+    ordered = []
+    for first in range(0, len(configurations), workers):
+        chunk = configurations[first:first + workers]
+        backwards = (first // workers) % 2 == 1 and len(chunk) == workers
+        ordered += chunk[::-1] if backwards else chunk
+    return ordered
+
+
+def tasks(args, pairs) -> None:
+    configurations = pending(args, pairs)
+    if not configurations:
+        print("[tasks] nothing to run: every configuration is in results.json", flush=True)
+        return
+    workers = len(_devices())
+    ordered = deal(configurations, workers)
+    print(f"[tasks] {len(ordered)} runs on {workers} GPUs, longest first", flush=True)
+    run = {"model": "hf", "configurations": ordered}
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
         json.dump(run, handle)
         path = Path(handle.name)
@@ -467,13 +519,17 @@ def main() -> None:
     mirror_terminal(ROOT)
     # Stage-major: every KL scoring (GPU-heavy, short) first, then all task runs.
     for stage in stages:
+        if stage == "tasks":  # one run list for every model and method: all GPUs busy
+            print("=== tasks ===", flush=True)
+            tasks(args, [(name, method) for name in args.models for method in args.methods])
+            continue
         for name in args.models:
             if stage == "calibrate":
                 calibrate(name, MODELS[name])
                 continue
             for method in args.methods:
                 print(f"=== {stage} {name}/{method} ===", flush=True)
-                {"singles": singles, "greedy": greedy, "tasks": tasks, "table": table}[stage](args, name, method)
+                {"singles": singles, "greedy": greedy, "table": table}[stage](args, name, method)
 
 
 if __name__ == "__main__":

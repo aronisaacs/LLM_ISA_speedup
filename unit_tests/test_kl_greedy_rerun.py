@@ -125,6 +125,23 @@ class HigherBudgetTests(unittest.TestCase):
                 self.assertEqual(len({f"p{round(b * 100):02d}" for b in spec.budgets}), len(spec.budgets))
 
 
+class PackingTests(unittest.TestCase):
+    def test_deal_snakes_full_rounds(self):
+        self.assertEqual(rerun.deal(list(range(10)), 4), [0, 1, 2, 3, 7, 6, 5, 4, 8, 9])
+
+    def test_pending_lists_only_new_runs_longest_first_and_self_contained(self):
+        found = rerun.pending(SimpleNamespace(timing=None),
+                              [(n, m) for n in rerun.MODELS for m in rerun.METHODS])
+        names = [c["name"] for c in found]
+        self.assertEqual(len(names), len(set(names)))
+        for c in found:
+            self.assertIn("pretrained=", c["model_args"])
+            self.assertIn("batch_size", c)
+            self.assertFalse(c["name"].endswith("_dense"))
+        if found:
+            self.assertTrue(found[0]["tasks"] == ["gsm8k"])
+
+
 class MergeAllTests(unittest.TestCase):
     def test_p50_merges_every_pair_with_no_residual(self):
         for name, model in rerun.MODELS.items():
