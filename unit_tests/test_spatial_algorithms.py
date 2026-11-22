@@ -157,7 +157,7 @@ class StreamingTests(unittest.TestCase):
 class ConfigTests(unittest.TestCase):
     def test_pipeline_and_validation(self):
         step = SpatialConfig().pipeline(.3, k_layers=[1], v_layers=[])
-        self.assertEqual(step['pipeline'][0], dict(method='spatial', saving=.3, k_layers=[1], v_layers=[]))
+        self.assertEqual(step['pipeline'][0], dict(method='spatial', saving=.3, k_layers=[1], v_layers=[], window=32))
         self.assertEqual(parse_kv_spec(step).pipeline[0].method, 'spatial')
         with self.assertRaises(ValueError):
             SpatialConfig(query_weights='q.pt')  # no checksum

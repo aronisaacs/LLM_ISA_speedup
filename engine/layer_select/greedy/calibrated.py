@@ -7,8 +7,11 @@ def allocation_saving(row):
     return row['allocation_saving'] if 'allocation_saving' in row else row['compression']
 
 
-def choose_candidates(choices, dense_ppl, budget, *, require_budget=True):
-    """Each slot has ordered candidates containing compression and perplexity.
+def choose_candidates(choices, dense_ppl, budget, *, require_budget=True, score="ppl"):
+    """Each slot has ordered candidates containing compression and a damage score.
+
+    ``score`` names the damage field (perplexity by default; e.g. a KL to dense, with
+    ``dense_ppl`` = 0). Cost of a rung = its score minus the previous rung's (or dense).
 
     Climb one rung at a time. Ties favor larger byte gain, then earlier layers
     and keys. Fixed-rung callers may allow a best effort when a budget is unreachable.
@@ -30,7 +33,7 @@ def choose_candidates(choices, dense_ppl, budget, *, require_budget=True):
             gain = allocation_saving(nxt) - (allocation_saving(current) if current else 0.)
             if gain <= 0:
                 raise ValueError("calibrated rung compression must increase")
-            cost = nxt["ppl"] - (current["ppl"] if current else dense_ppl)
+            cost = nxt[score] - (current[score] if current else dense_ppl)
             efficiency = float("inf") if cost <= 0 else gain / cost
             options.append((efficiency, gain, -slot[0], slot[1] == "k", slot, next_idx))
         if not options:

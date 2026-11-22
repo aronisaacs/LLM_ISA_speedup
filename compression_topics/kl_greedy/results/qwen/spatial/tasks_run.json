@@ -1,0 +1,904 @@
+{
+  "model": "hf",
+  "batch_size": 8,
+  "model_args": "pretrained=Qwen/Qwen3.5-9B,dtype=bfloat16,enable_thinking=False",
+  "configurations": [
+    {
+      "name": "qwen_spatial_gsm8k_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/gsm8k_20pct_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_gsm8k_p10",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.1,
+            "k_layers": [
+              27
+            ],
+            "v_layers": [],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              23,
+              31
+            ],
+            "v_layers": [
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/gsm8k_20pct_p10.json",
+      "metadata": {
+        "kv_budget": 0.1,
+        "kv_compression": 0.103033447265625
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_gsm8k_p20",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              11,
+              15,
+              19,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/gsm8k_20pct_p20.json",
+      "metadata": {
+        "kv_budget": 0.2,
+        "kv_compression": 0.20606689453125
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_gsm8k_p30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              7,
+              11,
+              19,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              15,
+              23
+            ],
+            "v_layers": [
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/gsm8k_20pct_p30.json",
+      "metadata": {
+        "kv_budget": 0.3,
+        "kv_compression": 0.30914611816406257
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_gsm8k_p35",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              3,
+              7,
+              11,
+              31
+            ],
+            "v_layers": [
+              3
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              15,
+              19,
+              23,
+              27
+            ],
+            "v_layers": [
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/gsm8k_20pct_p35.json",
+      "metadata": {
+        "kv_budget": 0.35,
+        "kv_compression": 0.35288085937500013
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_gsm8k_p40",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              27,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [],
+            "v_layers": [
+              23
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/gsm8k_20pct_p40.json",
+      "metadata": {
+        "kv_budget": 0.4,
+        "kv_compression": 0.40413085937500026
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_humaneval_instruct_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/humaneval_instruct_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_humaneval_instruct_p10",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.1,
+            "k_layers": [
+              27
+            ],
+            "v_layers": [],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              23,
+              31
+            ],
+            "v_layers": [
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/humaneval_instruct_p10.json",
+      "metadata": {
+        "kv_budget": 0.1,
+        "kv_compression": 0.103033447265625
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_humaneval_instruct_p20",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              11,
+              15,
+              19,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/humaneval_instruct_p20.json",
+      "metadata": {
+        "kv_budget": 0.2,
+        "kv_compression": 0.20606689453125
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_humaneval_instruct_p30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              7,
+              11,
+              19,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              15,
+              23
+            ],
+            "v_layers": [
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/humaneval_instruct_p30.json",
+      "metadata": {
+        "kv_budget": 0.3,
+        "kv_compression": 0.30914611816406257
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_humaneval_instruct_p35",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              3,
+              7,
+              11,
+              31
+            ],
+            "v_layers": [
+              3
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              15,
+              19,
+              23,
+              27
+            ],
+            "v_layers": [
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/humaneval_instruct_p35.json",
+      "metadata": {
+        "kv_budget": 0.35,
+        "kv_compression": 0.35288085937500013
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_humaneval_instruct_p40",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              27,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [],
+            "v_layers": [
+              23
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/humaneval_instruct_p40.json",
+      "metadata": {
+        "kv_budget": 0.4,
+        "kv_compression": 0.40413085937500026
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_spatial_ceval_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/ceval_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    },
+    {
+      "name": "qwen_spatial_ceval_p10",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.1,
+            "k_layers": [
+              27
+            ],
+            "v_layers": [],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              23,
+              31
+            ],
+            "v_layers": [
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/ceval_p10.json",
+      "metadata": {
+        "kv_budget": 0.1,
+        "kv_compression": 0.103033447265625
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    },
+    {
+      "name": "qwen_spatial_ceval_p20",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              11,
+              15,
+              19,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/ceval_p20.json",
+      "metadata": {
+        "kv_budget": 0.2,
+        "kv_compression": 0.20606689453125
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    },
+    {
+      "name": "qwen_spatial_ceval_p30",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              7,
+              11,
+              19,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              15,
+              23
+            ],
+            "v_layers": [
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/ceval_p30.json",
+      "metadata": {
+        "kv_budget": 0.3,
+        "kv_compression": 0.30914611816406257
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    },
+    {
+      "name": "qwen_spatial_ceval_p35",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.25,
+            "k_layers": [
+              3,
+              7,
+              11,
+              31
+            ],
+            "v_layers": [
+              3
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              15,
+              19,
+              23,
+              27
+            ],
+            "v_layers": [
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/ceval_p35.json",
+      "metadata": {
+        "kv_budget": 0.35,
+        "kv_compression": 0.35288085937500013
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    },
+    {
+      "name": "qwen_spatial_ceval_p40",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "spatial",
+            "saving": 0.4,
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              27,
+              31
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          },
+          {
+            "method": "spatial",
+            "saving": 0.47,
+            "k_layers": [],
+            "v_layers": [
+              23
+            ],
+            "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+            "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+            "window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/spatial/tasks/ceval_p40.json",
+      "metadata": {
+        "kv_budget": 0.4,
+        "kv_compression": 0.40413085937500026
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true,
+      "batch_size": 1
+    }
+  ]
+}

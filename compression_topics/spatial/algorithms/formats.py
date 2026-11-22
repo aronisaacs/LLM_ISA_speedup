@@ -7,7 +7,10 @@ residual of 0, 16 or 32 kept bf16 values plus a ``head_dim``-bit position mask
 layer slot one 16-bit header. Dense tokens cost 16 bits per value.
 """
 
-WINDOW = 16  # tokens compressed together, per KV head
+# Tokens compressed together, per KV head. WINDOW is the algorithm functions' default and the
+# window of every spec step without a ``window`` key (all runs before 2026-11-21).
+WINDOW = 16
+OFFICIAL_WINDOW = 32  # the official window since 2026-11-21 (Aron); SpatialConfig's default
 RESIDUALS = (0, 16, 32)  # kept residual entries per 128 values: PR0, PR16, PR32
 VALUE_BITS = 16
 TAG_BITS = 2  # dense, PR0, PR16 or PR32

@@ -2,14 +2,15 @@
 
 Unlike checksparse, this does not decide keep/drop for a whole subvector.
 Use ``threshold`` for |x| < T, or ``prune_pct`` to zero the weakest percent of
-scalars (percentage control / greedy ladder).
+scalars (percentage control / greedy ladder). ``recent_window`` (tokens) is read by
+the cache: the newest tokens stay exact until they leave the window.
 """
 
 from __future__ import annotations
 
 import torch
 
-from engine.kv_compress.methods import METHODS
+from engine.kv_compress.methods import METHODS, OPTION_VALIDATORS
 
 
 def apply(
@@ -19,9 +20,10 @@ def apply(
     target: str,
     threshold: float = 0.0,
     prune_pct: int | None = None,
+    recent_window: int = 0,
     **_unused,
 ) -> torch.Tensor:
-    del layer_idx, target, _unused
+    del layer_idx, target, _unused, recent_window  # the window is the cache's job
     return _apply(tensor, threshold=threshold, prune_pct=prune_pct)
 
 
@@ -54,4 +56,11 @@ def _apply(
     return tensor.masked_fill(tensor.abs() < threshold, 0)
 
 
+def _validate(options: dict) -> None:
+    window = options.get("recent_window", 0)
+    if not isinstance(window, int) or isinstance(window, bool) or window < 0:
+        raise ValueError("vector_compress recent_window must be a non-negative integer")
+
+
 METHODS["vector_compress"] = apply
+OPTION_VALIDATORS["vector_compress"] = _validate

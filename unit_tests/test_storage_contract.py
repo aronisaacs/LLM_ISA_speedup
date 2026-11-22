@@ -40,7 +40,8 @@ class StorageContractTests(unittest.TestCase):
         return result
 
     def test_variable_continuations_have_explicit_prefix_bytes(self):
-        kv = SpatialConfig().pipeline(0.2, k_layers=[0], v_layers=[])
+        # 16-token windows: the 8- and 16-token continuations complete a window only at that size.
+        kv = SpatialConfig(window=16).pipeline(0.2, k_layers=[0], v_layers=[])
         r = self.run_chunk(kv)
         slot = r["storage"]["slots"]["k_layer_0"]
         self.assertEqual(slot["dense_bits"], 2 * 64 * 64 * 16)

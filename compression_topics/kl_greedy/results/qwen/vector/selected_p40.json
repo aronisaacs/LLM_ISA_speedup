@@ -1,0 +1,186 @@
+{
+  "tag": "p40",
+  "budget": 0.4,
+  "compression": 0.40625,
+  "levels": [
+    25,
+    50,
+    75
+  ],
+  "kv_layers": [
+    3,
+    7,
+    11,
+    15,
+    19,
+    23,
+    27,
+    31
+  ],
+  "assignment": [
+    {
+      "layer": 3,
+      "target": "k",
+      "level": 25
+    },
+    {
+      "layer": 3,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 7,
+      "target": "k",
+      "level": 25
+    },
+    {
+      "layer": 7,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 11,
+      "target": "k",
+      "level": 50
+    },
+    {
+      "layer": 11,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 15,
+      "target": "k",
+      "level": 50
+    },
+    {
+      "layer": 15,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 19,
+      "target": "k",
+      "level": 50
+    },
+    {
+      "layer": 19,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 23,
+      "target": "k",
+      "level": 50
+    },
+    {
+      "layer": 23,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 27,
+      "target": "k",
+      "level": 50
+    },
+    {
+      "layer": 27,
+      "target": "v",
+      "level": 50
+    },
+    {
+      "layer": 31,
+      "target": "k",
+      "level": 50
+    },
+    {
+      "layer": 31,
+      "target": "v",
+      "level": 50
+    }
+  ],
+  "kv": {
+    "pipeline": [
+      {
+        "method": "vector_compress",
+        "k_layers": [
+          3,
+          7
+        ],
+        "v_layers": [],
+        "prune_pct": 25,
+        "recent_window": 32
+      },
+      {
+        "method": "vector_compress",
+        "k_layers": [
+          11,
+          15,
+          19,
+          23,
+          27,
+          31
+        ],
+        "v_layers": [
+          3,
+          7,
+          11,
+          15,
+          19,
+          23,
+          27,
+          31
+        ],
+        "prune_pct": 50,
+        "recent_window": 32
+      }
+    ]
+  },
+  "calibration_kv": {
+    "pipeline": [
+      {
+        "method": "vector_compress",
+        "k_layers": [
+          3,
+          7
+        ],
+        "v_layers": [],
+        "prune_pct": 25
+      },
+      {
+        "method": "vector_compress",
+        "k_layers": [
+          11,
+          15,
+          19,
+          23,
+          27,
+          31
+        ],
+        "v_layers": [
+          3,
+          7,
+          11,
+          15,
+          19,
+          23,
+          27,
+          31
+        ],
+        "prune_pct": 50
+      }
+    ]
+  },
+  "calibration": {
+    "allocator": "greedy_isolated_kl",
+    "score": "kl_mean (4 domains, / reference map)",
+    "sum_of_slot_scores": 2.9834016135837365,
+    "reference_level": 37,
+    "reference_kl": {
+      "arc_5shot": 0.01927836135655525,
+      "gsm8k": 0.0043536528892218485,
+      "mbpp": 0.0051882709560686635,
+      "wikitext": 0.0056015857808233704
+    }
+  }
+}
