@@ -122,11 +122,23 @@ class HigherBudgetTests(unittest.TestCase):
                     new = rerun.allocate(method, model, kl, old["budget"])
                     self.assertEqual(new["assignment"], old["assignment"], (name, method, old["tag"]))
                     self.assertEqual(new["kv"], old["kv"])
-                if method == "spatial":  # the last budget is the format's maximum
-                    top = rerun.allocate(method, model, kl, spec.budgets[-1])
-                    self.assertTrue(all(a["level"] == spec.levels[-1] for a in top["assignment"]))
-                    self.assertEqual(len(top["assignment"]), 2 * len(model.kv_layers))
                 self.assertEqual(len({f"p{round(b * 100):02d}" for b in spec.budgets}), len(spec.budgets))
+
+
+class MergeAllTests(unittest.TestCase):
+    def test_p50_merges_every_pair_with_no_residual(self):
+        for name, model in rerun.MODELS.items():
+            selection = rerun.uniform("spatial", model, 50)
+            self.assertEqual(selection["tag"], "p50")
+            self.assertEqual({a["level"] for a in selection["assignment"]}, {50})
+            self.assertEqual(len(selection["assignment"]), 2 * len(model.kv_layers))
+            self.assertAlmostEqual(selection["compression"], 0.4917 if model.head_dim == 128 else 0.4958, places=4)
+            self.assertEqual([s["saving"] for s in selection["kv"]["pipeline"]], [0.5])
+            parse_kv_spec(selection["kv"])
+        torch.manual_seed(0)
+        for dim in (128, 256):
+            _, _, counts = windows.compress(torch.randn(1, 2, 64, dim), target="k", saving=0.5, window=32)
+            self.assertEqual(counts, {"format_dense_pair": 0, "format_g2_r0": 2 * 64 // 2})
 
 
 class VectorWindowTests(unittest.TestCase):
@@ -177,7 +189,7 @@ class TaskRunTests(unittest.TestCase):
             self.assertEqual(c.get("batch_size", run["batch_size"]), 1 if c["tasks"] == ["ceval-valid"] else 8)
         self.assertIn("Qwen3.5-9B", run["model_args"])
         configs = run["configurations"]
-        per_task = 1 + len(rerun.METHODS["spatial"].budgets)
+        per_task = 2 + len(rerun.METHODS["spatial"].budgets)  # dense, budgets, p50
         self.assertEqual(len(configs), 3 * per_task)
         self.assertEqual([c["tasks"][0] for c in configs[:per_task]], ["gsm8k"] * per_task)
         self.assertEqual(configs[0]["name"], "qwen_spatial_gsm8k_dense")
