@@ -110,7 +110,7 @@ class GreedyTests(unittest.TestCase):
 class HigherBudgetTests(unittest.TestCase):
     """The budgets added on 2026-11-22 extend the greedy path: the committed maps stay the same."""
 
-    def test_committed_maps_are_unchanged_and_the_last_budget_is_the_maximum(self):
+    def test_committed_maps_are_unchanged(self):
         for name, model in rerun.MODELS.items():
             for method, spec in rerun.METHODS.items():
                 folder = ROOT / rerun.OUT / name / method
@@ -122,9 +122,6 @@ class HigherBudgetTests(unittest.TestCase):
                     new = rerun.allocate(method, model, kl, old["budget"])
                     self.assertEqual(new["assignment"], old["assignment"], (name, method, old["tag"]))
                     self.assertEqual(new["kv"], old["kv"])
-                top = rerun.allocate(method, model, kl, spec.budgets[-1])
-                self.assertTrue(all(a["level"] == spec.levels[-1] for a in top["assignment"]))
-                self.assertEqual(len(top["assignment"]), 2 * len(model.kv_layers))
                 self.assertEqual(len({f"p{round(b * 100):02d}" for b in spec.budgets}), len(spec.budgets))
 
 

@@ -25,9 +25,16 @@ changes were within noise (Llama, one slot at 25 %: 8.81-8.84 around dense 8.83)
 | levels per slot | 25 / 50 / 75 % of values | 10 / 25 / 40 / 47 / 49 % saving |
 | net of | 1-bit-per-value mask | 2-bit pair tags |
 | window | tasks: newest **32 tokens** exact (`recent_window`); calibration: none | **32 tokens** (calibration and tasks) |
-| budgets (net) | 10 / 20 / 30 / 40 / 50 / 55 / 60 / 65 / 68.75 (max) % | 10 / 20 / 30 / 35 / 40 / 45 / 48 / 48.95 (max) % |
+| budgets (net) | 10 / 20 / 30 / 40 / 50 / 55 / 60 % | 10 / 20 / 30 / 35 / 40 % |
 | reference map | every slot 37 % (30.5 % net) | every slot 30 % |
 | task batch size | 8 | 8 for GSM8K and HumanEval, 1 for C-Eval |
+
+**Savings are nominal** (every token compressed). The tokens a window keeps exact are not
+subtracted, so the true saving is a few points lower. Spatial's measured storage is 95-98 % of
+nominal on these tasks (Llama p40: 38.5 % GSM8K, 38.1 % HumanEval, 39.2 % C-Eval). Vector is not
+measured; by token count (~400-1100 tokens per sequence, 32 exact) it is about 92-96 % of nominal.
+Footnote for plots: "true savings are within a few points below the plotted values (32-token
+exact window)."
 
 Qwen3.5 has a KV cache only in its 8 full-attention layers (3, 7, ..., 31): 16 slots, and budgets
 are shares of that cache. Spatial query weights are each model's official calibration
