@@ -22,8 +22,9 @@ Methods (savings are net of the format's metadata, means over the model's KV slo
            one-bit-per-value mask; budgets 10/20/30/40/50/55/60 %; reference map: every slot at 37 % (30.5 % net, as E11's uniform 30 %). Calibration compresses every token; the task runs
            keep the newest 32 tokens exact (``recent_window``; Aron, 2026-11-21).
   spatial  spatial pair compression with query-aware keys, 32-token windows, dense/PR0/PR16/PR32;
-           slot savings 10/25/40/47/49 % (net of the 2-bit pair tags); budgets 10/20/30/35/40/45/48 %
-           and 48.95 % (every slot at 49 %, the format's maximum); reference map: every slot at 30 %.
+           slot savings 10/25/40/47/49 % (net of the 2-bit pair tags); budgets 10/20/30/35/40/45 %,
+           and "p50": every pair merged with no residual (PR0) everywhere, the format's limit
+           (49.2 % true saving at head 128, 49.6 % at 256); reference map: every slot at 30 %.
            Query weights: the model's official calibration.
 
 Models and tasks: Llama 3.1 8B-Instruct and Qwen3.5-9B (thinking off; only its 8 full-attention
@@ -120,20 +121,21 @@ class Method:
     reference: int  # level of every slot in the reference map
     batch_size: int  # generation tasks (GSM8K, HumanEval)
     loglikelihood_batch_size: int  # C-Eval
+    uniform: int = 0  # if set, one more map with every slot at this level (not a greedy budget)
 
 
 LOGLIKELIHOOD_TASKS = ("ceval-valid",)
-MAX_SPATIAL = 0.4895  # every slot at 49 %, just under 0.49 - the pair tags (0.48951 at head 128)
 METHODS = {
-    # Vector 55/60 % and spatial 45/48/max added 2026-11-22 (Aron) toward the 5-point accuracy drop
-    # (spatial max = every slot at 49 %, the format's limit). Higher budgets only
+    # Vector 55/60 % and spatial 45 % added 2026-11-22 (Aron) toward the 5-point accuracy drop, plus
+    # spatial "p50": every pair of every slot merged with no residual (PR0), the format's limit; its
+    # true saving is 49.2 % (head 128) / 49.6 % (head 256), called 50 % (Aron). Higher budgets only
     # extend the greedy path, so the earlier maps and their results are unchanged.
     "vector": Method((25, 50, 75), (0.10, 0.20, 0.30, 0.40, 0.50, 0.55, 0.60), 37, BATCH_SIZE, BATCH_SIZE),
     # Spatial aligns each row's windows at its first real token from the attention mask, which lm-eval
     # passes to generate (left padding) but not to log-likelihood calls (right padding, no mask): C-Eval
     # runs one question at a time.
-    "spatial": Method((10, 25, 40, 47, 49), (0.10, 0.20, 0.30, 0.35, 0.40, 0.45, 0.48, MAX_SPATIAL), 30,
-                      BATCH_SIZE, 1),
+    "spatial": Method((10, 25, 40, 47, 49), (0.10, 0.20, 0.30, 0.35, 0.40, 0.45), 30, BATCH_SIZE, 1,
+                      uniform=50),
 }
 
 
@@ -159,8 +161,11 @@ def saving(method: str, model: Model, slot: Slot, level: int) -> float:
         return net_saving("vector_compress", slot.target, level, model.head_dim)
     from compression_topics.spatial.algorithms.windows import block_bits
 
+    from compression_topics.spatial.algorithms.formats import max_saving
+
     dense = dense_bits(OFFICIAL_WINDOW, model.head_dim)
-    return 1 - block_bits(model.head_dim, level / 100, OFFICIAL_WINDOW) / dense
+    # A level past the all-PR0 saving (50) stores every pair as PR0: the block is then what PR0 uses.
+    return min(1 - block_bits(model.head_dim, level / 100, OFFICIAL_WINDOW) / dense, max_saving(model.head_dim))
 
 
 def slots(model: Model) -> list[Slot]:
@@ -320,6 +325,22 @@ def allocate(method: str, model: Model, kl: dict[str, dict[str, float]], budget:
     }
 
 
+def uniform(method: str, model: Model, level: int) -> dict:
+    """Every KV slot at ``level``: a fixed map, not a greedy allocation."""
+    assignment = {slot: level for slot in slots(model)}
+    return {
+        "tag": f"p{level:02d}",
+        "budget": level / 100,
+        "compression": sum(saving(method, model, s, level) for s in assignment) / len(assignment),
+        "levels": [level],
+        "kv_layers": list(model.kv_layers),
+        "assignment": [{**s.to_dict(), "level": lvl} for s, lvl in sorted(assignment.items())],
+        "kv": kv_for_assignment(template(method, model, tasks=True), assignment),
+        "calibration_kv": kv_for_assignment(template(method, model), assignment),
+        "calibration": {"allocator": "uniform", "level": level},
+    }
+
+
 def greedy(args, name: str, method: str) -> list[dict]:
     out = out_dir(args, name, method)
     state = json.loads((out / "singles.json").read_text())
@@ -327,7 +348,10 @@ def greedy(args, name: str, method: str) -> list[dict]:
     missing = [label for label in candidates(method, model) if label not in state["kl"]]
     if missing:
         raise SystemExit(f"{out / 'singles.json'} is missing {len(missing)} candidates; run singles first")
-    selections = [allocate(method, model, state["kl"], b) for b in METHODS[method].budgets]
+    spec = METHODS[method]
+    selections = [allocate(method, model, state["kl"], b) for b in spec.budgets]
+    if spec.uniform:
+        selections.append(uniform(method, model, spec.uniform))
     for selection in selections:
         _write_atomic(out / f"selected_{selection['tag']}.json", json.dumps(selection, indent=2) + "\n")
     _write_atomic(out / "selections.json", json.dumps(selections, indent=2) + "\n")
@@ -335,7 +359,7 @@ def greedy(args, name: str, method: str) -> list[dict]:
     for s in selections:
         count = lambda t: "/".join(  # noqa: E731
             str(sum(1 for a in s["assignment"] if a["target"] == t and a["level"] == lvl))
-            for lvl in METHODS[method].levels)
+            for lvl in METHODS[method].levels + ((METHODS[method].uniform,) if METHODS[method].uniform else ()))
         print(f"   {s['tag']:>6} {s['compression']:7.4f}   {count('k'):<18} {count('v')}", flush=True)
     return selections
 
