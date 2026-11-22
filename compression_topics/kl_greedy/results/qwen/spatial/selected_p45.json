@@ -1,0 +1,220 @@
+{
+  "tag": "p45",
+  "budget": 0.45,
+  "compression": 0.45350585937500043,
+  "levels": [
+    10,
+    25,
+    40,
+    47,
+    49
+  ],
+  "kv_layers": [
+    3,
+    7,
+    11,
+    15,
+    19,
+    23,
+    27,
+    31
+  ],
+  "assignment": [
+    {
+      "layer": 3,
+      "target": "k",
+      "level": 40
+    },
+    {
+      "layer": 3,
+      "target": "v",
+      "level": 40
+    },
+    {
+      "layer": 7,
+      "target": "k",
+      "level": 47
+    },
+    {
+      "layer": 7,
+      "target": "v",
+      "level": 47
+    },
+    {
+      "layer": 11,
+      "target": "k",
+      "level": 47
+    },
+    {
+      "layer": 11,
+      "target": "v",
+      "level": 47
+    },
+    {
+      "layer": 15,
+      "target": "k",
+      "level": 40
+    },
+    {
+      "layer": 15,
+      "target": "v",
+      "level": 47
+    },
+    {
+      "layer": 19,
+      "target": "k",
+      "level": 40
+    },
+    {
+      "layer": 19,
+      "target": "v",
+      "level": 47
+    },
+    {
+      "layer": 23,
+      "target": "k",
+      "level": 47
+    },
+    {
+      "layer": 23,
+      "target": "v",
+      "level": 49
+    },
+    {
+      "layer": 27,
+      "target": "k",
+      "level": 47
+    },
+    {
+      "layer": 27,
+      "target": "v",
+      "level": 47
+    },
+    {
+      "layer": 31,
+      "target": "k",
+      "level": 47
+    },
+    {
+      "layer": 31,
+      "target": "v",
+      "level": 47
+    }
+  ],
+  "kv": {
+    "pipeline": [
+      {
+        "method": "spatial",
+        "saving": 0.4,
+        "k_layers": [
+          3,
+          15,
+          19
+        ],
+        "v_layers": [
+          3
+        ],
+        "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+        "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+        "window": 32
+      },
+      {
+        "method": "spatial",
+        "saving": 0.47,
+        "k_layers": [
+          7,
+          11,
+          23,
+          27,
+          31
+        ],
+        "v_layers": [
+          7,
+          11,
+          15,
+          19,
+          27,
+          31
+        ],
+        "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+        "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+        "window": 32
+      },
+      {
+        "method": "spatial",
+        "saving": 0.49,
+        "k_layers": [],
+        "v_layers": [
+          23
+        ],
+        "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+        "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+        "window": 32
+      }
+    ]
+  },
+  "calibration_kv": {
+    "pipeline": [
+      {
+        "method": "spatial",
+        "saving": 0.4,
+        "k_layers": [
+          3,
+          15,
+          19
+        ],
+        "v_layers": [
+          3
+        ],
+        "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+        "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+        "window": 32
+      },
+      {
+        "method": "spatial",
+        "saving": 0.47,
+        "k_layers": [
+          7,
+          11,
+          23,
+          27,
+          31
+        ],
+        "v_layers": [
+          7,
+          11,
+          15,
+          19,
+          27,
+          31
+        ],
+        "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+        "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+        "window": 32
+      },
+      {
+        "method": "spatial",
+        "saving": 0.49,
+        "k_layers": [],
+        "v_layers": [
+          23
+        ],
+        "query_weights": "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+        "query_weights_sha256": "3e8e4d2c21730c02c2f05c09555b4d4bf243954aaf65cb3acd6ec575055e44c4",
+        "window": 32
+      }
+    ]
+  },
+  "calibration": {
+    "allocator": "greedy_isolated_kl",
+    "score": "kl_mean (4 domains, / reference map)",
+    "sum_of_slot_scores": 6.1220447787053915,
+    "reference_level": 30,
+    "reference_kl": {
+      "arc_5shot": 0.02714703497622395,
+      "gsm8k": 0.008637907141746837,
+      "mbpp": 0.0086536620692641,
+      "wikitext": 0.009189797623548657
+    }
+  }
+}
