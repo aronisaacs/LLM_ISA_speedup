@@ -4,7 +4,7 @@
 #   sbatch compression_topics/kl_greedy/scripts/rerun_dgx.sh --through greedy      # KL and maps only
 #   sbatch compression_topics/kl_greedy/scripts/rerun_dgx.sh --models qwen --methods spatial
 #   sbatch compression_topics/kl_greedy/scripts/rerun_dgx.sh --timing 4 --models llama   # quick timing check
-#   sbatch compression_topics/kl_greedy/scripts/rerun_dgx.sh --from greedy        # new budgets on saved KL scores
+#   sbatch compression_topics/kl_greedy/scripts/rerun_dgx.sh --from greedy        # added budgets, on the saved KL scores
 # Resubmitting resumes (saved KL scores and results.json rows are skipped).
 #SBATCH --job-name=kl-greedy
 #SBATCH --partition=prod
