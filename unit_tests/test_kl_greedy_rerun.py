@@ -145,6 +145,15 @@ class PackingTests(unittest.TestCase):
 
 
 class MergeAllTests(unittest.TestCase):
+    def test_vector_p75_is_every_slot_at_the_top_level(self):
+        for name, model in rerun.MODELS.items():
+            selection = rerun.uniform("vector", model, 75)
+            self.assertEqual(selection["tag"], "p75")
+            self.assertEqual({a["level"] for a in selection["assignment"]}, {75})
+            self.assertAlmostEqual(selection["compression"], 0.6875, places=4)
+            self.assertTrue(all(step["recent_window"] == 32 for step in selection["kv"]["pipeline"]))
+            parse_kv_spec(selection["kv"])
+
     def test_p50_merges_every_pair_with_no_residual(self):
         for name, model in rerun.MODELS.items():
             selection = rerun.uniform("spatial", model, 50)
@@ -236,7 +245,7 @@ class TaskRunTests(unittest.TestCase):
         self._selections("codellama", "vector")
         run = rerun.tasks_run(SimpleNamespace(timing=None), "codellama", "vector")
         self.assertEqual({c["tasks"][0] for c in run["configurations"]}, {"humaneval_codellama"})
-        self.assertEqual(len(run["configurations"]), 1 + len(rerun.METHODS["vector"].budgets))
+        self.assertEqual(len(run["configurations"]), 2 + len(rerun.METHODS["vector"].budgets))  # dense, budgets, p75
         self.assertEqual(run["batch_size"], rerun.BATCH_SIZE)
 
 

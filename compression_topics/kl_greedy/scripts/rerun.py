@@ -19,7 +19,8 @@ WikiText perplexity sweeps (vector ``model_budget_study.py``, spatial ``ladder.p
 Methods (savings are net of the format's metadata, means over the model's KV slots):
 
   vector   per-scalar bitmask prune (``vector_compress``) at 25/50/75 % of each vector, net of the
-           one-bit-per-value mask; budgets 10/20/30/40/50/55/60 %; reference map: every slot at 37 % (30.5 % net, as E11's uniform 30 %). Calibration compresses every token; the task runs
+           one-bit-per-value mask; budgets 10/20/30/40/50/55/60/65 %, and "p75": every slot at 75 %, the
+           highest level (68.75 % net, the greedy path's end); reference map: every slot at 37 % (30.5 % net, as E11's uniform 30 %). Calibration compresses every token; the task runs
            keep the newest 32 tokens exact (``recent_window``; Aron, 2026-11-21).
   spatial  spatial pair compression with query-aware keys, 32-token windows, dense/PR0/PR16/PR32;
            slot savings 10/25/40/47/49 % (net of the 2-bit pair tags); budgets 10/20/30/35/40/45 %,
@@ -127,11 +128,13 @@ class Method:
 
 LOGLIKELIHOOD_TASKS = ("ceval-valid",)
 METHODS = {
-    # Vector 55/60 % and spatial 45 % added 2026-11-22 (Aron) toward the 5-point accuracy drop, plus
+    # Vector 55/60 % and spatial 45 % added 2026-11-22 (Aron) toward the 5-point accuracy drop, then vector
+    # 65 % and "p75" (every slot at 75 %, 68.75 % net: no budget above that is reachable), plus
     # spatial "p50": every pair of every slot merged with no residual (PR0), the format's limit; its
     # true saving is 49.2 % (head 128) / 49.6 % (head 256), called 50 % (Aron). Higher budgets only
     # extend the greedy path, so the earlier maps and their results are unchanged.
-    "vector": Method((25, 50, 75), (0.10, 0.20, 0.30, 0.40, 0.50, 0.55, 0.60), 37, BATCH_SIZE, BATCH_SIZE),
+    "vector": Method((25, 50, 75), (0.10, 0.20, 0.30, 0.40, 0.50, 0.55, 0.60, 0.65), 37, BATCH_SIZE, BATCH_SIZE,
+                     uniform=75),
     # Spatial aligns each row's windows at its first real token from the attention mask, which lm-eval
     # passes to generate (left padding) but not to log-likelihood calls (right padding, no mask): C-Eval
     # runs one question at a time.
@@ -360,7 +363,7 @@ def greedy(args, name: str, method: str) -> list[dict]:
     for s in selections:
         count = lambda t: "/".join(  # noqa: E731
             str(sum(1 for a in s["assignment"] if a["target"] == t and a["level"] == lvl))
-            for lvl in METHODS[method].levels + ((METHODS[method].uniform,) if METHODS[method].uniform else ()))
+            for lvl in dict.fromkeys(METHODS[method].levels + ((METHODS[method].uniform,) if METHODS[method].uniform else ())))
         print(f"   {s['tag']:>6} {s['compression']:7.4f}   {count('k'):<18} {count('v')}", flush=True)
     return selections
 
