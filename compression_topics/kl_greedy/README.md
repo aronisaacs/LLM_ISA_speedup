@@ -25,7 +25,7 @@ changes were within noise (Llama, one slot at 25 %: 8.81-8.84 around dense 8.83)
 | levels per slot | 25 / 50 / 75 % of values | 10 / 25 / 40 / 47 / 49 % saving |
 | net of | 1-bit-per-value mask | 2-bit pair tags |
 | window | tasks: newest **32 tokens** exact (`recent_window`); calibration: none | **32 tokens** (calibration and tasks) |
-| budgets (net) | 10 / 20 / 30 / 40 / 50 / 55 / 60 % | 10 / 20 / 30 / 35 / 40 % |
+| budgets (net) | 10 / 20 / 30 / 40 / 50 / 55 / 60 % | 10 / 20 / 30 / 35 / 40 / 45 / 48 / 48.95 (max) % |
 | reference map | every slot 37 % (30.5 % net) | every slot 30 % |
 | task batch size | 8 | 8 for GSM8K and HumanEval, 1 for C-Eval |
 
