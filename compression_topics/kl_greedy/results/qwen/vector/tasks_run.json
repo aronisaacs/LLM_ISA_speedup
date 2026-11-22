@@ -278,6 +278,114 @@
       "apply_chat_template": true
     },
     {
+      "name": "qwen_vector_gsm8k_p55",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              27
+            ],
+            "v_layers": [
+              3,
+              31
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              23,
+              31
+            ],
+            "v_layers": [
+              7,
+              11,
+              15,
+              19,
+              23,
+              27
+            ],
+            "prune_pct": 75,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/vector/tasks/gsm8k_20pct_p55.json",
+      "metadata": {
+        "kv_budget": 0.55,
+        "kv_compression": 0.5625
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_vector_gsm8k_p60",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              3,
+              7,
+              11,
+              19
+            ],
+            "v_layers": [
+              31
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              15,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27
+            ],
+            "prune_pct": 75,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/vector/tasks/gsm8k_20pct_p60.json",
+      "metadata": {
+        "kv_budget": 0.6,
+        "kv_compression": 0.609375
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
       "name": "qwen_vector_humaneval_instruct_dense",
       "kv": {
         "pipeline": []
@@ -558,6 +666,116 @@
       "apply_chat_template": true
     },
     {
+      "name": "qwen_vector_humaneval_instruct_p55",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              27
+            ],
+            "v_layers": [
+              3,
+              31
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              23,
+              31
+            ],
+            "v_layers": [
+              7,
+              11,
+              15,
+              19,
+              23,
+              27
+            ],
+            "prune_pct": 75,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/vector/tasks/humaneval_instruct_p55.json",
+      "metadata": {
+        "kv_budget": 0.55,
+        "kv_compression": 0.5625
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_vector_humaneval_instruct_p60",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              3,
+              7,
+              11,
+              19
+            ],
+            "v_layers": [
+              31
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              15,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27
+            ],
+            "prune_pct": 75,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/vector/tasks/humaneval_instruct_p60.json",
+      "metadata": {
+        "kv_budget": 0.6,
+        "kv_compression": 0.609375
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
       "name": "qwen_vector_ceval_dense",
       "kv": {
         "pipeline": []
@@ -806,6 +1024,108 @@
       "metadata": {
         "kv_budget": 0.5,
         "kv_compression": 0.5
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_vector_ceval_p55",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              27
+            ],
+            "v_layers": [
+              3,
+              31
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              23,
+              31
+            ],
+            "v_layers": [
+              7,
+              11,
+              15,
+              19,
+              23,
+              27
+            ],
+            "prune_pct": 75,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/vector/tasks/ceval_p55.json",
+      "metadata": {
+        "kv_budget": 0.55,
+        "kv_compression": 0.5625
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_vector_ceval_p60",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              3,
+              7,
+              11,
+              19
+            ],
+            "v_layers": [
+              31
+            ],
+            "prune_pct": 50,
+            "recent_window": 32
+          },
+          {
+            "method": "vector_compress",
+            "k_layers": [
+              15,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27
+            ],
+            "prune_pct": 75,
+            "recent_window": 32
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/vector/tasks/ceval_p60.json",
+      "metadata": {
+        "kv_budget": 0.6,
+        "kv_compression": 0.609375
       },
       "tasks": [
         "ceval-valid"

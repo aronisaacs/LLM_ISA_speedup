@@ -848,5 +848,381 @@
         "wikitext": 0.0056015857808233704
       }
     }
+  },
+  {
+    "tag": "p55",
+    "budget": 0.55,
+    "compression": 0.5625,
+    "levels": [
+      25,
+      50,
+      75
+    ],
+    "kv_layers": [
+      3,
+      7,
+      11,
+      15,
+      19,
+      23,
+      27,
+      31
+    ],
+    "assignment": [
+      {
+        "layer": 3,
+        "target": "k",
+        "level": 50
+      },
+      {
+        "layer": 3,
+        "target": "v",
+        "level": 50
+      },
+      {
+        "layer": 7,
+        "target": "k",
+        "level": 50
+      },
+      {
+        "layer": 7,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 11,
+        "target": "k",
+        "level": 50
+      },
+      {
+        "layer": 11,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 15,
+        "target": "k",
+        "level": 50
+      },
+      {
+        "layer": 15,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 19,
+        "target": "k",
+        "level": 50
+      },
+      {
+        "layer": 19,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 23,
+        "target": "k",
+        "level": 75
+      },
+      {
+        "layer": 23,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 27,
+        "target": "k",
+        "level": 50
+      },
+      {
+        "layer": 27,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 31,
+        "target": "k",
+        "level": 75
+      },
+      {
+        "layer": 31,
+        "target": "v",
+        "level": 50
+      }
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "vector_compress",
+          "k_layers": [
+            3,
+            7,
+            11,
+            15,
+            19,
+            27
+          ],
+          "v_layers": [
+            3,
+            31
+          ],
+          "prune_pct": 50,
+          "recent_window": 32
+        },
+        {
+          "method": "vector_compress",
+          "k_layers": [
+            23,
+            31
+          ],
+          "v_layers": [
+            7,
+            11,
+            15,
+            19,
+            23,
+            27
+          ],
+          "prune_pct": 75,
+          "recent_window": 32
+        }
+      ]
+    },
+    "calibration_kv": {
+      "pipeline": [
+        {
+          "method": "vector_compress",
+          "k_layers": [
+            3,
+            7,
+            11,
+            15,
+            19,
+            27
+          ],
+          "v_layers": [
+            3,
+            31
+          ],
+          "prune_pct": 50
+        },
+        {
+          "method": "vector_compress",
+          "k_layers": [
+            23,
+            31
+          ],
+          "v_layers": [
+            7,
+            11,
+            15,
+            19,
+            23,
+            27
+          ],
+          "prune_pct": 75
+        }
+      ]
+    },
+    "calibration": {
+      "allocator": "greedy_isolated_kl",
+      "score": "kl_mean (4 domains, / reference map)",
+      "sum_of_slot_scores": 9.122282455368877,
+      "reference_level": 37,
+      "reference_kl": {
+        "arc_5shot": 0.01927836135655525,
+        "gsm8k": 0.0043536528892218485,
+        "mbpp": 0.0051882709560686635,
+        "wikitext": 0.0056015857808233704
+      }
+    }
+  },
+  {
+    "tag": "p60",
+    "budget": 0.6,
+    "compression": 0.609375,
+    "levels": [
+      25,
+      50,
+      75
+    ],
+    "kv_layers": [
+      3,
+      7,
+      11,
+      15,
+      19,
+      23,
+      27,
+      31
+    ],
+    "assignment": [
+      {
+        "layer": 3,
+        "target": "k",
+        "level": 50
+      },
+      {
+        "layer": 3,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 7,
+        "target": "k",
+        "level": 50
+      },
+      {
+        "layer": 7,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 11,
+        "target": "k",
+        "level": 50
+      },
+      {
+        "layer": 11,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 15,
+        "target": "k",
+        "level": 75
+      },
+      {
+        "layer": 15,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 19,
+        "target": "k",
+        "level": 50
+      },
+      {
+        "layer": 19,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 23,
+        "target": "k",
+        "level": 75
+      },
+      {
+        "layer": 23,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 27,
+        "target": "k",
+        "level": 75
+      },
+      {
+        "layer": 27,
+        "target": "v",
+        "level": 75
+      },
+      {
+        "layer": 31,
+        "target": "k",
+        "level": 75
+      },
+      {
+        "layer": 31,
+        "target": "v",
+        "level": 50
+      }
+    ],
+    "kv": {
+      "pipeline": [
+        {
+          "method": "vector_compress",
+          "k_layers": [
+            3,
+            7,
+            11,
+            19
+          ],
+          "v_layers": [
+            31
+          ],
+          "prune_pct": 50,
+          "recent_window": 32
+        },
+        {
+          "method": "vector_compress",
+          "k_layers": [
+            15,
+            23,
+            27,
+            31
+          ],
+          "v_layers": [
+            3,
+            7,
+            11,
+            15,
+            19,
+            23,
+            27
+          ],
+          "prune_pct": 75,
+          "recent_window": 32
+        }
+      ]
+    },
+    "calibration_kv": {
+      "pipeline": [
+        {
+          "method": "vector_compress",
+          "k_layers": [
+            3,
+            7,
+            11,
+            19
+          ],
+          "v_layers": [
+            31
+          ],
+          "prune_pct": 50
+        },
+        {
+          "method": "vector_compress",
+          "k_layers": [
+            15,
+            23,
+            27,
+            31
+          ],
+          "v_layers": [
+            3,
+            7,
+            11,
+            15,
+            19,
+            23,
+            27
+          ],
+          "prune_pct": 75
+        }
+      ]
+    },
+    "calibration": {
+      "allocator": "greedy_isolated_kl",
+      "score": "kl_mean (4 domains, / reference map)",
+      "sum_of_slot_scores": 12.571838239479373,
+      "reference_level": 37,
+      "reference_kl": {
+        "arc_5shot": 0.01927836135655525,
+        "gsm8k": 0.0043536528892218485,
+        "mbpp": 0.0051882709560686635,
+        "wikitext": 0.0056015857808233704
+      }
+    }
   }
 ]
