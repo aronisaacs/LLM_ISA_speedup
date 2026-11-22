@@ -11,6 +11,13 @@ Signs (``signs``):
                  so D commutes with RoPE and can be folded into W_q and W_k offline.
                  Applied to the original channels, before any outlier split.
   "independent"  one sign per channel (runs whose kv has no ``signs`` key; earlier results).
+``rope_dim`` (partial RoPE, e.g. Qwen3.5: 64 of 256 dimensions): only the first ``rope_dim``
+dimensions are rotated, as pairs (i, i + rope_dim/2); those pairs share a sign and the other
+dimensions get one sign each. 0 = the whole head (Llama, CodeLlama).
+
+``part_size`` (e.g. 128 for Qwen3.5's 256-dim heads, as the gem5 kernel does): after the signs,
+each consecutive ``part_size`` dimensions are an independent TurboQuant vector with its own
+Hadamard, fp16 norm and codebook. 0 = the whole head. No outlier split with it.
 
 Outlier split (``outliers`` > 0), as in the paper's 2.5- and 3.5-bit KV runs: per
 layer, KV head and target, a fixed set of ``outliers`` channels (from a calibration
@@ -86,6 +93,8 @@ def apply(
     codebook: str = "gaussian",
     recent_window: int = 0,
     outlier_group: int = 0,
+    part_size: int = 0,
+    rope_dim: int = 0,
     **_unused,
 ) -> torch.Tensor:
     del _unused, recent_window  # the window is the cache's job
@@ -101,7 +110,7 @@ def apply(
     if outlier_group:
         return _quantize_grouped(tensor, layer_idx, bits, outliers, high, signs, outlier_group, rotation, codebook)
     plan = _plan(layer_idx, target, bits, outliers, high, outlier_table, signs, tensor.shape[1], tensor.shape[-1],
-                 tensor.device, rotation, codebook)
+                 tensor.device, rotation, codebook, part_size, rope_dim)
     return _quantize_with(plan, tensor)
 
 
@@ -119,6 +128,15 @@ def validate(options: dict) -> None:
         raise ValueError("turboquant_mse outlier_group must be a non-negative integer")
     if group and not (outliers and window):
         raise ValueError("turboquant_mse outlier_group needs outliers and a recent_window")
+    for name in ("part_size", "rope_dim"):
+        value = options.get(name, 0)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            raise ValueError(f"turboquant_mse {name} must be a non-negative integer")
+    part_size, rope_dim = options.get("part_size", 0), options.get("rope_dim", 0)
+    if part_size and (part_size & (part_size - 1) or outliers):
+        raise ValueError("turboquant_mse part_size must be a power of two, without an outlier split")
+    if rope_dim and (rope_dim % 2 or options.get("signs") != "rope_pairs"):
+        raise ValueError("turboquant_mse rope_dim must be even and goes with signs='rope_pairs'")
     if not outliers:
         return
     if not isinstance(outliers, int) or isinstance(outliers, bool) or outliers < 1:
@@ -166,16 +184,23 @@ def sign_diagonal(layer_idx: int, features: int) -> torch.Tensor:
     return cached
 
 
-def rope_pair_signs(layer_idx: int, features: int) -> torch.Tensor:
-    """±1 diagonal with sign[i] == sign[i + features/2] (HF RoPE pairs), shape ``[features]``."""
-    if features % 2:
-        raise ValueError(f"rope_pairs signs need an even length, got {features}")
-    half = sign_diagonal(layer_idx, features // 2)
-    return torch.cat((half, half))
+def rope_pair_signs(layer_idx: int, features: int, rope_dim: int = 0) -> torch.Tensor:
+    """±1 diagonal with sign[i] == sign[i + rope_dim/2] for i < rope_dim/2 (HF RoPE pairs on the first
+    ``rope_dim`` dimensions; 0 = all of them), shape ``[features]``. Dimensions past ``rope_dim`` take
+    their own signs (those of ``sign_diagonal(layer_idx, features)``)."""
+    rope_dim = rope_dim or features
+    if rope_dim % 2 or rope_dim > features:
+        raise ValueError(f"rope_pairs signs need an even rope_dim <= {features}, got {rope_dim}")
+    half = sign_diagonal(layer_idx, rope_dim // 2)
+    if rope_dim == features:
+        return torch.cat((half, half))
+    return torch.cat((half, half, sign_diagonal(layer_idx, features)[rope_dim:]))
 
 
-def _sign_vector(signs: str, layer_idx: int, features: int) -> torch.Tensor:
-    return rope_pair_signs(layer_idx, features) if signs == "rope_pairs" else sign_diagonal(layer_idx, features)
+def _sign_vector(signs: str, layer_idx: int, features: int, rope_dim: int = 0) -> torch.Tensor:
+    if signs == "rope_pairs":
+        return rope_pair_signs(layer_idx, features, rope_dim)
+    return sign_diagonal(layer_idx, features)
 
 
 def hadamard(tensor: torch.Tensor) -> torch.Tensor:
@@ -257,19 +282,24 @@ class _Plan:
 
 def _plan(layer_idx: int, target: str, bits: int, outliers: int, high: int, table: str | None, signs: str,
           heads: int, features: int, device: torch.device, rotation: str = "hadamard",
-          codebook: str = "gaussian") -> _Plan:
+          codebook: str = "gaussian", part_size: int = 0, rope_dim: int = 0) -> _Plan:
     """Build the transform once from the reference pieces (signs, Hadamard, random orthogonal, outlier split).
 
     The rotation is pushed through the identity, so the matrix is exactly the linear map those pieces define:
-    D on the original channels, then each part (all channels, or outliers and the rest) rotated on its own.
+    D on the original channels, then each part (all channels, outliers and the rest, or consecutive
+    ``part_size`` blocks) rotated on its own.
     """
     key = (int(layer_idx), target, int(bits), int(outliers), int(high), table, signs, int(heads), int(features),
-           str(device), rotation, codebook)
+           str(device), rotation, codebook, int(part_size), int(rope_dim))
     cached = _PLANS.get(key)
     if cached is not None:
         return cached
     eye = torch.eye(features, dtype=torch.float64)
-    if not outliers:
+    if part_size and part_size < features:
+        if outliers or features % part_size:
+            raise ValueError(f"turboquant_mse part_size {part_size} must divide {features}, without outliers")
+        parts = [(torch.arange(first, first + part_size), bits) for first in range(0, features, part_size)]
+    elif not outliers:
         parts = [(torch.arange(features), bits)]
     else:
         channels = outlier_channels(table, layer_idx, target, outliers)
@@ -282,7 +312,7 @@ def _plan(layer_idx: int, target: str, bits: int, outliers: int, high: int, tabl
         parts = [(torch.stack([torch.nonzero(row).squeeze(1) for row in mask]), high),
                  (torch.stack([torch.nonzero(~row).squeeze(1) for row in mask]), bits)]
     whole_signs = signs == "rope_pairs" or not outliers
-    flipped = eye * _sign_vector(signs, layer_idx, features).double() if whole_signs else eye
+    flipped = eye * _sign_vector(signs, layer_idx, features, rope_dim).double() if whole_signs else eye
     per_head = []
     for head in range(heads if outliers else 1):
         columns = []

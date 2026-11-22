@@ -480,5 +480,55 @@ class TurboquantMseOutlierSplitTests(unittest.TestCase):
         self.assertEqual(by_tag, {"all4": 1 - 4 / 16, "all3": 1 - 3 / 16, "all2": 1 - 2 / 16})
 
 
+class TurboquantMseHalvesTests(unittest.TestCase):
+    """Qwen3.5's 256-dim heads: two independent 128-dim halves, signs shared per partial-RoPE pair."""
+
+    def test_partial_rope_signs_commute_with_partial_rope(self):
+        signs = rope_pair_signs(3, 256, rope_dim=64)
+        self.assertTrue(torch.equal(signs[:32], signs[32:64]))
+        self.assertTrue(torch.equal(signs[:32], sign_diagonal(3, 32)))
+        self.assertTrue(torch.equal(signs[64:], sign_diagonal(3, 256)[64:]))
+        x = torch.randn(5, 256)
+        angle = torch.rand(5, 32) * 6.0
+        cos, sin = torch.cat((angle.cos(), angle.cos()), -1), torch.cat((angle.sin(), angle.sin()), -1)
+
+        def rope(t):  # Qwen3.5: HF rotate_half on the first 64 dims, the rest passes through
+            r = t[..., :64]
+            return torch.cat((r * cos + torch.cat((-r[..., 32:], r[..., :32]), -1) * sin, t[..., 64:]), -1)
+
+        self.assertTrue(torch.allclose(rope(x * signs), rope(x) * signs, atol=1e-6))
+
+    def test_whole_head_rope_dim_is_the_earlier_pairing(self):
+        self.assertTrue(torch.equal(rope_pair_signs(4, 128, rope_dim=128), rope_pair_signs(4, 128)))
+        token = torch.randn(1, 2, 3, 128)
+        self.assertTrue(torch.equal(apply(token, layer_idx=4, target="k", bits=3, signs="rope_pairs"),
+                                    apply(token, layer_idx=4, target="k", bits=3, signs="rope_pairs",
+                                          part_size=128, rope_dim=0)))
+
+    def test_halves_are_independent_turboquant_vectors_after_the_signs(self):
+        token = torch.randn(1, 2, 3, 256)
+        d = rope_pair_signs(7, 256, rope_dim=64)
+        for bits in (4, 3, 2):
+            rebuilt = apply(token, layer_idx=7, target="k", bits=bits, signs="rope_pairs", part_size=128, rope_dim=64)
+            flipped = token * d
+            for half in (slice(0, 128), slice(128, 256)):
+                expected = _reference(flipped[..., half], 7, bits, signs=torch.ones(128)) * d[half]
+                self.assertTrue(torch.allclose(rebuilt[..., half], expected, atol=1e-5), bits)
+
+    def test_options_are_written_only_when_set_and_validated(self):
+        step = turboquant_mse(bits=2, part_size=128, rope_dim=64)["pipeline"][0]
+        self.assertEqual((step["part_size"], step["rope_dim"]), (128, 64))
+        parse_kv_spec(turboquant_mse(bits=2, part_size=128, rope_dim=64))
+        self.assertNotIn("part_size", turboquant_mse(bits=2)["pipeline"][0])
+        self.assertNotIn("rope_dim", turboquant_mse(bits=2)["pipeline"][0])
+        for bad in (dict(part_size=96), dict(rope_dim=63), dict(rope_dim=64, signs="independent")):
+            with self.assertRaises(ValueError, msg=bad):
+                parse_kv_spec(turboquant_mse(bits=2, **bad))
+        with tempfile.TemporaryDirectory() as tmp:
+            table = _write_table(tmp, 1, 8, range(8))
+            with self.assertRaises(ValueError):
+                parse_kv_spec(turboquant_mse(bits=2, outliers=4, outlier_table=table, part_size=4))
+
+
 if __name__ == "__main__":
     unittest.main()

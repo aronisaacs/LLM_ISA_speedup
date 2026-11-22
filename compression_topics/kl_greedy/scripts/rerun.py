@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vector and spatial compression on Llama 3.1 8B, Qwen3.5-9B and CodeLlama 7B: greedy on 4-domain KL.
+"""Vector, spatial and TurboQuant compression on Llama 3.1 8B, Qwen3.5-9B and CodeLlama 7B: greedy on 4-domain KL.
 
 One protocol for both methods and all three models (Aron, 2026-11-21), replacing the per-slot
 WikiText perplexity sweeps (vector ``model_budget_study.py``, spatial ``ladder.py``):
@@ -27,6 +27,15 @@ Methods (savings are net of the format's metadata, means over the model's KV slo
            and "p50": every pair merged with no residual (PR0) everywhere, the format's limit
            (49.2 % true saving at head 128, 49.6 % at 256); reference map: every slot at 30 %.
            Query weights: the model's official calibration.
+  turboquant  TurboQuant-mse (Hadamard + RoPE-pair signs + Gaussian Lloyd-Max, fp16 norm per 128 dims),
+           levels 4 / 3 / 2 bits (Aron, 2026-11-22: no 2.5, no 1 bit). Every map starts from uniform
+           4 bits, not dense: the singles score each slot at 3 and 2 bits with every other slot at 4
+           (KL still to dense), and the greedy lowers slots from 4 by score above the uniform-4 map.
+           Savings net of the norm: 4 / 3 / 2 bits = 74.2 / 80.5 / 86.7 %. Budgets 78/81/84 %, plus
+           the fixed maps "b4" (uniform 4) and "b2" (uniform 2). Reference map: every slot at 3 bits.
+           Qwen: each 256-dim head is two independent 128-dim halves (as the gem5 kernel), signs
+           shared per RoPE pair (i, i+32) in the first 64 dims. Calibration has no exact window;
+           task runs keep the newest 32 tokens exact.
 
 Models and tasks: Llama 3.1 8B-Instruct and Qwen3.5-9B (thinking off; only its 8 full-attention
 layers have a KV cache) on C-Eval 5-shot, GSM8K and HumanEval-instruct; CodeLlama 7B (base) on
@@ -66,7 +75,7 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from catalog.compressions import vector_compress  # noqa: E402
+from catalog.compressions import turboquant_mse, vector_compress  # noqa: E402
 from catalog.models import BATCH_SIZE, CODELLAMA_7B, LLAMA31_8B, QWEN35_9B  # noqa: E402
 from catalog.tasks import CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_CODELLAMA, HUMANEVAL_INSTRUCT  # noqa: E402
 from compression_topics.spatial.algorithms.formats import OFFICIAL_WINDOW, dense_bits  # noqa: E402
@@ -98,6 +107,7 @@ class Model:
     calibration: str  # folder under catalog/calibration
     build: tuple[str, ...]  # build_calibration_set.py arguments when the folder is missing
     query_weights: str  # spatial: calibrated E[q^2], relative to ROOT
+    turboquant: tuple[tuple[str, int], ...] = ()  # extra turboquant_mse options (Qwen: halves, partial RoPE)
 
 
 CHAT_TASKS = (CEVAL_VALID_5SHOT, GSM8K_20PCT, HUMANEVAL_INSTRUCT)
@@ -109,7 +119,8 @@ MODELS = {
                   "qwen35_9b_mixed4",
                   ("--prompt-format", "chat", "--gsm8k-shots", "5", "--mbpp-shots", "3",
                    "--chat-template-kwargs", '{"enable_thinking": false}'),
-                  "compression_topics/spatial/figures/official_qwen/query_weights.pt"),
+                  "compression_topics/spatial/figures/official_qwen/query_weights.pt",
+                  (("part_size", 128), ("rope_dim", 64))),
     "codellama": Model(CODELLAMA_7B, "codellama/CodeLlama-7b-hf", 128, 32, tuple(range(32)),
                        (HUMANEVAL_CODELLAMA,), "codellama_7b_mixed4", ("--prompt-format", "plain"),
                        "compression_topics/spatial/figures/official_codellama/query_weights.pt"),
@@ -124,6 +135,8 @@ class Method:
     batch_size: int  # generation tasks (GSM8K, HumanEval)
     loglikelihood_batch_size: int  # C-Eval
     uniform: int = 0  # if set, one more map with every slot at this level (not a greedy budget)
+    base: int = 0  # if set, every slot starts at this level instead of dense (TurboQuant: 4 bits)
+    uniforms: tuple[int, ...] = ()  # fixed maps tagged "b<level>" (TurboQuant's uniform 4 and 2 bits)
 
 
 LOGLIKELIHOOD_TASKS = ("ceval-valid",)
@@ -140,7 +153,11 @@ METHODS = {
     # runs one question at a time.
     "spatial": Method((10, 25, 40, 47, 49), (0.10, 0.20, 0.30, 0.35, 0.40, 0.45), 30, BATCH_SIZE, 1,
                       uniform=50),
+    # Levels are bits per value, mildest first, below the 4-bit start (Aron, 2026-11-22).
+    "turboquant": Method((3, 2), (0.78, 0.81, 0.84), 3, BATCH_SIZE, BATCH_SIZE, base=4, uniforms=(4, 2)),
 }
+TURBOQUANT_PART = 128  # dimensions per TurboQuant vector (one fp16 norm each)
+TURBOQUANT_TASK_WINDOW = 32
 
 
 def template(method: str, model: Model, *, tasks: bool = False) -> dict:
@@ -150,6 +167,9 @@ def template(method: str, model: Model, *, tasks: bool = False) -> dict:
     """
     if method == "vector":
         return method_template(vector_compress(prune_pct=25, recent_window=VECTOR_TASK_WINDOW if tasks else 0))
+    if method == "turboquant":
+        return method_template(turboquant_mse(bits=4, recent_window=TURBOQUANT_TASK_WINDOW if tasks else 0,
+                                              **dict(model.turboquant)))
     from compression_topics.spatial.algorithms.methods import SpatialConfig
 
     digest = hashlib.sha256((ROOT / model.query_weights).read_bytes()).hexdigest()
@@ -163,6 +183,9 @@ def saving(method: str, model: Model, slot: Slot, level: int) -> float:
         return 0.0
     if method == "vector":
         return net_saving("vector_compress", slot.target, level, model.head_dim)
+    if method == "turboquant":  # ``level`` bits per value plus a 16-bit norm per 128 dimensions
+        part = min(model.head_dim, TURBOQUANT_PART)
+        return 1 - (level * part + 16) / (16 * part)
     from compression_topics.spatial.algorithms.windows import block_bits
 
     from compression_topics.spatial.algorithms.formats import max_saving
@@ -221,12 +244,18 @@ def _one_gpu_env() -> dict:
 # --------------------------------------------------------------------------- singles
 
 def candidates(method: str, model: Model) -> dict[str, dict[Slot, int]]:
-    """Reference map, then every slot alone at every level (dense = the empty map, checked apart)."""
+    """Reference map, then every slot alone at every level (dense = the empty map, checked apart).
+
+    With a base level (TurboQuant), "base" is every slot at it, and each single is that map with one
+    slot changed."""
     spec = METHODS[method]
     found = {"reference": {slot: spec.reference for slot in slots(model)}}
+    base = {slot: spec.base for slot in slots(model)} if spec.base else {}
+    if base:
+        found["base"] = dict(base)
     for slot in slots(model):
         for level in spec.levels:
-            found[f"{slot.tag()}_{level}"] = {slot: level}
+            found[f"{slot.tag()}_{level}"] = {**base, slot: level}
     return found
 
 
@@ -243,6 +272,8 @@ def singles(args, name: str, method: str) -> None:
         "reference_level": METHODS[method].reference, "kv_layers": list(model.kv_layers),
         "manifest_sha256": meta["manifest_sha256"], "examples": len(rows), "score": "kl_dense_vs_compressed",
     }
+    if METHODS[method].base:  # written only when set: vector and spatial keep their identities
+        identity["base_level"] = METHODS[method].base
     out = out_dir(args, name, method)
     path = out / "singles.json"
     state = json.loads(path.read_text()) if path.exists() else {"identity": identity, "kl": {}}
@@ -303,19 +334,25 @@ def allocate(method: str, model: Model, kl: dict[str, dict[str, float]], budget:
 
     spec = METHODS[method]
     score = scores(kl)
+    # With a base level, savings and scores count from the base map (every slot at ``base``).
+    base_score = score["base"] if spec.base else 0.0
+    base_saving = {s: saving(method, model, s, spec.base) for s in slots(model)}
     choices = {}
     for slot in slots(model):
         choices[(slot.layer, slot.target)] = [
-            {"level": level, "allocation_saving": saving(method, model, slot, level),
-             "kl_mean": score[f"{slot.tag()}_{level}"]}
+            {"level": level, "allocation_saving": saving(method, model, slot, level) - base_saving[slot],
+             "kl_mean": score[f"{slot.tag()}_{level}"] - base_score}
             for level in spec.levels]
-    selected, total = choose_candidates(choices, 0.0, budget, score="kl_mean")
-    assignment = {Slot(layer, target): row["level"] for (layer, target), row in selected.items()}
     n = len(choices)
+    start = sum(base_saving.values()) / n
+    selected, total = choose_candidates(choices, 0.0, budget - start, score="kl_mean")
+    assignment = {s: spec.base for s in slots(model)} if spec.base else {}
+    assignment.update({Slot(layer, target): row["level"] for (layer, target), row in selected.items()})
+    changed = {s: lvl for s, lvl in assignment.items() if lvl != spec.base}
     return {
         "tag": f"p{round(budget * 100):02d}",
         "budget": budget,
-        "compression": total / n,  # net saving, mean over the KV slots
+        "compression": start + total / n,  # net saving, mean over the KV slots
         "levels": list(spec.levels),
         "kv_layers": list(model.kv_layers),
         "assignment": [{**s.to_dict(), "level": lvl} for s, lvl in sorted(assignment.items())],
@@ -323,19 +360,23 @@ def allocate(method: str, model: Model, kl: dict[str, dict[str, float]], budget:
         "calibration_kv": kv_for_assignment(template(method, model), assignment),  # what the KL scored
         "calibration": {
             "allocator": "greedy_isolated_kl", "score": "kl_mean (4 domains, / reference map)",
-            "sum_of_slot_scores": sum(score[f"{s.tag()}_{lvl}"] for s, lvl in assignment.items()),
+            "sum_of_slot_scores": sum(score[f"{s.tag()}_{lvl}"] - base_score for s, lvl in changed.items()),
             "reference_level": spec.reference, "reference_kl": kl["reference"],
+            **({"base_level": spec.base, "base_kl_mean": base_score} if spec.base else {}),
         },
     }
 
 
 def uniform(method: str, model: Model, level: int) -> dict:
-    """Every KV slot at ``level``: a fixed map, not a greedy allocation."""
+    """Every KV slot at ``level``: a fixed map, not a greedy allocation. Tag "p<level>" (level in %),
+    or "b<bits>" for TurboQuant, whose budget is then its net saving."""
     assignment = {slot: level for slot in slots(model)}
+    compression = sum(saving(method, model, s, level) for s in assignment) / len(assignment)
+    bits = method == "turboquant"
     return {
-        "tag": f"p{level:02d}",
-        "budget": level / 100,
-        "compression": sum(saving(method, model, s, level) for s in assignment) / len(assignment),
+        "tag": f"b{level}" if bits else f"p{level:02d}",
+        "budget": compression if bits else level / 100,
+        "compression": compression,
         "levels": [level],
         "kv_layers": list(model.kv_layers),
         "assignment": [{**s.to_dict(), "level": lvl} for s, lvl in sorted(assignment.items())],
@@ -356,6 +397,7 @@ def greedy(args, name: str, method: str) -> list[dict]:
     selections = [allocate(method, model, state["kl"], b) for b in spec.budgets]
     if spec.uniform:
         selections.append(uniform(method, model, spec.uniform))
+    selections += [uniform(method, model, level) for level in spec.uniforms]
     for selection in selections:
         _write_atomic(out / f"selected_{selection['tag']}.json", json.dumps(selection, indent=2) + "\n")
     _write_atomic(out / "selections.json", json.dumps(selections, indent=2) + "\n")
@@ -363,7 +405,8 @@ def greedy(args, name: str, method: str) -> list[dict]:
     for s in selections:
         count = lambda t: "/".join(  # noqa: E731
             str(sum(1 for a in s["assignment"] if a["target"] == t and a["level"] == lvl))
-            for lvl in dict.fromkeys(METHODS[method].levels + ((METHODS[method].uniform,) if METHODS[method].uniform else ())))
+            for lvl in dict.fromkeys(((spec.base,) if spec.base else ()) + spec.levels
+                                     + ((spec.uniform,) if spec.uniform else ())))
         print(f"   {s['tag']:>6} {s['compression']:7.4f}   {count('k'):<18} {count('v')}", flush=True)
     return selections
 

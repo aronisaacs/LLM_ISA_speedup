@@ -115,7 +115,7 @@ class HigherBudgetTests(unittest.TestCase):
             for method, spec in rerun.METHODS.items():
                 folder = ROOT / rerun.OUT / name / method
                 if not (folder / "selections.json").exists():
-                    self.skipTest("no committed results")
+                    continue  # not run yet
                 kl = json.loads((folder / "singles.json").read_text())["kl"]
                 committed = json.loads((folder / "selections.json").read_text())
                 for old in committed:
@@ -127,13 +127,93 @@ class HigherBudgetTests(unittest.TestCase):
                 self.assertEqual(len({f"p{round(b * 100):02d}" for b in spec.budgets}), len(spec.budgets))
 
 
+class TurboquantTests(unittest.TestCase):
+    """TurboQuant: levels 4 / 3 / 2 bits, every map starts from uniform 4 bits (Aron, 2026-11-22)."""
+
+    def test_net_savings_count_one_norm_per_128_dims(self):
+        for name in ("llama", "qwen"):
+            model = rerun.MODELS[name]
+            slot = rerun.slots(model)[0]
+            for bits in (4, 3, 2):
+                self.assertAlmostEqual(rerun.saving("turboquant", model, slot, bits), 1 - (bits + 0.125) / 16)
+
+    def test_singles_change_one_slot_of_the_uniform_4_bit_map(self):
+        model = rerun.MODELS["qwen"]
+        found = rerun.candidates("turboquant", model)
+        self.assertEqual(len(found), 2 + 16 * 2)
+        everything = set(rerun.slots(model))
+        self.assertEqual(found["base"], {s: 4 for s in everything})
+        self.assertEqual(found["reference"], {s: 3 for s in everything})
+        single = found["v07_2"]
+        self.assertEqual(single[Slot(7, "v")], 2)
+        self.assertEqual({lvl for s, lvl in single.items() if s != Slot(7, "v")}, {4})
+        self.assertEqual(len(rerun.candidates("turboquant", rerun.MODELS["llama"])), 2 + 64 * 2)
+
+    def _kl(self, model):
+        kl = {"reference": {d: 2.0 for d in DOMAINS}, "base": {d: 0.5 for d in DOMAINS}}
+        for slot in rerun.slots(model):
+            for bits in (3, 2):
+                cost = (0.01 if slot.target == "v" else 0.2) * (4 - bits) * (1 + slot.layer / 100)
+                kl[f"{slot.tag()}_{bits}"] = {d: 0.5 + cost for d in DOMAINS}
+        return kl
+
+    def test_allocation_starts_at_4_bits_and_reaches_each_budget(self):
+        for name in ("llama", "qwen"):
+            model = rerun.MODELS[name]
+            kl = self._kl(model)
+            previous = 0.0
+            for budget in rerun.METHODS["turboquant"].budgets:
+                selection = rerun.allocate("turboquant", model, kl, budget)
+                self.assertGreaterEqual(selection["compression"], budget - 1e-12)
+                self.assertGreater(selection["compression"], previous)
+                previous = selection["compression"]
+                self.assertEqual(len(selection["assignment"]), len(rerun.slots(model)))
+                self.assertLessEqual({a["level"] for a in selection["assignment"]}, {4, 3, 2})
+                parse_kv_spec(selection["kv"])
+                parse_kv_spec(selection["calibration_kv"])
+            first = rerun.allocate("turboquant", model, kl, 0.78)
+            lowered = [a for a in first["assignment"] if a["level"] != 4]
+            self.assertTrue(lowered and all(a["target"] == "v" for a in lowered))  # values are cheap here
+
+    def test_windows_and_qwen_halves(self):
+        for name in ("llama", "qwen"):
+            model = rerun.MODELS[name]
+            selection = rerun.allocate("turboquant", model, self._kl(model), 0.81)
+            for step in selection["kv"]["pipeline"]:
+                self.assertEqual(step["recent_window"], 32)
+                self.assertEqual(step["signs"], "rope_pairs")
+            for step in selection["calibration_kv"]["pipeline"]:
+                self.assertNotIn("recent_window", step)
+            for step in selection["kv"]["pipeline"] + selection["calibration_kv"]["pipeline"]:
+                if name == "qwen":
+                    self.assertEqual((step["part_size"], step["rope_dim"]), (128, 64))
+                else:
+                    self.assertNotIn("part_size", step)
+                    self.assertNotIn("rope_dim", step)
+
+    def test_uniform_maps_are_b4_and_b2(self):
+        model = rerun.MODELS["codellama"]
+        b4, b2 = (rerun.uniform("turboquant", model, bits) for bits in (4, 2))
+        self.assertEqual((b4["tag"], b2["tag"]), ("b4", "b2"))
+        self.assertAlmostEqual(b4["compression"], 1 - 4.125 / 16)
+        self.assertAlmostEqual(b2["compression"], 1 - 2.125 / 16)
+        self.assertEqual([s["bits"] for s in b2["kv"]["pipeline"]], [2])
+        parse_kv_spec(b2["kv"])
+
+    def test_vector_and_spatial_allocation_is_unchanged_by_the_base_option(self):
+        # No base level: start 0, same budget, same assignment as before the change.
+        self.assertEqual(rerun.METHODS["vector"].base, 0)
+        self.assertEqual(rerun.METHODS["spatial"].base, 0)
+
+
 class PackingTests(unittest.TestCase):
     def test_deal_snakes_full_rounds(self):
         self.assertEqual(rerun.deal(list(range(10)), 4), [0, 1, 2, 3, 7, 6, 5, 4, 8, 9])
 
     def test_pending_lists_only_new_runs_longest_first_and_self_contained(self):
-        found = rerun.pending(SimpleNamespace(timing=None),
-                              [(n, m) for n in rerun.MODELS for m in rerun.METHODS])
+        done = [(n, m) for n in rerun.MODELS for m in rerun.METHODS  # pairs with committed maps
+                if (ROOT / rerun.OUT / n / m / "selections.json").exists()]
+        found = rerun.pending(SimpleNamespace(timing=None), done)
         names = [c["name"] for c in found]
         self.assertEqual(len(names), len(set(names)))
         for c in found:
@@ -240,6 +320,12 @@ class TaskRunTests(unittest.TestCase):
     def test_spatial_maps_have_no_recent_window(self):
         for selection in self._selections("qwen", "spatial"):
             self.assertEqual(selection["kv"], selection["calibration_kv"])
+
+    def test_turboquant_run_has_dense_budgets_and_both_uniform_maps(self):
+        self._selections("codellama", "turboquant")
+        run = rerun.tasks_run(SimpleNamespace(timing=None), "codellama", "turboquant")
+        tags = [c["output_path"].rsplit("_", 1)[1].removesuffix(".json") for c in run["configurations"]]
+        self.assertEqual(sorted(tags), sorted(["dense", "p78", "p81", "p84", "b4", "b2"]))
 
     def test_codellama_runs_humaneval_with_the_indent_prompt(self):
         self._selections("codellama", "vector")

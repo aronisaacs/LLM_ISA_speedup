@@ -79,7 +79,7 @@ TURBOQUANT_CALIBRATION_WINDOW = TURBOQUANT_RECENT_WINDOW
 
 def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_bits=None, outlier_table=None,
                    signs="rope_pairs", recent_window=TURBOQUANT_RECENT_WINDOW, rotation="hadamard",
-                   codebook="gaussian", outlier_group=0):
+                   codebook="gaussian", outlier_group=0, part_size=0, rope_dim=0):
     """Randomized Hadamard rotation and a fixed codebook, with an fp16 norm. Post-RoPE.
 
     The sweep climber sets the level per slot: dense, then 4, 3, 2.5 (2 bits + 64 outlier
@@ -92,6 +92,9 @@ def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_b
     the identity of runs made before the window. ``rotation="orthogonal"`` and ``codebook="beta"`` are
     the paper-faithful variants (one LongBench check), written only when used; so is
     ``outlier_group`` (dynamic outliers per group of tokens instead of the table, that check only).
+    ``part_size`` (independent TurboQuant vectors of that many dimensions, e.g. 128 for Qwen3.5's
+    256-dim heads) and ``rope_dim`` (partial RoPE: sign pairs within the first ``rope_dim`` dims) are
+    written only when set.
     """
     options = {} if signs == "independent" else {"signs": str(signs)}
     if recent_window:
@@ -100,6 +103,10 @@ def turboquant_mse(k_layers="all", v_layers="all", bits=4, outliers=0, outlier_b
         options["rotation"] = str(rotation)
     if codebook != "gaussian":
         options["codebook"] = str(codebook)
+    if part_size:
+        options["part_size"] = int(part_size)
+    if rope_dim:
+        options["rope_dim"] = int(rope_dim)
     if outliers:
         if outlier_group:
             options.update(outliers=int(outliers), outlier_group=int(outlier_group))
