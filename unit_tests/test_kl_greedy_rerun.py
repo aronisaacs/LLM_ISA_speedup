@@ -122,6 +122,10 @@ class HigherBudgetTests(unittest.TestCase):
                     new = rerun.allocate(method, model, kl, old["budget"])
                     self.assertEqual(new["assignment"], old["assignment"], (name, method, old["tag"]))
                     self.assertEqual(new["kv"], old["kv"])
+                if method == "spatial":  # the last budget is the format's maximum
+                    top = rerun.allocate(method, model, kl, spec.budgets[-1])
+                    self.assertTrue(all(a["level"] == spec.levels[-1] for a in top["assignment"]))
+                    self.assertEqual(len(top["assignment"]), 2 * len(model.kv_layers))
                 self.assertEqual(len({f"p{round(b * 100):02d}" for b in spec.budgets}), len(spec.budgets))
 
 

@@ -22,7 +22,9 @@ Methods (savings are net of the format's metadata, means over the model's KV slo
            one-bit-per-value mask; budgets 10/20/30/40/50/55/60 %; reference map: every slot at 37 % (30.5 % net, as E11's uniform 30 %). Calibration compresses every token; the task runs
            keep the newest 32 tokens exact (``recent_window``; Aron, 2026-11-21).
   spatial  spatial pair compression with query-aware keys, 32-token windows, dense/PR0/PR16/PR32;
-           slot savings 10/25/40/47/49 % (net of the 2-bit pair tags); budgets 10/20/30/35/40 %; reference map: every slot at 30 %. Query weights: the model's official calibration.
+           slot savings 10/25/40/47/49 % (net of the 2-bit pair tags); budgets 10/20/30/35/40/45/48 %
+           and 48.95 % (every slot at 49 %, the format's maximum); reference map: every slot at 30 %.
+           Query weights: the model's official calibration.
 
 Models and tasks: Llama 3.1 8B-Instruct and Qwen3.5-9B (thinking off; only its 8 full-attention
 layers have a KV cache) on C-Eval 5-shot, GSM8K and HumanEval-instruct; CodeLlama 7B (base) on
@@ -121,14 +123,17 @@ class Method:
 
 
 LOGLIKELIHOOD_TASKS = ("ceval-valid",)
+MAX_SPATIAL = 0.4895  # every slot at 49 %, just under 0.49 - the pair tags (0.48951 at head 128)
 METHODS = {
-    # Vector 55 and 60 % added 2026-11-22 (Aron) toward the 5-point accuracy drop. Higher budgets only
+    # Vector 55/60 % and spatial 45/48/max added 2026-11-22 (Aron) toward the 5-point accuracy drop
+    # (spatial max = every slot at 49 %, the format's limit). Higher budgets only
     # extend the greedy path, so the earlier maps and their results are unchanged.
     "vector": Method((25, 50, 75), (0.10, 0.20, 0.30, 0.40, 0.50, 0.55, 0.60), 37, BATCH_SIZE, BATCH_SIZE),
     # Spatial aligns each row's windows at its first real token from the attention mask, which lm-eval
     # passes to generate (left padding) but not to log-likelihood calls (right padding, no mask): C-Eval
     # runs one question at a time.
-    "spatial": Method((10, 25, 40, 47, 49), (0.10, 0.20, 0.30, 0.35, 0.40), 30, BATCH_SIZE, 1),
+    "spatial": Method((10, 25, 40, 47, 49), (0.10, 0.20, 0.30, 0.35, 0.40, 0.45, 0.48, MAX_SPATIAL), 30,
+                      BATCH_SIZE, 1),
 }
 
 
