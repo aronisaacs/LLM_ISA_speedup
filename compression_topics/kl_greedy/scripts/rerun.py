@@ -509,9 +509,10 @@ def wanted(items: list[Item], score) -> list[Item]:
 def dispatch(found: dict, devices: list[str], start, score, wait: float = 30.0, say=print) -> list[str]:
     """Run the chains' runs on ``devices``, one run per device at a time, and return the names that failed.
 
-    A free device takes the next unscored run of the chain with the fewest runs in flight, then the most
-    work left (so the long chains start first); a chain may run ahead of its own results, and a run that
-    a finished result puts past the chain's cutoff is stopped. ``start(full, device)`` returns a process
+    A free device takes the next unscored run of the chain with the most work left per run in flight
+    (left / (in flight + 1)), so a long chain (Qwen GSM8K) runs several budgets at once instead of setting
+    the end time alone; a chain runs ahead of its own results, and a run that a finished result puts past
+    the chain's cutoff is stopped. ``start(full, device)`` returns a process
     (poll / terminate / wait); ``score(item)`` is the run's accuracy in points, or None until it is in
     results.json."""
     running: dict[str, tuple[tuple, Item, object]] = {}
@@ -534,7 +535,7 @@ def dispatch(found: dict, devices: list[str], start, score, wait: float = 30.0, 
             if not ready:
                 break
             flying = lambda chain: sum(1 for c, _, _ in running.values() if c == chain)  # noqa: E731
-            chain = min(ready, key=lambda c: (flying(c), -sum(item.minutes for item in queue[c])))
+            chain = max(ready, key=lambda c: sum(item.minutes for item in queue[c]) / (flying(c) + 1))
             item = queue[chain].pop(0)
             for other in queue.values():  # the same run in another chain (a shared dense row)
                 other[:] = [i for i in other if i.key != item.key]
