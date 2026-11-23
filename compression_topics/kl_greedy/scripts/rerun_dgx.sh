@@ -9,7 +9,7 @@
 #SBATCH --job-name=kl-greedy
 #SBATCH --partition=prod
 #SBATCH --gres=gpu:8
-#SBATCH --cpus-per-task=64
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=300000
 #SBATCH --time=UNLIMITED
 #SBATCH --output=logs/kl_greedy_%j.out
@@ -19,7 +19,7 @@ conda activate llm_isa_dgx
 cd "$HOME/projects/LLM_ISA_speedup"
 export HF_HUB_CACHE="$HOME/models/huggingface"
 export HF_DATASETS_CACHE="$HOME/datasets/huggingface"
-export OMP_NUM_THREADS=8
+export OMP_NUM_THREADS=2  # one process per GPU, mostly GPU-bound: 8 CPUs for 4 GPUs (Aron, 2026-11-23)
 export PYTHONUNBUFFERED=1
 echo "Slurm job ${SLURM_JOB_ID:-manual}; GPUs ${CUDA_VISIBLE_DEVICES:-unset}; args: $*"
 git log -1 --oneline
