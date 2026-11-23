@@ -122,7 +122,7 @@ def _set_level(step: dict, pct) -> None:
         return
     if method in {"vector_compress", "vector_compress_pair",
                   "checksparse_l1", "checksparse_row"}:
-        step["prune_pct"] = int(pct)
+        step["prune_pct"] = _level(pct) if method == "vector_compress" else int(pct)  # vector: 37.5 too
         if method == "vector_compress":
             step.pop("threshold", None)
 
@@ -139,7 +139,7 @@ def _level_from_step(step: dict) -> int | None:
     if step.get("method") == "spatial" and step.get("saving") is not None:
         return _level(round(100 * step["saving"], 6))
     if step.get("prune_pct") is not None:
-        return int(step["prune_pct"])
+        return _level(step["prune_pct"])
     return None
 
 

@@ -22,7 +22,7 @@ def zeroed_values(method: str, target: str, level: int, head_dim: int = HEAD_DIM
     """Values set to zero at ``level`` percent, as the methods round it."""
     if method in PAIR_METHODS and target == "k":
         return 2 * ((head_dim // 2) * level // 100)
-    return head_dim * level // 100
+    return int(head_dim * level // 100)  # whole percents as before; 37.5 % of 128 = 48 exactly
 
 
 def net_saving(method: str, target: str, level: int, head_dim: int = HEAD_DIM) -> float:

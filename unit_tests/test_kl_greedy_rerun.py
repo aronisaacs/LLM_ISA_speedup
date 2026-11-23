@@ -87,7 +87,7 @@ class GreedyTests(unittest.TestCase):
         self.assertEqual(found["reference"], {s: 30 for s in rerun.slots(rerun.MODELS["qwen"])})
         self.assertIn("k03_10", found)
         self.assertNotIn("k00_10", found)
-        self.assertEqual(len(rerun.candidates("vector", rerun.MODELS["codellama"])), 1 + 64 * 3)
+        self.assertEqual(len(rerun.candidates("vector", rerun.MODELS["codellama"])), 1 + 64 * 6)
 
     def test_allocation_reaches_each_budget_cheapest_slots_first(self):
         model = rerun.MODELS["qwen"]
@@ -117,6 +117,8 @@ class HigherBudgetTests(unittest.TestCase):
                 if not (folder / "selections.json").exists():
                     continue  # not run yet
                 kl = json.loads((folder / "singles.json").read_text())["kl"]
+                if any(label not in kl for label in rerun.candidates(method, model)):
+                    continue  # levels added since (vector eighths, 2026-11-23): every map changes, not extends
                 committed = json.loads((folder / "selections.json").read_text())
                 for old in committed:
                     if old["calibration"]["allocator"] == "uniform":  # p50: a fixed map, not a budget
@@ -206,33 +208,99 @@ class TurboquantTests(unittest.TestCase):
         self.assertEqual(rerun.METHODS["spatial"].base, 0)
 
 
-class PackingTests(unittest.TestCase):
-    def test_deal_snakes_full_rounds(self):
-        self.assertEqual(rerun.deal(list(range(10)), 4), [0, 1, 2, 3, 7, 6, 5, 4, 8, 9])
+class FakeProcess:
+    """A task run that finishes after ``ticks`` polls and then has its score in ``results``."""
 
-    def test_pending_lists_only_new_runs_longest_first_and_self_contained(self):
+    def __init__(self, item, results, scores, ticks):
+        self.item, self.results, self.scores, self.ticks, self.stopped = item, results, scores, ticks, False
+
+    def poll(self):
+        self.ticks -= 1
+        if self.ticks > 0:
+            return None
+        self.results[self.item.key] = self.scores[self.item.tag]
+        return 0
+
+    def terminate(self):
+        self.stopped = True
+
+    def wait(self):
+        return 0
+
+
+def _chain(name, tags, uniform=()):
+    return [rerun.Item({"name": f"{name}_{t}", "tasks": ["gsm8k"]}, t, 10.0, f"{name}/{t}",
+                       t != "dense" and t not in uniform) for t in tags]
+
+
+class CutoffTests(unittest.TestCase):
+    """Each model-task stops after its first budget more than 5 points below dense (Aron, 2026-11-23)."""
+
+    def test_wanted_keeps_the_first_budget_past_the_cutoff_and_the_uniform_maps(self):
+        items = _chain("a", ["dense", "p10", "p20", "p30", "p40", "b4"], uniform=("b4",))
+        scores = {"a/dense": 80.0, "a/p10": 79.0, "a/p20": 74.9, "a/p30": 70.0}
+        kept = rerun.wanted(items, lambda item: scores.get(item.key))
+        self.assertEqual([i.tag for i in kept], ["dense", "p10", "p20", "b4"])
+        self.assertEqual(len(rerun.wanted(items, lambda item: None)), len(items))  # nothing scored: all wanted
+
+    def test_dispatch_stops_each_chain_at_its_cutoff(self):
+        found = {("m", "vector", "a"): _chain("a", ["dense", "p10", "p20", "p30", "p40", "p50"]),
+                 ("m", "vector", "b"): _chain("b", ["dense", "p10", "p20"])}
+        scores = {"dense": 80.0, "p10": 79.0, "p20": 78.0, "p30": 60.0, "p40": 50.0, "p50": 40.0}
+        results, started = {}, []
+
+        def start(full, device):
+            item = next(i for items in found.values() for i in items if i.full is full)
+            started.append(item.key)
+            proc = FakeProcess(item, results, scores, ticks=1 + len(started) % 3)
+            return proc
+
+        failed = rerun.dispatch(found, ["0", "1"], start, lambda item: results.get(item.key), wait=0, say=lambda t: None)
+        self.assertEqual(failed, [])
+        self.assertEqual(len(started), len(set(started)))
+        for key in ("a/dense", "a/p10", "a/p20", "a/p30", "b/dense", "b/p10", "b/p20"):
+            self.assertIn(key, results)
+        self.assertNotIn("a/p50", started)  # two past the cutoff: never started
+
+    def test_chains_order_dense_budgets_then_uniform_and_are_self_contained(self):
         done = [(n, m) for n in rerun.MODELS for m in rerun.METHODS  # pairs with committed maps
                 if (ROOT / rerun.OUT / n / m / "selections.json").exists()]
-        found = rerun.pending(SimpleNamespace(timing=None), done)
-        names = [c["name"] for c in found]
-        self.assertEqual(len(names), len(set(names)))
-        for c in found:
-            self.assertIn("pretrained=", c["model_args"])
-            self.assertIn("batch_size", c)
-            self.assertFalse(c["name"].endswith("_dense"))
-        if found:
-            self.assertTrue(found[0]["tasks"] == ["gsm8k"])
+        for (name, method, task), items in rerun.chains(SimpleNamespace(timing=None), done).items():
+            self.assertEqual(items[0].tag, "dense")
+            budgets = [i.tag for i in items if i.budget]
+            self.assertEqual(budgets, sorted(budgets, key=lambda t: int(t[1:])), (name, method, task))
+            self.assertEqual(len({i.key for i in items}), len(items))
+            for item in items:
+                self.assertIn("pretrained=", item.full["model_args"])
+                self.assertIn("batch_size", item.full)
 
 
 class MergeAllTests(unittest.TestCase):
-    def test_vector_p75_is_every_slot_at_the_top_level(self):
-        for name, model in rerun.MODELS.items():
-            selection = rerun.uniform("vector", model, 75)
-            self.assertEqual(selection["tag"], "p75")
-            self.assertEqual({a["level"] for a in selection["assignment"]}, {75})
-            self.assertAlmostEqual(selection["compression"], 0.6875, places=4)
-            self.assertTrue(all(step["recent_window"] == 32 for step in selection["kv"]["pipeline"]))
-            parse_kv_spec(selection["kv"])
+    def test_vector_eighths_zero_exact_value_counts(self):
+        # 37.5 / 62.5 / 87.5 % (Aron, 2026-11-23): eighths of the vector, at head 128 and 256.
+        from compression_topics.vector.algorithms.vector_compress import _apply
+
+        for head in (128, 256):
+            x = torch.arange(1, head + 1, dtype=torch.float32).repeat(3, 1)
+            for level in rerun.METHODS["vector"].levels:
+                zeros = int((_apply(x, threshold=0.0, prune_pct=level) == 0).sum(-1)[0])
+                self.assertEqual(zeros, head * level / 100, (head, level))
+        model = rerun.MODELS["llama"]
+        for level, net in ((37.5, 0.3125), (62.5, 0.5625), (87.5, 0.8125), (25, 0.1875), (37, 0.3047)):
+            self.assertAlmostEqual(rerun.saving("vector", model, Slot(0, "k"), level), net, places=4)
+
+    def test_fractional_levels_survive_the_kv_spec(self):
+        template = rerun.template("vector", rerun.MODELS["llama"], tasks=True)
+        kv = kv_for_assignment(template, {Slot(0, "k"): 37.5, Slot(1, "v"): 75, Slot(2, "k"): 87.5})
+        self.assertEqual([step["prune_pct"] for step in kv["pipeline"]], [37.5, 75, 87.5])
+        self.assertEqual([_level_from_step(step) for step in kv["pipeline"]], [37.5, 75, 87.5])
+        parse_kv_spec(kv)
+
+    def test_singles_accept_added_levels_only(self):
+        old = {"model": "m", "levels": [25, 50, 75], "reference_level": 37}
+        self.assertTrue(rerun.same_settings(old, {**old, "levels": [25, 37.5, 50, 62.5, 75, 87.5]}))
+        self.assertFalse(rerun.same_settings(old, {**old, "levels": [25, 50]}))
+        self.assertFalse(rerun.same_settings(old, {**old, "levels": [25, 37.5, 50, 62.5, 75], "reference_level": 30}))
 
     def test_p50_merges_every_pair_with_no_residual(self):
         for name, model in rerun.MODELS.items():
@@ -331,7 +399,7 @@ class TaskRunTests(unittest.TestCase):
         self._selections("codellama", "vector")
         run = rerun.tasks_run(SimpleNamespace(timing=None), "codellama", "vector")
         self.assertEqual({c["tasks"][0] for c in run["configurations"]}, {"humaneval_codellama"})
-        self.assertEqual(len(run["configurations"]), 2 + len(rerun.METHODS["vector"].budgets))  # dense, budgets, p75
+        self.assertEqual(len(run["configurations"]), 1 + len(rerun.METHODS["vector"].budgets))  # dense, budgets
         self.assertEqual(run["batch_size"], rerun.BATCH_SIZE)
 
 

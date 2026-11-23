@@ -19,7 +19,7 @@ def apply(
     layer_idx: int,
     target: str,
     threshold: float = 0.0,
-    prune_pct: int | None = None,
+    prune_pct: int | float | None = None,
     recent_window: int = 0,
     **_unused,
 ) -> torch.Tensor:
@@ -31,13 +31,14 @@ def _apply(
     tensor: torch.Tensor,
     *,
     threshold: float,
-    prune_pct: int | None,
+    prune_pct: int | float | None,
 ) -> torch.Tensor:
     if prune_pct is not None:
-        if not isinstance(prune_pct, int) or isinstance(prune_pct, bool) or prune_pct < 0 or prune_pct > 100:
-            raise ValueError("vector_compress prune_pct must be an integer 0..100")
+        # Whole or fractional percent (37.5 / 62.5 / 87.5: eighths of the vector; Aron, 2026-11-23).
+        if not isinstance(prune_pct, (int, float)) or isinstance(prune_pct, bool) or not 0 <= prune_pct <= 100:
+            raise ValueError("vector_compress prune_pct must be a number 0..100")
         n = tensor.shape[-1]
-        n_drop = (n * prune_pct) // 100
+        n_drop = int(n * prune_pct // 100)  # whole percents round as before; eighths are exact
         if n_drop == 0:
             return tensor
         if n_drop >= n:

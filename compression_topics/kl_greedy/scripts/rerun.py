@@ -14,14 +14,18 @@ WikiText perplexity sweeps (vector ``model_budget_study.py``, spatial ``ladder.p
              of saving, until the mean saving over the KV slots reaches each budget (isolated
              greedy: scores come from the singles; no re-scoring on top of the map built so far).
   tasks      dense and every budget's map on the model's tasks (lm-eval, results.json, skip existing).
+             Each model-task runs its budgets in increasing order and stops after its first budget more
+             than 5 points below dense (Aron, 2026-11-23: the slides show nothing past it).
   table      accuracy by budget.
 
 Methods (savings are net of the format's metadata, means over the model's KV slots):
 
-  vector   per-scalar bitmask prune (``vector_compress``) at 25/50/75 % of each vector, net of the
-           one-bit-per-value mask; budgets 10/20/30/40/50/55/60/65 %, and "p75": every slot at 75 %, the
-           highest level (68.75 % net, the greedy path's end); reference map: every slot at 37 % (30.5 % net, as E11's uniform 30 %). Calibration compresses every token; the task runs
-           keep the newest 32 tokens exact (``recent_window``; Aron, 2026-11-21).
+  vector   per-scalar bitmask prune (``vector_compress``) at 25/37.5/50/62.5/75/87.5 % of each vector
+           (eighths; 37.5/62.5/87.5 added 2026-11-23, Aron), net of the one-bit-per-value mask: 18.75 to
+           81.25 % net; budgets 10/20/30/40/50/55/60/65/70/75/80 %; reference map: every slot at 37 %
+           (30.5 % net, as E11's uniform 30 %; kept at 37 so the 25/50/75 singles stay valid). Calibration
+           compresses every token; the task runs keep the newest 32 tokens exact (``recent_window``;
+           Aron, 2026-11-21).
   spatial  spatial pair compression with query-aware keys, 32-token windows, dense/PR0/PR16/PR32;
            slot savings 10/25/40/47/49 % (net of the 2-bit pair tags); budgets 10/20/30/35/40/45 %,
            and "p50": every pair merged with no residual (PR0) everywhere, the format's limit
@@ -129,7 +133,7 @@ MODELS = {
 
 @dataclass(frozen=True)
 class Method:
-    levels: tuple[int, ...]  # per-slot levels, mildest first
+    levels: tuple[int | float, ...]  # per-slot levels, mildest first
     budgets: tuple[float, ...]
     reference: int  # level of every slot in the reference map
     batch_size: int  # generation tasks (GSM8K, HumanEval)
@@ -146,8 +150,11 @@ METHODS = {
     # spatial "p50": every pair of every slot merged with no residual (PR0), the format's limit; its
     # true saving is 49.2 % (head 128) / 49.6 % (head 256), called 50 % (Aron). Higher budgets only
     # extend the greedy path, so the earlier maps and their results are unchanged.
-    "vector": Method((25, 50, 75), (0.10, 0.20, 0.30, 0.40, 0.50, 0.55, 0.60, 0.65), 37, BATCH_SIZE, BATCH_SIZE,
-                     uniform=75),
+    # 2026-11-23 (Aron): levels in eighths (37.5, 62.5, 87.5 added), budgets up to 80 %, no uniform map.
+    # Every greedy map changes, so every budget runs again; the 25/50/75 singles are reused.
+    "vector": Method((25, 37.5, 50, 62.5, 75, 87.5),
+                     (0.10, 0.20, 0.30, 0.40, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80), 37,
+                     BATCH_SIZE, BATCH_SIZE),
     # Spatial aligns each row's windows at its first real token from the attention mask, which lm-eval
     # passes to generate (left padding) but not to log-likelihood calls (right padding, no mask): C-Eval
     # runs one question at a time.
@@ -277,8 +284,9 @@ def singles(args, name: str, method: str) -> None:
     out = out_dir(args, name, method)
     path = out / "singles.json"
     state = json.loads(path.read_text()) if path.exists() else {"identity": identity, "kl": {}}
-    if state["identity"] != json.loads(json.dumps(identity)):
+    if not same_settings(state["identity"], json.loads(json.dumps(identity))):
         raise SystemExit(f"{path} was made with other settings; move it away to start over")
+    state["identity"] = json.loads(json.dumps(identity))  # new levels are scored below; the old stay valid
     todo = {label: a for label, a in candidates(method, model).items() if label not in state["kl"]}
     if not todo:
         print(f"[singles] {name}/{method}: all {len(state['kl'])} scored", flush=True)
@@ -309,6 +317,13 @@ def singles(args, name: str, method: str) -> None:
     reference = state["kl"]["reference"]
     if not all(v > 0 for v in reference.values()):
         raise RuntimeError(f"reference map leaves some domain unchanged: {reference}")
+
+
+def same_settings(stored: dict, current: dict) -> bool:
+    """The same singles settings, except that ``current`` may add levels: each candidate is one slot
+    alone at one level, scored against the same reference map, so the old scores stay valid."""
+    rest = lambda identity: {k: v for k, v in identity.items() if k != "levels"}  # noqa: E731
+    return rest(stored) == rest(current) and set(stored["levels"]) <= set(current["levels"])
 
 
 def _devices() -> list[str]:
@@ -437,62 +452,161 @@ def tasks_run(args, name: str, method: str) -> dict:
 MINUTES = {"gsm8k": 55, "humaneval_instruct": 25, "humaneval_codellama": 30, "ceval-valid": 10}
 
 
-def pending(args, pairs) -> list[dict]:
-    """Every (model, method) run not yet in results.json, each configuration self-contained.
+CUTOFF = 5.0  # points below dense: a model-task's budgets stop after the first one past this (Aron, 2026-11-23)
 
-    One list for all models and methods, so every GPU stays busy: multi_run deals configurations
-    to its workers in turn, and done runs left in the list would still take their turns.
-    """
+
+@dataclass
+class Item:
+    """One task run: a model-task's dense row, one of its budget maps, or a fixed (uniform) map."""
+    full: dict  # self-contained configuration (run settings merged in)
+    tag: str  # dense, p10, ..., or a uniform map's tag
+    minutes: float  # rough length, to start the longest model-tasks first
+    key: str  # simulation identity (JSON): the results.json lookup, shared by equal runs
+    budget: bool  # a greedy budget map: these stop at the cutoff; dense and uniform maps always run
+
+
+def chains(args, pairs) -> dict[tuple[str, str, str], list[Item]]:
+    """Every run of every (model, method), done or not, grouped by (model, method, task) in budget order:
+    dense, the budgets mildest first, then the uniform maps."""
     from engine.eval_runner.cache import simulation_identity
-    from engine.eval_runner.index import find_result
     from engine.kv_compress import parse_kv_spec
 
-    found, seen = [], set()
+    found: dict[tuple[str, str, str], list[Item]] = {}
     for name, method in pairs:
         run = tasks_run(args, name, method)
+        selections = json.loads((out_dir(args, name, method) / "selections.json").read_text())
+        allocator = {s["tag"]: s["calibration"]["allocator"] for s in selections}
+        order = ["dense"] + list(allocator)
         base = {key: value for key, value in run.items() if key != "configurations"}
         for configuration in run["configurations"]:
             full = {**base, **configuration}
             identity = simulation_identity({}, full, parse_kv_spec(full["kv"]))
-            key = json.dumps(identity, sort_keys=True)
-            if key in seen or find_result(identity) is not None:
-                continue  # done, or the same run under another name (a shared dense row)
-            seen.add(key)
+            tag = configuration["output_path"].rsplit("_", 1)[1].removesuffix(".json")
             minutes = MINUTES[full["tasks"][0]] * (1.5 if name == "qwen" else 1)
-            found.append((minutes, full))
-    found.sort(key=lambda item: -item[0])
-    return [full for _, full in found]
+            budget = tag != "dense" and allocator.get(tag) != "uniform"
+            found.setdefault((name, method, full["tasks"][0]), []).append(
+                Item(full, tag, minutes, json.dumps(identity, sort_keys=True), budget))
+        for chain, items in found.items():
+            if chain[:2] == (name, method):
+                items.sort(key=lambda item: order.index(item.tag))
+    return found
 
 
-def deal(configurations: list[dict], workers: int) -> list[dict]:
-    """Order longest-first runs so multi_run's turn-taking (position i to worker i mod n) deals
-    them in a snake, 0..n-1 then n-1..0, keeping the workers' totals close. A short last round
-    is dealt as it comes."""
-    ordered = []
-    for first in range(0, len(configurations), workers):
-        chunk = configurations[first:first + workers]
-        backwards = (first // workers) % 2 == 1 and len(chunk) == workers
-        ordered += chunk[::-1] if backwards else chunk
-    return ordered
+def wanted(items: list[Item], score) -> list[Item]:
+    """The chain's runs still worth having: everything up to and including its first budget map more
+    than CUTOFF points below dense (once dense and that map are scored), and every non-budget map."""
+    dense = next((score(item) for item in items if item.tag == "dense"), None)
+    cut = None
+    if dense is not None:
+        for i, item in enumerate(items):
+            value = score(item) if item.budget else None
+            if value is not None and value - dense < -CUTOFF:
+                cut = i
+                break
+    return [item for i, item in enumerate(items) if cut is None or i <= cut or not item.budget]
+
+
+def dispatch(found: dict, devices: list[str], start, score, wait: float = 30.0, say=print) -> list[str]:
+    """Run the chains' runs on ``devices``, one run per device at a time, and return the names that failed.
+
+    A free device takes the next unscored run of the chain with the fewest runs in flight, then the most
+    work left (so the long chains start first); a chain may run ahead of its own results, and a run that
+    a finished result puts past the chain's cutoff is stopped. ``start(full, device)`` returns a process
+    (poll / terminate / wait); ``score(item)`` is the run's accuracy in points, or None until it is in
+    results.json."""
+    running: dict[str, tuple[tuple, Item, object]] = {}
+    failed: set[str] = set()
+    while True:
+        live = {chain: wanted(items, score) for chain, items in found.items()}
+        for device, (chain, item, proc) in list(running.items()):
+            if item not in live[chain]:  # a lower budget of its chain fell past the cutoff
+                proc.terminate()
+                proc.wait()
+                del running[device]
+                say(f"[tasks] stopped {item.full['name']}: past its cutoff")
+        busy = {item.key for _, item, _ in running.values()}
+        queue = {chain: [item for item in items if item.key not in busy and item.key not in failed
+                         and score(item) is None] for chain, items in live.items()}
+        for device in devices:
+            if device in running:
+                continue
+            ready = [chain for chain, items in queue.items() if items]
+            if not ready:
+                break
+            flying = lambda chain: sum(1 for c, _, _ in running.values() if c == chain)  # noqa: E731
+            chain = min(ready, key=lambda c: (flying(c), -sum(item.minutes for item in queue[c])))
+            item = queue[chain].pop(0)
+            for other in queue.values():  # the same run in another chain (a shared dense row)
+                other[:] = [i for i in other if i.key != item.key]
+            running[device] = (chain, item, start(item.full, device))
+            say(f"[tasks] {device}: {item.full['name']}")
+        if not running:
+            return sorted(failed)
+        time.sleep(wait)
+        for device, (chain, item, proc) in list(running.items()):
+            code = proc.poll()
+            if code is None:
+                continue
+            del running[device]
+            value = score(item)
+            if code != 0 or value is None:
+                failed.add(item.key)
+                say(f"[tasks] FAILED {item.full['name']} (exit {code})")
+            else:
+                say(f"[tasks] done {item.full['name']}: {value:.1f}")
+
+
+def _start(full: dict, device: str):
+    """One configuration on one GPU, as its own engine/multi_run.py process."""
+    handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
+    with handle:
+        json.dump({"model": "hf", "configurations": [full]}, handle)
+    env = dict(os.environ, CUDA_VISIBLE_DEVICES=device)
+    return subprocess.Popen([sys.executable, str(ROOT / "engine" / "multi_run.py"), "--run", handle.name,
+                             "--skip-existing"], cwd=ROOT, env=env)
+
+
+def _score(item: Item):
+    from engine.eval_runner.index import find_result
+
+    row = find_result(json.loads(item.key))
+    if row is None:
+        return None
+    task = item.full["tasks"][0]
+    return 100 * row["scores"][task][METRICS[task]]
+
+
+def _visible() -> list[str]:
+    raw = os.environ.get("CUDA_VISIBLE_DEVICES")
+    if raw:
+        return [d.strip() for d in raw.split(",") if d.strip()]
+    import torch
+
+    return [str(i) for i in range(torch.cuda.device_count())] or ["0"]
 
 
 def tasks(args, pairs) -> None:
-    configurations = pending(args, pairs)
-    if not configurations:
-        print("[tasks] nothing to run: every configuration is in results.json", flush=True)
+    found = chains(args, pairs)
+    scored: dict[str, float] = {}
+
+    def score(item):  # a scored run stays scored: look each up in results.json until it is there
+        if item.key not in scored:
+            value = _score(item)
+            if value is None:
+                return None
+            scored[item.key] = value
+        return scored[item.key]
+
+    todo = sum(1 for items in found.values() for item in wanted(items, score) if score(item) is None)
+    if not todo:
+        print("[tasks] nothing to run: every wanted configuration is in results.json", flush=True)
         return
-    workers = len(_devices())
-    ordered = deal(configurations, workers)
-    print(f"[tasks] {len(ordered)} runs on {workers} GPUs, longest first", flush=True)
-    run = {"model": "hf", "configurations": ordered}
-    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
-        json.dump(run, handle)
-        path = Path(handle.name)
-    try:
-        subprocess.run([sys.executable, str(ROOT / "engine" / "multi_run.py"), "--run", str(path),
-                        "--skip-existing"], cwd=ROOT, check=True, env=dict(os.environ))
-    finally:
-        path.unlink(missing_ok=True)
+    devices = _visible()
+    print(f"[tasks] {todo} runs at most on {len(devices)} GPUs; each model-task stops {CUTOFF:g} points "
+          "below dense", flush=True)
+    failed = dispatch(found, devices, _start, score, say=lambda text: print(text, flush=True))
+    if failed:
+        raise SystemExit(f"[tasks] {len(failed)} runs failed")
 
 
 # --------------------------------------------------------------------------- table

@@ -41,7 +41,8 @@ def vector_compress(k_layers="all", v_layers="all", threshold=0.0, prune_pct=Non
     """
     window = {"recent_window": int(recent_window)} if recent_window else {}
     if prune_pct is not None:
-        return _step("vector_compress", k_layers, v_layers, prune_pct=int(prune_pct), **window)
+        pct = int(prune_pct) if float(prune_pct).is_integer() else float(prune_pct)  # 37.5 stays 37.5
+        return _step("vector_compress", k_layers, v_layers, prune_pct=pct, **window)
     return _step("vector_compress", k_layers, v_layers, threshold=threshold, **window)
 
 
