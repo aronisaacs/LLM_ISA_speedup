@@ -1,0 +1,910 @@
+{
+  "model": "hf",
+  "batch_size": 8,
+  "model_args": "pretrained=Qwen/Qwen3.5-9B,dtype=bfloat16,enable_thinking=False",
+  "configurations": [
+    {
+      "name": "qwen_turboquant_gsm8k_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/gsm8k_20pct_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_gsm8k_p78",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [],
+            "v_layers": [
+              23
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              27
+            ],
+            "bits": 3,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23
+            ],
+            "v_layers": [
+              31
+            ],
+            "bits": 4,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/gsm8k_20pct_p78.json",
+      "metadata": {
+        "kv_budget": 0.78,
+        "kv_compression": 0.78125
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_gsm8k_p81",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              31
+            ],
+            "bits": 3,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/gsm8k_20pct_p81.json",
+      "metadata": {
+        "kv_budget": 0.81,
+        "kv_compression": 0.8125
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_gsm8k_p84",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19
+            ],
+            "v_layers": [
+              31
+            ],
+            "bits": 3,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/gsm8k_20pct_p84.json",
+      "metadata": {
+        "kv_budget": 0.84,
+        "kv_compression": 0.84375
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_gsm8k_b4",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "bits": 4,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/gsm8k_20pct_b4.json",
+      "metadata": {
+        "kv_budget": 0.7421875,
+        "kv_compression": 0.7421875
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_gsm8k_b2",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/gsm8k_20pct_b2.json",
+      "metadata": {
+        "kv_budget": 0.8671875,
+        "kv_compression": 0.8671875
+      },
+      "tasks": [
+        "gsm8k"
+      ],
+      "num_fewshot": 0,
+      "gen_kwargs": {
+        "max_gen_toks": 512
+      },
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_humaneval_instruct_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/humaneval_instruct_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_humaneval_instruct_p78",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [],
+            "v_layers": [
+              23
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              27
+            ],
+            "bits": 3,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23
+            ],
+            "v_layers": [
+              31
+            ],
+            "bits": 4,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/humaneval_instruct_p78.json",
+      "metadata": {
+        "kv_budget": 0.78,
+        "kv_compression": 0.78125
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_humaneval_instruct_p81",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              31
+            ],
+            "bits": 3,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/humaneval_instruct_p81.json",
+      "metadata": {
+        "kv_budget": 0.81,
+        "kv_compression": 0.8125
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_humaneval_instruct_p84",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19
+            ],
+            "v_layers": [
+              31
+            ],
+            "bits": 3,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/humaneval_instruct_p84.json",
+      "metadata": {
+        "kv_budget": 0.84,
+        "kv_compression": 0.84375
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_humaneval_instruct_b4",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "bits": 4,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/humaneval_instruct_b4.json",
+      "metadata": {
+        "kv_budget": 0.7421875,
+        "kv_compression": 0.7421875
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_humaneval_instruct_b2",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/humaneval_instruct_b2.json",
+      "metadata": {
+        "kv_budget": 0.8671875,
+        "kv_compression": 0.8671875
+      },
+      "tasks": [
+        "humaneval_instruct"
+      ],
+      "num_fewshot": 0,
+      "env": {
+        "HF_ALLOW_CODE_EVAL": "1"
+      },
+      "confirm_run_unsafe_code": true,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_ceval_dense",
+      "kv": {
+        "pipeline": []
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/ceval_dense.json",
+      "metadata": {
+        "kv_budget": 0.0,
+        "kv_compression": 0.0
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_ceval_p78",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [],
+            "v_layers": [
+              23
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              27
+            ],
+            "bits": 3,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23
+            ],
+            "v_layers": [
+              31
+            ],
+            "bits": 4,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/ceval_p78.json",
+      "metadata": {
+        "kv_budget": 0.78,
+        "kv_compression": 0.78125
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_ceval_p81",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [],
+            "v_layers": [
+              23,
+              27
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              31
+            ],
+            "bits": 3,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/ceval_p81.json",
+      "metadata": {
+        "kv_budget": 0.81,
+        "kv_compression": 0.8125
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_ceval_p84",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          },
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19
+            ],
+            "v_layers": [
+              31
+            ],
+            "bits": 3,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/ceval_p84.json",
+      "metadata": {
+        "kv_budget": 0.84,
+        "kv_compression": 0.84375
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_ceval_b4",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "bits": 4,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/ceval_b4.json",
+      "metadata": {
+        "kv_budget": 0.7421875,
+        "kv_compression": 0.7421875
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    },
+    {
+      "name": "qwen_turboquant_ceval_b2",
+      "kv": {
+        "pipeline": [
+          {
+            "method": "turboquant_mse",
+            "k_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "v_layers": [
+              3,
+              7,
+              11,
+              15,
+              19,
+              23,
+              27,
+              31
+            ],
+            "bits": 2,
+            "signs": "rope_pairs",
+            "recent_window": 32,
+            "part_size": 128,
+            "rope_dim": 64
+          }
+        ]
+      },
+      "output_path": "compression_topics/kl_greedy/results/qwen/turboquant/tasks/ceval_b2.json",
+      "metadata": {
+        "kv_budget": 0.8671875,
+        "kv_compression": 0.8671875
+      },
+      "tasks": [
+        "ceval-valid"
+      ],
+      "num_fewshot": 5,
+      "apply_chat_template": true
+    }
+  ]
+}

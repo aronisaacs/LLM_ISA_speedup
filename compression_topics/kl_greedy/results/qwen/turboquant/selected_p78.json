@@ -1,0 +1,222 @@
+{
+  "tag": "p78",
+  "budget": 0.78,
+  "compression": 0.78125,
+  "levels": [
+    3,
+    2
+  ],
+  "kv_layers": [
+    3,
+    7,
+    11,
+    15,
+    19,
+    23,
+    27,
+    31
+  ],
+  "assignment": [
+    {
+      "layer": 3,
+      "target": "k",
+      "level": 4
+    },
+    {
+      "layer": 3,
+      "target": "v",
+      "level": 3
+    },
+    {
+      "layer": 7,
+      "target": "k",
+      "level": 4
+    },
+    {
+      "layer": 7,
+      "target": "v",
+      "level": 3
+    },
+    {
+      "layer": 11,
+      "target": "k",
+      "level": 4
+    },
+    {
+      "layer": 11,
+      "target": "v",
+      "level": 3
+    },
+    {
+      "layer": 15,
+      "target": "k",
+      "level": 4
+    },
+    {
+      "layer": 15,
+      "target": "v",
+      "level": 3
+    },
+    {
+      "layer": 19,
+      "target": "k",
+      "level": 4
+    },
+    {
+      "layer": 19,
+      "target": "v",
+      "level": 3
+    },
+    {
+      "layer": 23,
+      "target": "k",
+      "level": 4
+    },
+    {
+      "layer": 23,
+      "target": "v",
+      "level": 2
+    },
+    {
+      "layer": 27,
+      "target": "k",
+      "level": 3
+    },
+    {
+      "layer": 27,
+      "target": "v",
+      "level": 3
+    },
+    {
+      "layer": 31,
+      "target": "k",
+      "level": 3
+    },
+    {
+      "layer": 31,
+      "target": "v",
+      "level": 4
+    }
+  ],
+  "kv": {
+    "pipeline": [
+      {
+        "method": "turboquant_mse",
+        "k_layers": [],
+        "v_layers": [
+          23
+        ],
+        "bits": 2,
+        "signs": "rope_pairs",
+        "recent_window": 32,
+        "part_size": 128,
+        "rope_dim": 64
+      },
+      {
+        "method": "turboquant_mse",
+        "k_layers": [
+          27,
+          31
+        ],
+        "v_layers": [
+          3,
+          7,
+          11,
+          15,
+          19,
+          27
+        ],
+        "bits": 3,
+        "signs": "rope_pairs",
+        "recent_window": 32,
+        "part_size": 128,
+        "rope_dim": 64
+      },
+      {
+        "method": "turboquant_mse",
+        "k_layers": [
+          3,
+          7,
+          11,
+          15,
+          19,
+          23
+        ],
+        "v_layers": [
+          31
+        ],
+        "bits": 4,
+        "signs": "rope_pairs",
+        "recent_window": 32,
+        "part_size": 128,
+        "rope_dim": 64
+      }
+    ]
+  },
+  "calibration_kv": {
+    "pipeline": [
+      {
+        "method": "turboquant_mse",
+        "k_layers": [],
+        "v_layers": [
+          23
+        ],
+        "bits": 2,
+        "signs": "rope_pairs",
+        "part_size": 128,
+        "rope_dim": 64
+      },
+      {
+        "method": "turboquant_mse",
+        "k_layers": [
+          27,
+          31
+        ],
+        "v_layers": [
+          3,
+          7,
+          11,
+          15,
+          19,
+          27
+        ],
+        "bits": 3,
+        "signs": "rope_pairs",
+        "part_size": 128,
+        "rope_dim": 64
+      },
+      {
+        "method": "turboquant_mse",
+        "k_layers": [
+          3,
+          7,
+          11,
+          15,
+          19,
+          23
+        ],
+        "v_layers": [
+          31
+        ],
+        "bits": 4,
+        "signs": "rope_pairs",
+        "part_size": 128,
+        "rope_dim": 64
+      }
+    ]
+  },
+  "calibration": {
+    "allocator": "greedy_isolated_kl",
+    "score": "kl_mean (4 domains, / reference map)",
+    "sum_of_slot_scores": 0.3093737605754842,
+    "reference_level": 3,
+    "reference_kl": {
+      "arc_5shot": 0.0389257041097153,
+      "gsm8k": 0.009239174953108886,
+      "mbpp": 0.009905648947096779,
+      "wikitext": 0.012228564140968956
+    },
+    "base_level": 4,
+    "base_kl_mean": 0.2941289741581993
+  }
+}
