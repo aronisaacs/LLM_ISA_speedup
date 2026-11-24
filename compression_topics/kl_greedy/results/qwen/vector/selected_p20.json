@@ -4,8 +4,11 @@
   "compression": 0.2109375,
   "levels": [
     25,
+    37.5,
     50,
-    75
+    62.5,
+    75,
+    87.5
   ],
   "kv_layers": [
     3,
@@ -19,16 +22,6 @@
   ],
   "assignment": [
     {
-      "layer": 3,
-      "target": "v",
-      "level": 25
-    },
-    {
-      "layer": 7,
-      "target": "v",
-      "level": 25
-    },
-    {
       "layer": 11,
       "target": "k",
       "level": 25
@@ -36,7 +29,7 @@
     {
       "layer": 11,
       "target": "v",
-      "level": 25
+      "level": 37.5
     },
     {
       "layer": 15,
@@ -46,7 +39,7 @@
     {
       "layer": 15,
       "target": "v",
-      "level": 25
+      "level": 37.5
     },
     {
       "layer": 19,
@@ -56,12 +49,12 @@
     {
       "layer": 19,
       "target": "v",
-      "level": 50
+      "level": 37.5
     },
     {
       "layer": 23,
       "target": "k",
-      "level": 25
+      "level": 37.5
     },
     {
       "layer": 23,
@@ -81,7 +74,7 @@
     {
       "layer": 31,
       "target": "k",
-      "level": 25
+      "level": 37.5
     },
     {
       "layer": 31,
@@ -97,15 +90,9 @@
           11,
           15,
           19,
-          23,
-          27,
-          31
+          27
         ],
         "v_layers": [
-          3,
-          7,
-          11,
-          15,
           31
         ],
         "prune_pct": 25,
@@ -113,9 +100,22 @@
       },
       {
         "method": "vector_compress",
+        "k_layers": [
+          23,
+          31
+        ],
+        "v_layers": [
+          11,
+          15,
+          19
+        ],
+        "prune_pct": 37.5,
+        "recent_window": 32
+      },
+      {
+        "method": "vector_compress",
         "k_layers": [],
         "v_layers": [
-          19,
           23,
           27
         ],
@@ -132,24 +132,30 @@
           11,
           15,
           19,
-          23,
-          27,
-          31
+          27
         ],
         "v_layers": [
-          3,
-          7,
-          11,
-          15,
           31
         ],
         "prune_pct": 25
       },
       {
         "method": "vector_compress",
+        "k_layers": [
+          23,
+          31
+        ],
+        "v_layers": [
+          11,
+          15,
+          19
+        ],
+        "prune_pct": 37.5
+      },
+      {
+        "method": "vector_compress",
         "k_layers": [],
         "v_layers": [
-          19,
           23,
           27
         ],
@@ -160,7 +166,7 @@
   "calibration": {
     "allocator": "greedy_isolated_kl",
     "score": "kl_mean (4 domains, / reference map)",
-    "sum_of_slot_scores": 0.9643503648285555,
+    "sum_of_slot_scores": 0.885494801681746,
     "reference_level": 37,
     "reference_kl": {
       "arc_5shot": 0.01927836135655525,

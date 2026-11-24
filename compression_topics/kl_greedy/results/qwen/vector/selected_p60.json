@@ -1,11 +1,14 @@
 {
   "tag": "p60",
   "budget": 0.6,
-  "compression": 0.609375,
+  "compression": 0.6015625,
   "levels": [
     25,
+    37.5,
     50,
-    75
+    62.5,
+    75,
+    87.5
   ],
   "kv_layers": [
     3,
@@ -26,42 +29,42 @@
     {
       "layer": 3,
       "target": "v",
-      "level": 75
+      "level": 62.5
     },
     {
       "layer": 7,
       "target": "k",
-      "level": 50
+      "level": 62.5
     },
     {
       "layer": 7,
       "target": "v",
-      "level": 75
+      "level": 62.5
     },
     {
       "layer": 11,
       "target": "k",
-      "level": 50
+      "level": 62.5
     },
     {
       "layer": 11,
       "target": "v",
-      "level": 75
+      "level": 62.5
     },
     {
       "layer": 15,
       "target": "k",
-      "level": 75
+      "level": 62.5
     },
     {
       "layer": 15,
       "target": "v",
-      "level": 75
+      "level": 62.5
     },
     {
       "layer": 19,
       "target": "k",
-      "level": 50
+      "level": 62.5
     },
     {
       "layer": 19,
@@ -76,27 +79,27 @@
     {
       "layer": 23,
       "target": "v",
-      "level": 75
+      "level": 87.5
     },
     {
       "layer": 27,
       "target": "k",
-      "level": 75
+      "level": 62.5
     },
     {
       "layer": 27,
       "target": "v",
-      "level": 75
+      "level": 87.5
     },
     {
       "layer": 31,
       "target": "k",
-      "level": 75
+      "level": 62.5
     },
     {
       "layer": 31,
       "target": "v",
-      "level": 50
+      "level": 62.5
     }
   ],
   "kv": {
@@ -104,22 +107,19 @@
       {
         "method": "vector_compress",
         "k_layers": [
-          3,
-          7,
-          11,
-          19
+          3
         ],
-        "v_layers": [
-          31
-        ],
+        "v_layers": [],
         "prune_pct": 50,
         "recent_window": 32
       },
       {
         "method": "vector_compress",
         "k_layers": [
+          7,
+          11,
           15,
-          23,
+          19,
           27,
           31
         ],
@@ -128,11 +128,30 @@
           7,
           11,
           15,
-          19,
+          31
+        ],
+        "prune_pct": 62.5,
+        "recent_window": 32
+      },
+      {
+        "method": "vector_compress",
+        "k_layers": [
+          23
+        ],
+        "v_layers": [
+          19
+        ],
+        "prune_pct": 75,
+        "recent_window": 32
+      },
+      {
+        "method": "vector_compress",
+        "k_layers": [],
+        "v_layers": [
           23,
           27
         ],
-        "prune_pct": 75,
+        "prune_pct": 87.5,
         "recent_window": 32
       }
     ]
@@ -142,21 +161,18 @@
       {
         "method": "vector_compress",
         "k_layers": [
-          3,
-          7,
-          11,
-          19
+          3
         ],
-        "v_layers": [
-          31
-        ],
+        "v_layers": [],
         "prune_pct": 50
       },
       {
         "method": "vector_compress",
         "k_layers": [
+          7,
+          11,
           15,
-          23,
+          19,
           27,
           31
         ],
@@ -165,18 +181,35 @@
           7,
           11,
           15,
-          19,
+          31
+        ],
+        "prune_pct": 62.5
+      },
+      {
+        "method": "vector_compress",
+        "k_layers": [
+          23
+        ],
+        "v_layers": [
+          19
+        ],
+        "prune_pct": 75
+      },
+      {
+        "method": "vector_compress",
+        "k_layers": [],
+        "v_layers": [
           23,
           27
         ],
-        "prune_pct": 75
+        "prune_pct": 87.5
       }
     ]
   },
   "calibration": {
     "allocator": "greedy_isolated_kl",
     "score": "kl_mean (4 domains, / reference map)",
-    "sum_of_slot_scores": 12.571838239479373,
+    "sum_of_slot_scores": 10.432710034447412,
     "reference_level": 37,
     "reference_kl": {
       "arc_5shot": 0.01927836135655525,
