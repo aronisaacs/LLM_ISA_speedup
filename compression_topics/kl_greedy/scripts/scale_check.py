@@ -68,7 +68,7 @@ def run(args, name: str) -> None:
     for method in args.methods:
         folder = ROOT / OUT / name / method
         reference = json.loads((folder / "singles.json").read_text())["kl"]["reference"]
-        for mode in MODES[method][1]:
+        for mode in [m for m in MODES[method][1] if not args.modes or m in args.modes]:
             todo = [tag for tag in MAPS[method] if f"{method}/{tag}/{mode}" not in state["kl"]]
             if not todo:
                 continue
@@ -116,6 +116,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--models", nargs="+", default=list(MODELS), choices=list(MODELS))
     parser.add_argument("--methods", nargs="+", default=list(MAPS), choices=list(MAPS))
+    parser.add_argument("--modes", nargs="+", help="only these modes (default: all of the method's)")
     parser.add_argument("--timing", type=int, default=0, help="examples per domain (own output file)")
     args = parser.parse_args()
     for name in args.models:
