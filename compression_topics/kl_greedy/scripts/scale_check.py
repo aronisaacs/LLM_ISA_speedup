@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import sys
 import time
@@ -36,18 +37,28 @@ from compression_topics.kl_greedy.scripts.rerun import (  # noqa: E402
 
 # Maps around each method's operating range on the contract tasks (rerun.py tables).
 MAPS = {"vector": ("p40", "p50", "p60"), "spatial": ("p30", "p35", "p40")}
-MODES = {"vector": ("rescale", ("none", "length", "length_k", "length_v")), "spatial": ("scale", ("length", "norm", "lsq"))}
+MODES = {"vector": ("rescale", ("none", "length", "length_k", "length_v",
+                                "query", "query+length", "query+length_v")), "spatial": ("scale", ("length", "norm", "lsq"))}
 DEFAULT = {"vector": "none", "spatial": "length"}
 
 
-def with_mode(kv: dict, method: str, mode: str) -> dict:
-    """``kv`` (a selection's calibration_kv) with the scale option on every step; the default writes none."""
+def with_mode(kv: dict, method: str, mode: str, model=None) -> dict:
+    """``kv`` (a selection's calibration_kv) with the mode's options on every step; the default writes none.
+
+    Vector modes join parts with "+": "query" ranks keys by the model's query energy (vector_compress
+    query_weights), the rest is the rescale ("query" alone: no rescale)."""
     key = MODES[method][0]
+    parts = mode.split("+")
+    query = method == "vector" and "query" in parts
+    rest = [p for p in parts if p != "query"] or [DEFAULT[method]]
     out = copy.deepcopy(kv)
     for step in out["pipeline"]:
         step.pop(key, None)
-        if mode != DEFAULT[method]:
-            step[key] = mode
+        if rest[0] != DEFAULT[method]:
+            step[key] = rest[0]
+        if query:
+            step["query_weights"] = model.query_weights
+            step["query_weights_sha256"] = hashlib.sha256((ROOT / model.query_weights).read_bytes()).hexdigest()
     return out
 
 
@@ -76,8 +87,8 @@ def run(args, name: str) -> None:
             # option rides on the template and each map is scored through the same path as rerun.py.
             selections = {tag: json.loads((folder / f"selected_{tag}.json").read_text()) for tag in todo}
             for tag, s in selections.items():
-                parse_kv_spec(with_mode(s["calibration_kv"], method, mode))  # validate before loading
-            template = with_mode(next(iter(selections.values()))["calibration_kv"], method, mode)
+                parse_kv_spec(with_mode(s["calibration_kv"], method, mode, model))  # validate before loading
+            template = with_mode(next(iter(selections.values()))["calibration_kv"], method, mode, model)
             template = {"pipeline": [template["pipeline"][0]]}
             pool = ScorerPool(devices, rows, meta, template, model=model.pretrained)
             try:
