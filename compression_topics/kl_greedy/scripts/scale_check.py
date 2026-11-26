@@ -5,7 +5,8 @@ Spatial stores one factor per token. "length" (the method) makes each rebuilt to
 the original, "norm" uses the original norm itself (the rebuilt token comes out slightly shorter, and its
 dot products with a query carry no length bias), "lsq" the least-squares factor for its rebuilt direction.
 Vector compression stores the kept values as they are ("none", the method; already the least-squares
-choice); "length" scales them up so the vector keeps its original length (folded into the values, free).
+choice); "length" scales them up so the vector keeps its original length (folded into the values, free);
+"length_k" / "length_v" rescale only the keys / only the values.
 
 For each model, the greedy maps of ``rerun.py`` (``results/<model>/<method>/selected_<tag>.json``, their
 ``calibration_kv``) are scored as they are and with the other factors: KL(dense || compressed) per domain
@@ -35,7 +36,7 @@ from compression_topics.kl_greedy.scripts.rerun import (  # noqa: E402
 
 # Maps around each method's operating range on the contract tasks (rerun.py tables).
 MAPS = {"vector": ("p40", "p50", "p60"), "spatial": ("p30", "p35", "p40")}
-MODES = {"vector": ("rescale", ("none", "length")), "spatial": ("scale", ("length", "norm", "lsq"))}
+MODES = {"vector": ("rescale", ("none", "length", "length_k", "length_v")), "spatial": ("scale", ("length", "norm", "lsq"))}
 DEFAULT = {"vector": "none", "spatial": "length"}
 
 
