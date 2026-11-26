@@ -155,6 +155,11 @@ METHODS = {
     "vector": Method((25, 37.5, 50, 62.5, 75, 87.5),
                      (0.10, 0.20, 0.30, 0.40, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80), 37,
                      BATCH_SIZE, BATCH_SIZE),
+    # Vector with each stored K and V vector rescaled to its original length (Aron, 2026-11-26, after the
+    # scale check: KL 6-22 % lower on the vector maps): same levels and budgets, its own singles and maps.
+    "vector_rescale": Method((25, 37.5, 50, 62.5, 75, 87.5),
+                             (0.10, 0.20, 0.30, 0.40, 0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80), 37,
+                             BATCH_SIZE, BATCH_SIZE),
     # Spatial aligns each row's windows at its first real token from the attention mask, which lm-eval
     # passes to generate (left padding) but not to log-likelihood calls (right padding, no mask): C-Eval
     # runs one question at a time.
@@ -172,8 +177,9 @@ def template(method: str, model: Model, *, tasks: bool = False) -> dict:
 
     ``tasks``: the task runs' variant (vector keeps the newest 32 tokens exact there).
     """
-    if method == "vector":
-        return method_template(vector_compress(prune_pct=25, recent_window=VECTOR_TASK_WINDOW if tasks else 0))
+    if method in ("vector", "vector_rescale"):
+        return method_template(vector_compress(prune_pct=25, recent_window=VECTOR_TASK_WINDOW if tasks else 0,
+                                               rescale="length" if method == "vector_rescale" else "none"))
     if method == "turboquant":
         return method_template(turboquant_mse(bits=4, recent_window=TURBOQUANT_TASK_WINDOW if tasks else 0,
                                               **dict(model.turboquant)))
@@ -188,7 +194,7 @@ def saving(method: str, model: Model, slot: Slot, level: int) -> float:
     """Fraction of the slot's dense bits saved at ``level``, net of the format's metadata."""
     if level <= 0:
         return 0.0
-    if method == "vector":
+    if method in ("vector", "vector_rescale"):
         return net_saving("vector_compress", slot.target, level, model.head_dim)
     if method == "turboquant":  # ``level`` bits per value plus a 16-bit norm per 128 dimensions
         part = min(model.head_dim, TURBOQUANT_PART)
@@ -588,6 +594,16 @@ def _visible() -> list[str]:
 
 def tasks(args, pairs) -> None:
     found = chains(args, pairs)
+    task_filter = getattr(args, "task_filter", None)
+    budget_filter = getattr(args, "budget_filter", None)
+    if task_filter:
+        found = {c: items for c, items in found.items() if any(c[2].startswith(t) for t in task_filter)}
+    if budget_filter:
+        found = {c: [i for i in items if i.tag == "dense" or i.tag in budget_filter] for c, items in found.items()}
+    if getattr(args, "no_cutoff", False):
+        for items in found.values():
+            for item in items:
+                item.budget = False
     scored: dict[str, float] = {}
 
     def score(item):  # a scored run stays scored: look each up in results.json until it is there
@@ -661,6 +677,11 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--from", dest="start", choices=STAGES, default=STAGES[0])
     p.add_argument("--through", choices=STAGES, default=STAGES[-1])
     p.add_argument("--chunk", type=int, default=24, help="candidates scored between saves")
+    p.add_argument("--tasks", dest="task_filter", nargs="+", metavar="TASK",
+                   help="tasks stage: only these tasks (e.g. gsm8k)")
+    p.add_argument("--budgets", dest="budget_filter", nargs="+", metavar="TAG",
+                   help="tasks stage: only these maps (e.g. p50 p55), plus dense")
+    p.add_argument("--no-cutoff", action="store_true", help="tasks stage: run every selected map")
     p.add_argument("--timing", type=int, metavar="N",
                    help="N calibration examples per domain, own results folder, no tasks")
     return p

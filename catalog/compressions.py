@@ -33,13 +33,17 @@ def checksparse_row(k_layers="all", v_layers="all", tile=8, prune_pct=50):
     return _step("checksparse_row", k_layers, v_layers, tile=tile, prune_pct=prune_pct)
 
 
-def vector_compress(k_layers="all", v_layers="all", threshold=0.0, prune_pct=None, recent_window=0):
+def vector_compress(k_layers="all", v_layers="all", threshold=0.0, prune_pct=None, recent_window=0,
+                    rescale="none"):
     """Zero weak scalars. ``prune_pct`` drops that percent; otherwise ``|x| < threshold``.
 
     ``recent_window`` > 0: the newest that many tokens stay exact and each token is compressed when it
     leaves the window (engine/kv_compress/cache.py); 0 writes no key, the identity of earlier runs.
+    ``rescale`` (vector_compress.py): "none" writes no key, the identity of earlier runs.
     """
     window = {"recent_window": int(recent_window)} if recent_window else {}
+    if rescale != "none":
+        window["rescale"] = rescale
     if prune_pct is not None:
         pct = int(prune_pct) if float(prune_pct).is_integer() else float(prune_pct)  # 37.5 stays 37.5
         return _step("vector_compress", k_layers, v_layers, prune_pct=pct, **window)
