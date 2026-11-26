@@ -21,7 +21,7 @@ from compression_topics.spatial.algorithms.formats import (
     WINDOW,
     dense_bits,
 )
-from compression_topics.spatial.algorithms.representation import query_energy
+from compression_topics.spatial.algorithms.representation import SCALES, query_energy
 from engine.kv_compress.methods import AFTER_APPEND, METHODS, NEEDS_PADDING, OPTION_VALIDATORS
 from engine.kv_compress.padding import left_pads
 
@@ -31,17 +31,21 @@ class SpatialConfig:
     query_weights: str | None = None  # calibrated E[q^2] file, for keys
     query_weights_sha256: str | None = None
     window: int = OFFICIAL_WINDOW  # tokens per window; written only when not 16, the identity of older runs
+    scale: str = "length"  # stored per-token factor (representation.reconstruct); written only when not "length"
 
     def __post_init__(self):
         if (self.query_weights is None) != (self.query_weights_sha256 is None):
             raise ValueError("query weights need their checksum, and the checksum its weights")
         _check_window(self.window)
+        if self.scale not in SCALES:
+            raise ValueError(f"spatial scale must be one of {SCALES}")
 
     def pipeline(self, saving, *, k_layers="all", v_layers="all"):
         if not math.isfinite(saving) or not 0 < saving < 1:
             raise ValueError("saving must be between zero and one")
         options = {k: v for k, v in asdict(self).items()
-                   if v is not None and not (k == "window" and v == WINDOW)}
+                   if v is not None and not (k == "window" and v == WINDOW)
+                   and not (k == "scale" and v == "length")}
         return {"pipeline": [dict(method="spatial", saving=saving, k_layers=k_layers,
                                   v_layers=v_layers, **options)]}
 
@@ -56,7 +60,8 @@ def _stats(target, layer_idx):
     )
 
 
-def store(tensor, *, saving, query_weights=None, query_weights_sha256=None, window=WINDOW, **context):
+def store(tensor, *, saving, query_weights=None, query_weights_sha256=None, window=WINDOW, scale="length",
+          **context):
     """New tokens are stored as written; :func:`after_append` compresses whole windows."""
     return tensor
 
@@ -67,7 +72,7 @@ _DONE = {}
 
 
 def after_append(cache_tensor, *, target, layer_idx, start, end, saving, rope_tables=None,
-                 query_weights=None, query_weights_sha256=None, window=WINDOW):
+                 query_weights=None, query_weights_sha256=None, window=WINDOW, scale="length"):
     """Compress, in place, every ``window``-token window completed by this cache update.
 
     Each batch row's windows start at its first real token (left padding from the attention mask,
@@ -99,7 +104,7 @@ def after_append(cache_tensor, *, target, layer_idx, start, end, saving, rope_ta
         if target == "k" and query_weights is not None:
             energy = query_energy(query_weights, query_weights_sha256, layer_idx, body)
         out, bits, counts = windows.compress(body, target=target, saving=saving, query_energy=energy,
-                                             window=window)
+                                             window=window, scale=scale)
         cache_tensor[r:r + 1, :, pad + done:pad + complete, :] = out
         header = HEADER_BITS if done == 0 else 0
         row["stored_bits"] -= heads * dense_bits(complete - done, dim) - bits - header

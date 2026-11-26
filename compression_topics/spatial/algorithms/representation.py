@@ -6,6 +6,10 @@ the half-difference d = (a - b) / 2. Each token stores one bf16 scale, its norm
 divided by the norm of its rebuilt direction (m + d or m - d), so a rebuilt
 token is scale x (m +- d) and keeps its original length.
 
+``scale`` (scale check, 2026-11-26) picks the stored per-token factor instead:
+"length" (default, the above), "norm" (the token's norm itself: the rebuilt token is a little
+shorter) or "lsq" (the least-squares factor (x . u) / ||u||^2 for the rebuilt direction u).
+
 Reconstruction error is relative squared error ||k - k_hat||^2 / ||k||^2.
 Query-aware error (keys only) weights each dimension by the calibrated query
 energy E[q_d^2] and is absolute: sum_d E[q_d^2] (k_hat_d - k_d)^2, an estimate of
@@ -48,7 +52,10 @@ def prepare(tensor):
     return Pairs(source.reshape(shape), norms.reshape(*shape[:-1], 1), mean, deviation)
 
 
-def reconstruct(pairs, residual, *, dtype, query_energy=None):
+SCALES = ("length", "norm", "lsq")
+
+
+def reconstruct(pairs, residual, *, dtype, query_energy=None, scale="length"):
     """Rebuild every pair in one format; returns (tokens, valid[1, heads, pairs])."""
     mean = pairs.mean.to(dtype).float()
     kept = torch.zeros_like(pairs.deviation)
@@ -61,8 +68,15 @@ def reconstruct(pairs, residual, *, dtype, query_energy=None):
     kept = kept.to(dtype).float()
     unit = torch.cat((mean + kept, mean - kept), -2)
     size = unit.norm(dim=-1, keepdim=True)
-    scale = (pairs.norms / size.clamp_min(1e-12)).to(dtype).float()
-    restored = unit * scale
+    if scale == "length":
+        factor = pairs.norms / size.clamp_min(1e-12)
+    elif scale == "norm":
+        factor = pairs.norms
+    elif scale == "lsq":
+        factor = (pairs.source * unit).sum(-1, keepdim=True) / size.square().clamp_min(1e-24)
+    else:
+        raise ValueError(f"spatial scale must be one of {SCALES}")
+    restored = unit * factor.to(dtype).float()
     valid = (pairs.norms.squeeze(-1) > 1e-12).all(-1) & (size.squeeze(-1) > 1e-6).all(-1)
     valid &= torch.isfinite(restored).all(-1).all(-1)
     return restored, valid

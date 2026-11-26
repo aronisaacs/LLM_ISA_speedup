@@ -4,6 +4,10 @@ Unlike checksparse, this does not decide keep/drop for a whole subvector.
 Use ``threshold`` for |x| < T, or ``prune_pct`` to zero the weakest percent of
 scalars (percentage control / greedy ladder). ``recent_window`` (tokens) is read by
 the cache: the newest tokens stay exact until they leave the window.
+
+``rescale`` (scale check, 2026-11-26): "none" (default, the kept values as they are) or "length"
+(the kept values times ||x|| / ||x_kept||, so the stored vector keeps its original length; folded
+into the stored values, so it costs no storage).
 """
 
 from __future__ import annotations
@@ -21,10 +25,19 @@ def apply(
     threshold: float = 0.0,
     prune_pct: int | float | None = None,
     recent_window: int = 0,
+    rescale: str = "none",
     **_unused,
 ) -> torch.Tensor:
     del layer_idx, target, _unused, recent_window  # the window is the cache's job
-    return _apply(tensor, threshold=threshold, prune_pct=prune_pct)
+    out = _apply(tensor, threshold=threshold, prune_pct=prune_pct)
+    if rescale == "none" or out is tensor:
+        return out
+    if rescale != "length":
+        raise ValueError("vector_compress rescale must be 'none' or 'length'")
+    full = tensor.float().norm(dim=-1, keepdim=True)
+    kept = out.float().norm(dim=-1, keepdim=True)
+    factor = torch.where(kept > 0, full / kept.clamp_min(1e-12), torch.ones_like(kept))
+    return (out.float() * factor).to(tensor.dtype)
 
 
 def _apply(
@@ -61,6 +74,8 @@ def _validate(options: dict) -> None:
     window = options.get("recent_window", 0)
     if not isinstance(window, int) or isinstance(window, bool) or window < 0:
         raise ValueError("vector_compress recent_window must be a non-negative integer")
+    if options.get("rescale", "none") not in ("none", "length"):
+        raise ValueError("vector_compress rescale must be 'none' or 'length'")
 
 
 METHODS["vector_compress"] = apply

@@ -26,7 +26,7 @@ from compression_topics.spatial.algorithms.representation import error, prepare,
 STEP_ORDER = [2, 1, 0]
 
 
-def candidates(tensor, *, target, query_energy=None, window=WINDOW):
+def candidates(tensor, *, target, query_energy=None, window=WINDOW, scale="length"):
     """Reconstruction error and reconstruction of every pair in every merged format.
 
     ``tensor`` is [1, heads, tokens, dim], tokens a multiple of ``window``.
@@ -43,7 +43,7 @@ def candidates(tensor, *, target, query_energy=None, window=WINDOW):
     pairs = prepare(tensor)
     columns, reconstructions = [], {}
     for residual in RESIDUALS:
-        restored, valid = reconstruct(pairs, residual, dtype=torch.bfloat16, query_energy=energy)
+        restored, valid = reconstruct(pairs, residual, dtype=torch.bfloat16, query_energy=energy, scale=scale)
         value = error(pairs.source, restored, query_energy=energy).mean(3)
         columns.append(value.masked_fill(~valid, float("inf"))[0])
         reconstructions[residual] = restored.reshape(1, heads, length, dim).to(tensor.dtype)
@@ -114,14 +114,15 @@ def block_bits(dim, saving, window=WINDOW):
     return (1 - saving) * dense_bits(window, dim) + (window // 2) * TAG_BITS
 
 
-def compress(tensor, *, target, saving, query_energy=None, window=WINDOW):
+def compress(tensor, *, target, saving, query_energy=None, window=WINDOW, scale="length"):
     """Compress the whole windows of ``tensor``.
 
     Returns (reconstructed tensor, stored bits, pair count per format). Stored bits
     count each head's full block, or the bits it used if that is more (a head that
     cannot reach the budget).
     """
-    errors, reconstructions = candidates(tensor, target=target, query_energy=query_energy, window=window)
+    errors, reconstructions = candidates(tensor, target=target, query_energy=query_energy, window=window,
+                                         scale=scale)
     heads, length, dim = tensor.shape[1:]
     code = solve(errors, dim, saving, window)
     bits_of = torch.tensor([dense_bits(2, dim)] + [pair_bits(r, dim) for r in RESIDUALS],
