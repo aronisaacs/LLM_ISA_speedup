@@ -58,8 +58,10 @@ def run(args, name: str) -> None:
     from engine.layer_select.slots import Slot
 
     model = MODELS[name]
-    rows, meta = calibration_set.load(calibration_dir(model), per_domain=args.timing)
+    rows, meta = calibration_set.load(calibration_dir(model), per_domain=args.timing or None)
     out = ROOT / OUT / ("scale_check" + (f"_timing_{args.timing}" if args.timing else "")) / f"{name}.json"
+    if not rows:
+        raise SystemExit(f"{name}: no calibration examples loaded")
     state = json.loads(out.read_text()) if out.exists() else {"examples": len(rows), "kl": {}}
     devices = _devices()
     for method in args.methods:
